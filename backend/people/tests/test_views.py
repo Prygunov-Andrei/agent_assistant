@@ -63,7 +63,7 @@ class TestPersonAPI:
         url = reverse('person-list')
         response = authenticated_client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 3
+        assert len(response.data['results']) == 3
 
     def test_person_list_only_active(self, authenticated_client):
         """Тест что в списке только активные персоны"""
@@ -72,8 +72,8 @@ class TestPersonAPI:
         url = reverse('person-list')
         response = authenticated_client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]['is_active'] is True
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['is_active'] is True
 
     def test_person_create_requires_authentication(self, api_client):
         """Тест что создание персоны требует аутентификации"""
@@ -277,8 +277,8 @@ class TestPersonAPI:
         ]
 
         # Проверяем что есть данные
-        assert len(response.data) > 0
+        assert len(response.data['results']) > 0
         
         # Проверяем поля в первом элементе
         for field in expected_fields:
-            assert field in response.data[0]
+            assert field in response.data['results'][0]

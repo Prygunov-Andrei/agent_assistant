@@ -29,7 +29,7 @@ class TestSkillGroupAPI(TestCase):
         url = reverse('skillgroup-list')
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 3
+        assert len(response.data['results']) == 3
     
     def test_skill_group_create(self):
         """Тест создания группы навыков."""
@@ -66,7 +66,7 @@ class TestSkillAPI(TestCase):
         url = reverse('skill-list')
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 3
+        assert len(response.data['results']) == 3
     
     def test_skill_create(self):
         """Тест создания навыка."""
@@ -108,7 +108,7 @@ class TestEducationAPI(TestCase):
         url = reverse('education-list')
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 3
+        assert len(response.data['results']) == 3
     
     def test_education_create(self):
         """Тест создания учебного заведения."""

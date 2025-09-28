@@ -1,0 +1,305 @@
+from rest_framework import viewsets, status, permissions, filters
+from rest_framework.decorators import action, parser_classes
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.pagination import PageNumberPagination
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.db import models
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from datetime import datetime
+import pytz
+import json
+
+from core.views import BaseModelViewSet
+from core.permissions import OwnerPermission
+from .models import Request, RequestImage, RequestFile
+from .serializers import (
+    RequestSerializer, RequestListSerializer, RequestCreateSerializer,
+    RequestResponseSerializer, RequestStatusSerializer,
+    RequestImageSerializer, RequestFileSerializer, TelegramWebhookDataSerializer
+)
+from .services import TelegramFileService
+
+
+class RequestViewSet(BaseModelViewSet):
+    """ViewSet для управления запросами"""
+    
+    queryset = Request.objects.all()
+    serializer_class = RequestSerializer
+    list_serializer_class = RequestListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['text', 'author_name']
+    ordering_fields = ['created_at', 'original_created_at', 'processed_at']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """Все агенты видят все запросы с поддержкой фильтрации"""
+        queryset = super().get_queryset()
+        
+        # Простая фильтрация по параметрам запроса
+        status = self.request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+            
+        agent_id = self.request.query_params.get('agent')
+        if agent_id:
+            queryset = queryset.filter(agent_id=agent_id)
+            
+        has_images = self.request.query_params.get('has_images')
+        if has_images is not None:
+            queryset = queryset.filter(has_images=has_images.lower() == 'true')
+            
+        has_files = self.request.query_params.get('has_files')
+        if has_files is not None:
+            queryset = queryset.filter(has_files=has_files.lower() == 'true')
+            
+        return queryset
+    
+    def get_serializer_class(self):
+        """Выбор сериализатора в зависимости от действия"""
+        if self.action == 'list':
+            return self.list_serializer_class
+        elif self.action == 'create':
+            return RequestCreateSerializer
+        elif self.action == 'respond':
+            return RequestResponseSerializer
+        elif self.action == 'change_status':
+            return RequestStatusSerializer
+        return self.serializer_class
+    
+    def create(self, request, *args, **kwargs):
+        """Создание запроса (для webhook)"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Создаем запрос без привязки к агенту
+        request_obj = serializer.save()
+        
+        return Response(
+            {'status': 'ok', 'request_id': request_obj.id},
+            status=status.HTTP_201_CREATED
+        )
+    
+    @action(detail=True, methods=['post'])
+    def respond(self, request, pk=None):
+        """Ответ на запрос"""
+        request_obj = self.get_object()
+        
+        serializer = self.get_serializer(request_obj, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def change_status(self, request, pk=None):
+        """Изменение статуса запроса"""
+        request_obj = self.get_object()
+        
+        serializer = self.get_serializer(request_obj, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Статистика запросов"""
+        queryset = self.get_queryset()
+        
+        stats = {
+            'total': queryset.count(),
+            'pending': queryset.filter(status='pending').count(),
+            'in_progress': queryset.filter(status='in_progress').count(),
+            'completed': queryset.filter(status='completed').count(),
+            'cancelled': queryset.filter(status='cancelled').count(),
+            'with_media': queryset.filter(models.Q(has_images=True) | models.Q(has_files=True)).count(),
+            'today': queryset.filter(created_at__date=timezone.now().date()).count(),
+        }
+        
+        return Response(stats)
+    
+    @action(detail=False, methods=['get'])
+    def my_requests(self, request):
+        """Запросы, назначенные текущему агенту"""
+        queryset = self.get_queryset().filter(agent=request.user)
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.list_serializer_class(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.list_serializer_class(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def unassigned(self, request):
+        """Неназначенные запросы"""
+        queryset = self.get_queryset().filter(agent__isnull=True)
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.list_serializer_class(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.list_serializer_class(queryset, many=True)
+        return Response(serializer.data)
+
+
+class RequestImageViewSet(BaseModelViewSet):
+    """ViewSet для управления изображениями запросов"""
+    
+    queryset = RequestImage.objects.all()
+    serializer_class = RequestImageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    
+    def get_queryset(self):
+        """Фильтрация изображений по запросам агента"""
+        queryset = super().get_queryset()
+        
+        if self.request.user.is_authenticated:
+            queryset = queryset.filter(
+                request__agent=self.request.user
+            )
+            
+        return queryset
+
+
+class RequestFileViewSet(BaseModelViewSet):
+    """ViewSet для управления файлами запросов"""
+    
+    queryset = RequestFile.objects.all()
+    serializer_class = RequestFileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    
+    def get_queryset(self):
+        """Фильтрация файлов по запросам агента"""
+        queryset = super().get_queryset()
+        
+        if self.request.user.is_authenticated:
+            queryset = queryset.filter(
+                request__agent=self.request.user
+            )
+            
+        return queryset
+
+
+# Webhook ViewSet для бота
+class TelegramWebhookViewSet(viewsets.ViewSet):
+    """ViewSet для обработки webhook от Telegram бота"""
+    
+    permission_classes = []  # Без аутентификации для webhook
+    parser_classes = [JSONParser]
+    
+    @action(detail=False, methods=['post'])
+    def webhook(self, request):
+        """Обработка webhook от Telegram бота"""
+        try:
+            # Пытаемся получить данные
+            try:
+                request_data = request.data
+            except:
+                # Если не удалось распарсить JSON, возвращаем 400
+                return Response({
+                    'status': 'error',
+                    'message': 'Некорректные данные JSON'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Валидируем данные с помощью TelegramWebhookDataSerializer
+            webhook_serializer = TelegramWebhookDataSerializer(data=request_data)
+            if not webhook_serializer.is_valid():
+                return Response({
+                    'status': 'error',
+                    'message': 'Ошибка валидации webhook данных',
+                    'errors': webhook_serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Получаем обработанные данные
+            webhook_data = webhook_serializer.validated_data
+            author_info = webhook_serializer.get_author_info(webhook_data)
+            
+            # Создаем запрос
+            request_serializer = RequestCreateSerializer(data=author_info)
+            if request_serializer.is_valid():
+                request_obj = request_serializer.save()
+                
+                # Обрабатываем изображения, если есть
+                if webhook_data.get('message', {}).get('photo'):
+                    self._process_images(request_obj, webhook_data['message']['photo'])
+                
+                # Обрабатываем документы, если есть
+                if webhook_data.get('message', {}).get('document'):
+                    self._process_documents(request_obj, webhook_data['message']['document'])
+                
+                return Response({
+                    'status': 'ok',
+                    'request_id': request_obj.id,
+                    'message': 'Запрос успешно создан'
+                })
+            else:
+                return Response({
+                    'status': 'error',
+                    'message': 'Ошибка создания запроса',
+                    'errors': request_serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except (ValueError, TypeError, KeyError) as e:
+            # Обрабатываем ошибки парсинга JSON и валидации
+            return Response({
+                'status': 'error',
+                'message': 'Некорректные данные запроса'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': f'Ошибка обработки webhook: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _process_images(self, request_obj, photo_data):
+        """Обработка изображений из Telegram"""
+        try:
+            # Инициализируем сервис для работы с Telegram
+            telegram_service = TelegramFileService()
+            
+            # Обрабатываем все фотографии в сообщении
+            for photo in photo_data:
+                file_id = photo.get('file_id')
+                if file_id:
+                    # Скачиваем и сохраняем изображение
+                    request_image = telegram_service.save_image_from_telegram(file_id, request_obj)
+                    if request_image:
+                        # Обновляем размер файла из данных Telegram
+                        request_image.file_size = photo.get('file_size', 0)
+                        request_image.save()
+                        
+        except Exception as e:
+            # Логируем ошибку, но не прерываем создание запроса
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Ошибка при обработке изображений: {e}")
+    
+    def _process_documents(self, request_obj, document_data):
+        """Обработка документов из Telegram"""
+        try:
+            # Инициализируем сервис для работы с Telegram
+            telegram_service = TelegramFileService()
+            
+            # Скачиваем и сохраняем документ
+            file_id = document_data.get('file_id')
+            if file_id:
+                request_file = telegram_service.save_document_from_telegram(file_id, document_data, request_obj)
+                if request_file:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Документ {file_id} успешно обработан")
+                        
+        except Exception as e:
+            # Логируем ошибку, но не прерываем создание запроса
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Ошибка при обработке документов: {e}")

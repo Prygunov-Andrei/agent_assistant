@@ -162,9 +162,9 @@ class TestAgentCompanyIntegration:
         response = authenticated_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2  # Только активные
+        assert len(response.data['results']) == 2  # Только активные
         
-        company_names = [company['name'] for company in response.data]
+        company_names = [company['name'] for company in response.data['results']]
         assert 'Company 1' in company_names
         assert 'Company 2' in company_names
         assert 'Company 3' not in company_names
@@ -289,9 +289,9 @@ class TestAgentPersonIntegration:
         response = authenticated_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2  # Только активные
+        assert len(response.data['results']) == 2  # Только активные
         
-        person_names = [person['first_name'] for person in response.data]
+        person_names = [person['first_name'] for person in response.data['results']]
         assert 'Персона 1' in person_names
         assert 'Персона 2' in person_names
         assert 'Персона 3' not in person_names
@@ -425,9 +425,9 @@ class TestAgentProjectIntegration:
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2  # Только активные
+        assert len(response.data['results']) == 2  # Только активные
 
-        project_titles = [project['title'] for project in response.data]
+        project_titles = [project['title'] for project in response.data['results']]
         assert 'Проект 1' in project_titles
         assert 'Проект 2' in project_titles
         assert 'Проект 3' not in project_titles

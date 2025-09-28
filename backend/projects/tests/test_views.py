@@ -34,8 +34,8 @@ class TestProjectTypeAPI:
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2  # Только активные
-        names = [item['name'] for item in response.data]
+        assert len(response.data['results']) == 2  # Только активные
+        names = [item['name'] for item in response.data['results']]
         assert 'Фильм' in names
         assert 'Сериал' in names
         assert 'Документальный' not in names
@@ -82,8 +82,8 @@ class TestGenreAPI:
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2  # Только активные
-        names = [item['name'] for item in response.data]
+        assert len(response.data['results']) == 2  # Только активные
+        names = [item['name'] for item in response.data['results']]
         assert 'Драма' in names
         assert 'Комедия' in names
         assert 'Триллер' not in names
@@ -120,8 +120,8 @@ class TestRoleTypeAPI:
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2  # Только активные
-        names = [item['name'] for item in response.data]
+        assert len(response.data['results']) == 2  # Только активные
+        names = [item['name'] for item in response.data['results']]
         assert 'Актер' in names
         assert 'Режиссер' in names
         assert 'Оператор' not in names
@@ -157,8 +157,8 @@ class TestProjectAPI:
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2  # Только активные
-        titles = [item['title'] for item in response.data]
+        assert len(response.data['results']) == 2  # Только активные
+        titles = [item['title'] for item in response.data['results']]
         assert 'Проект 1' in titles
         assert 'Проект 2' in titles
         assert 'Проект 3' not in titles
@@ -314,9 +314,9 @@ class TestProjectAPI:
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
+        assert len(response.data['results']) == 1
         
-        project_data = response.data[0]
+        project_data = response.data['results'][0]
         expected_fields = [
             'id', 'title', 'project_type', 'project_type_name',
             'status', 'genre', 'genre_name', 'director', 'director_name',
@@ -366,8 +366,8 @@ class TestProjectRoleAPI:
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2  # Только активные
-        names = [item['name'] for item in response.data]
+        assert len(response.data['results']) == 2  # Только активные
+        names = [item['name'] for item in response.data['results']]
         assert 'Роль 1' in names
         assert 'Роль 2' in names
         assert 'Роль 3' not in names
@@ -505,9 +505,9 @@ class TestProjectRoleAPI:
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
+        assert len(response.data['results']) == 1
         
-        role_data = response.data[0]
+        role_data = response.data['results'][0]
         expected_fields = [
             'id', 'project', 'project_title', 'name', 'role_type',
             'role_type_name', 'media_presence', 'is_active', 'created_at'

@@ -74,7 +74,7 @@ class TestAgentAPI:
         response = authenticated_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         # Должен быть только 1 активный агент (плюс тот что в фикстуре)
-        active_agents = [agent for agent in response.data if agent['is_active']]
+        active_agents = [agent for agent in response.data['results'] if agent['is_active']]
         assert len(active_agents) == 2  # 1 новый + 1 из фикстуры
     
     def test_agent_create_requires_authentication(self, api_client):
@@ -209,4 +209,4 @@ class TestAgentAPI:
         ]
         
         for field in expected_fields:
-            assert field in response.data[0]
+            assert field in response.data['results'][0]
