@@ -1,0 +1,480 @@
+openapi: 3.0.3
+info:
+  title: Agent Assistant API
+  version: 1.0.0
+  description: API для автоматизации рабочего места актерского агента
+paths:
+  /api/agents/:
+    get:
+      operationId: agents_list
+      description: Получить список всех активных агентов
+      summary: Список агентов
+      tags:
+      - Агенты
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentList'
+          description: ''
+    post:
+      operationId: agents_create
+      description: Создать нового агента в системе
+      summary: Создать агента
+      tags:
+      - Агенты
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+          description: ''
+  /api/agents/{id}/:
+    get:
+      operationId: agents_retrieve
+      description: Получить информацию о конкретном агенте
+      summary: Получить агента
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Агент.
+        required: true
+      tags:
+      - Агенты
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+          description: ''
+    put:
+      operationId: agents_update
+      description: Полностью обновить информацию об агенте
+      summary: Обновить агента
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Агент.
+        required: true
+      tags:
+      - Агенты
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+          description: ''
+    patch:
+      operationId: agents_partial_update
+      description: Частично обновить информацию об агенте
+      summary: Частично обновить агента
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Агент.
+        required: true
+      tags:
+      - Агенты
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRequest'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+          description: ''
+    delete:
+      operationId: agents_destroy
+      description: Удалить агента из системы
+      summary: Удалить агента
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Агент.
+        required: true
+      tags:
+      - Агенты
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/agents/me/:
+    get:
+      operationId: agents_me_retrieve
+      description: Получить информацию о текущем агенте
+      summary: Мой профиль
+      tags:
+      - Агенты
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+          description: ''
+  /api/agents/update_profile/:
+    patch:
+      operationId: agents_update_profile_partial_update
+      description: Обновить профиль текущего агента
+      summary: Обновить профиль
+      tags:
+      - Агенты
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentRequest'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+          description: ''
+  /api/health/:
+    get:
+      operationId: health_retrieve
+      description: Проверка здоровья API
+      tags:
+      - health
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/info/:
+    get:
+      operationId: info_retrieve
+      description: Информация об API
+      tags:
+      - info
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          description: No response body
+components:
+  schemas:
+    Agent:
+      type: object
+      description: Сериализатор для модели Agent
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Уникальное имя пользователя для входа в систему
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          description: Электронная почта агента
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        full_name:
+          type: string
+          readOnly: true
+          description: Полное имя агента (имя + фамилия)
+        photo:
+          type: string
+          format: uri
+          nullable: true
+          title: Фотография
+          description: Фотография агента
+        phone:
+          type: string
+          title: Телефон
+          description: Номер телефона агента
+          maxLength: 20
+        bio:
+          type: string
+          title: Биография
+          description: Краткая биография агента
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата рождения
+          description: Дата рождения агента
+        telegram_username:
+          type: string
+          nullable: true
+          title: Telegram аккаунт
+          description: Имя пользователя в Telegram
+          maxLength: 50
+        is_active:
+          type: boolean
+          title: Active
+          description: Активен ли агент в системе
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата обновления
+      required:
+      - created_at
+      - date_joined
+      - full_name
+      - id
+      - last_login
+      - updated_at
+      - username
+    AgentList:
+      type: object
+      description: Упрощенный сериализатор для списка агентов
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        full_name:
+          type: string
+          readOnly: true
+        photo:
+          type: string
+          format: uri
+          nullable: true
+          title: Фотография
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+      required:
+      - created_at
+      - full_name
+      - id
+      - username
+    AgentRequest:
+      type: object
+      description: Сериализатор для модели Agent
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Уникальное имя пользователя для входа в систему
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          description: Электронная почта агента
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        photo:
+          type: string
+          format: binary
+          nullable: true
+          title: Фотография
+          description: Фотография агента
+        phone:
+          type: string
+          title: Телефон
+          description: Номер телефона агента
+          maxLength: 20
+        bio:
+          type: string
+          title: Биография
+          description: Краткая биография агента
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата рождения
+          description: Дата рождения агента
+        telegram_username:
+          type: string
+          nullable: true
+          title: Telegram аккаунт
+          description: Имя пользователя в Telegram
+          maxLength: 50
+        is_active:
+          type: boolean
+          title: Active
+          description: Активен ли агент в системе
+      required:
+      - username
+    PatchedAgentRequest:
+      type: object
+      description: Сериализатор для модели Agent
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Уникальное имя пользователя для входа в систему
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          description: Электронная почта агента
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        photo:
+          type: string
+          format: binary
+          nullable: true
+          title: Фотография
+          description: Фотография агента
+        phone:
+          type: string
+          title: Телефон
+          description: Номер телефона агента
+          maxLength: 20
+        bio:
+          type: string
+          title: Биография
+          description: Краткая биография агента
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата рождения
+          description: Дата рождения агента
+        telegram_username:
+          type: string
+          nullable: true
+          title: Telegram аккаунт
+          description: Имя пользователя в Telegram
+          maxLength: 50
+        is_active:
+          type: boolean
+          title: Active
+          description: Активен ли агент в системе
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

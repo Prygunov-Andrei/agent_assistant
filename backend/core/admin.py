@@ -1,0 +1,68 @@
+from django.contrib import admin
+
+
+class BaseReferenceAdmin(admin.ModelAdmin):
+    """
+    Базовый Admin класс для справочных моделей.
+    
+    Предоставляет стандартную конфигурацию админ-панели для справочников:
+    - Отображение основных полей в списке
+    - Фильтрация по активности и дате создания
+    - Поиск по названию и описанию
+    - Сортировка по названию
+    """
+    
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('name', 'description', 'is_active')
+        }),
+        ('Системная информация', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('created_at', 'updated_at')
+
+
+class BaseModelAdmin(admin.ModelAdmin):
+    """
+    Базовый Admin класс для основных моделей.
+    
+    Предоставляет стандартную конфигурацию админ-панели для основных сущностей:
+    - Отображение основных полей в списке
+    - Фильтрация по активности и дате создания
+    - Автоматическое установление created_by при создании
+    """
+    
+    list_display = ('__str__', 'is_active', 'created_by', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    readonly_fields = ('created_by', 'created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('is_active',)
+        }),
+        ('Системная информация', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """
+        Автоматически устанавливает created_by при создании объекта.
+        
+        Args:
+            request: HTTP запрос
+            obj: объект модели для сохранения
+            form: форма админ-панели
+            change: флаг изменения существующего объекта
+        """
+        if not change:  # Только при создании нового объекта
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
