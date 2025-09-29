@@ -103,6 +103,60 @@ export interface ArtistSkillListItem {
   proficiency_level_display: string;
 }
 
+// Типы для запросов
+export interface RequestListItem {
+  id: number;
+  text: string;
+  author_name: string;
+  author_telegram_id?: number;
+  sender_telegram_id: number;
+  telegram_message_id: number;
+  telegram_chat_id: number;
+  media_group_id?: string;
+  has_images: boolean;
+  has_files: boolean;
+  has_media: boolean;
+  original_created_at?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status_display: string;
+  agent?: number;
+  agent_name?: string;
+  processed_at?: string;
+  response_text?: string;
+  is_forwarded: boolean;
+  images_count: number;
+  files_count: number;
+  images?: RequestImage[];
+  files?: RequestFile[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RequestImage {
+  id: number;
+  request: number;
+  image: string;
+  telegram_file_id?: string;
+  file_size?: number;
+  caption?: string;
+  file_size_mb: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RequestFile {
+  id: number;
+  request: number;
+  file: string;
+  original_filename: string;
+  file_size: number;
+  mime_type: string;
+  telegram_file_id?: string;
+  file_size_mb: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Типы для событий
 export interface ImageErrorEvent {
   currentTarget: {

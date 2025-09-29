@@ -118,7 +118,7 @@ class RequestFileInline(admin.TabularInline):
     """Inline для файлов запроса"""
     model = RequestFile
     extra = 0
-    readonly_fields = ['telegram_file_id', 'file_size', 'created_at']
+    readonly_fields = ['telegram_file_id', 'created_at']
     fields = ['file', 'original_filename', 'telegram_file_id', 'file_size', 'mime_type', 'created_at']
 
 
@@ -171,7 +171,7 @@ class RequestFileAdmin(BaseModelAdmin):
         'request__author_name', 'original_filename', 'telegram_file_id'
     ]
     readonly_fields = [
-        'telegram_file_id', 'file_size', 'created_at', 'updated_at', 'file_size_mb'
+        'telegram_file_id', 'created_at', 'updated_at', 'file_size_mb'
     ]
     
     def request_link(self, obj):

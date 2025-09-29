@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Artists from './pages/Artists';
+import Requests from './pages/Requests';
 import Login from './pages/Login';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -50,7 +51,7 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <Layout>
-                <Home />
+                <Requests />
               </Layout>
             </ProtectedRoute>
           }

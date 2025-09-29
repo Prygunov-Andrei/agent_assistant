@@ -39,6 +39,8 @@ class RequestListSerializer(BaseListSerializer):
     agent_name = serializers.ReadOnlyField(source='agent.get_full_name', help_text="Имя агента")
     images_count = serializers.ReadOnlyField(source='images.count', help_text="Количество изображений")
     files_count = serializers.ReadOnlyField(source='files.count', help_text="Количество файлов")
+    images = RequestImageSerializer(many=True, read_only=True, help_text="Изображения запроса")
+    files = RequestFileSerializer(many=True, read_only=True, help_text="Файлы запроса")
     
     class Meta(BaseListSerializer.Meta):
         model = Request
@@ -46,7 +48,7 @@ class RequestListSerializer(BaseListSerializer):
             'text', 'author_name', 'sender_telegram_id', 'telegram_message_id',
             'telegram_chat_id', 'has_images', 'has_files', 'has_media',
             'original_created_at', 'status', 'agent', 'agent_name', 'processed_at',
-            'is_forwarded', 'images_count', 'files_count'
+            'is_forwarded', 'images_count', 'files_count', 'images', 'files'
         ]
         read_only_fields = fields
 
@@ -187,10 +189,13 @@ class TelegramWebhookDataSerializer(serializers.Serializer):
             if not author_name:
                 author_name = author_username or f"User_{author_id}"
         
+        # Получаем media_group_id
+        media_group_id = message.get('media_group_id')
+        
         return {
             'author_name': author_name,
             'author_telegram_id': author_id,
-            'sender_telegram_id': from_user.get('id'),
+            'sender_telegram_id': from_user.get('id'),  # ID того, кто отправил сообщение (переслал или написал)
             'telegram_message_id': message.get('message_id'),
             'telegram_chat_id': message.get('chat', {}).get('id'),
             'media_group_id': message.get('media_group_id'),

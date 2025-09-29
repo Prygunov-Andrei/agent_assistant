@@ -11,6 +11,7 @@ from django.utils.decorators import method_decorator
 from datetime import datetime
 import pytz
 import json
+import os
 
 from core.views import BaseModelViewSet
 from core.permissions import OwnerPermission
@@ -56,7 +57,8 @@ class RequestViewSet(BaseModelViewSet):
         if has_files is not None:
             queryset = queryset.filter(has_files=has_files.lower() == 'true')
             
-        return queryset
+        # Оптимизируем запросы с помощью prefetch_related
+        return queryset.prefetch_related('images', 'files')
     
     def get_serializer_class(self):
         """Выбор сериализатора в зависимости от действия"""
@@ -223,7 +225,22 @@ class TelegramWebhookViewSet(viewsets.ViewSet):
             webhook_data = webhook_serializer.validated_data
             author_info = webhook_serializer.get_author_info(webhook_data)
             
-            # Создаем запрос
+            # Проверяем, есть ли уже запрос с таким media_group_id
+            media_group_id = author_info.get('media_group_id')
+            if media_group_id:
+                # Ищем существующий запрос с таким media_group_id
+                existing_request = Request.objects.filter(media_group_id=media_group_id).first()
+                if existing_request:
+                    # Добавляем фотографии к существующему запросу
+                    if webhook_data['message'].get('photo'):
+                        self._process_images(existing_request, webhook_data['message']['photo'])
+                    return Response({
+                        'status': 'ok',
+                        'request_id': existing_request.id,
+                        'message': f'Фотографии добавлены к существующему запросу {existing_request.id}'
+                    })
+            
+            # Создаем новый запрос
             request_serializer = RequestCreateSerializer(data=author_info)
             if request_serializer.is_valid():
                 request_obj = request_serializer.save()
@@ -262,25 +279,34 @@ class TelegramWebhookViewSet(viewsets.ViewSet):
     
     def _process_images(self, request_obj, photo_data):
         """Обработка изображений из Telegram"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
+            logger.info(f"Обрабатываем {len(photo_data)} изображений для запроса {request_obj.id}")
+            logger.info(f"BOT_TOKEN в окружении: {os.getenv('BOT_TOKEN', 'НЕ НАЙДЕН')}")
+            
             # Инициализируем сервис для работы с Telegram
             telegram_service = TelegramFileService()
             
             # Обрабатываем все фотографии в сообщении
-            for photo in photo_data:
+            for i, photo in enumerate(photo_data):
                 file_id = photo.get('file_id')
+                file_size = photo.get('file_size', 0)
+                logger.info(f"Обрабатываем изображение {i+1}/{len(photo_data)}: {file_id}, размер: {file_size}")
                 if file_id:
                     # Скачиваем и сохраняем изображение
                     request_image = telegram_service.save_image_from_telegram(file_id, request_obj)
                     if request_image:
                         # Обновляем размер файла из данных Telegram
-                        request_image.file_size = photo.get('file_size', 0)
+                        request_image.file_size = file_size
                         request_image.save()
+                        logger.info(f"Изображение {file_id} успешно сохранено, размер: {file_size}")
+                    else:
+                        logger.error(f"Не удалось сохранить изображение {file_id}")
                         
         except Exception as e:
             # Логируем ошибку, но не прерываем создание запроса
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Ошибка при обработке изображений: {e}")
     
     def _process_documents(self, request_obj, document_data):

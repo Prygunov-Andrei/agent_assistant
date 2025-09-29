@@ -235,6 +235,16 @@ class RequestFile(BaseModel):
     def __str__(self):
         return f"{self.original_filename} для запроса {self.request.id}"
 
+    def save(self, *args, **kwargs):
+        """Переопределяем save для автоматического вычисления размера файла"""
+        if self.file and not self.file_size:
+            try:
+                self.file_size = self.file.size
+            except (OSError, IOError):
+                # Если не удается получить размер файла, устанавливаем 0
+                self.file_size = 0
+        super().save(*args, **kwargs)
+
     @property
     def file_size_mb(self):
         """Возвращает размер файла в мегабайтах"""

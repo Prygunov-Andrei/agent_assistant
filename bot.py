@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Конфигурация
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8001/api')
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8000/api')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://your-domain.com/webhook')
 
@@ -31,6 +31,7 @@ class CastingAgencyBot:
     def __init__(self):
         self.api_base = API_BASE_URL
         self.application = None
+        self.processed_media_groups = set()
         
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /start"""
@@ -96,6 +97,18 @@ class CastingAgencyBot:
         user = update.effective_user
         message = update.message
         
+        # Проверяем, является ли это частью медиа-группы
+        is_media_group = bool(message.media_group_id)
+        is_first_media_group_message = False
+        
+        if is_media_group:
+            if message.media_group_id not in self.processed_media_groups:
+                # Это первое сообщение медиа-группы
+                is_first_media_group_message = True
+                self.processed_media_groups.add(message.media_group_id)
+            # Если это не первое сообщение медиа-группы, мы все равно его обработаем,
+            # но будем добавлять фотографии к существующему запросу
+        
         # Проверяем, является ли сообщение пересланным
         if message.forward_from or message.forward_from_chat:
             # Это пересланное сообщение - используем оригинального автора, но сохраняем ID того, кто переслал для уведомлений
@@ -145,6 +158,14 @@ class CastingAgencyBot:
             "has_images": has_images
         }
         
+        # Отладочная информация
+        logger.info(f"Message ID: {message.message_id}")
+        logger.info(f"Media Group ID: {message.media_group_id}")
+        logger.info(f"Photo count: {len(message.photo) if message.photo else 0}")
+        if message.photo:
+            for i, photo in enumerate(message.photo):
+                logger.info(f"  Photo {i}: {photo.file_id} ({photo.file_size} bytes)")
+        
         try:
             # Отправляем запрос через webhook
             webhook_data = {
@@ -157,12 +178,29 @@ class CastingAgencyBot:
                     },
                     "message_id": message.message_id,
                     "text": message_text,
-                    "photo": [{"file_id": photo.file_id, "file_size": photo.file_size} for photo in message.photo] if message.photo else None
+                    "photo": [{"file_id": message.photo[-1].file_id, "file_size": message.photo[-1].file_size}] if message.photo else None,
+                    "media_group_id": message.media_group_id,
+                    "chat": {"id": message.chat.id},
+                    "date": int(message.date.timestamp()),
+                    "forward_from": {
+                        "id": message.forward_from.id,
+                        "username": message.forward_from.username,
+                        "first_name": message.forward_from.first_name,
+                        "last_name": message.forward_from.last_name
+                    } if message.forward_from else None,
+                    "forward_from_chat": {
+                        "id": message.forward_from_chat.id,
+                        "title": message.forward_from_chat.title
+                    } if message.forward_from_chat else None
                 }
             }
             
+            # Если это не первое сообщение медиагруппы, добавляем флаг
+            if is_media_group and not is_first_media_group_message:
+                webhook_data["is_additional_media"] = True
+            
             response = requests.post(
-                f"{self.api_base}/telegram/webhook/",
+                f"{self.api_base}/webhook/telegram/webhook/",
                 json=webhook_data,
                 headers={'Content-Type': 'application/json'},
                 timeout=10
@@ -172,16 +210,18 @@ class CastingAgencyBot:
                 # Успешно обработан через webhook
                 response_data = response.json()
                 if response_data.get('status') == 'ok':
-                    if message.forward_from or message.forward_from_chat:
-                        await message.reply_text(
-                            f"✅ Запрос от {author_name} успешно отправлен и будет обработан в ближайшее время!",
-                            reply_to_message_id=message.message_id
-                        )
-                    else:
-                        await message.reply_text(
-                            "✅ Ваш запрос успешно отправлен и будет обработан в ближайшее время!",
-                            reply_to_message_id=message.message_id
-                        )
+                    # Отправляем уведомление только для первого сообщения медиагруппы
+                    if is_first_media_group_message or not is_media_group:
+                        if message.forward_from or message.forward_from_chat:
+                            await message.reply_text(
+                                f"✅ Запрос от {author_name} успешно отправлен и будет обработан в ближайшее время!",
+                                reply_to_message_id=message.message_id
+                            )
+                        else:
+                            await message.reply_text(
+                                "✅ Ваш запрос успешно отправлен и будет обработан в ближайшее время!",
+                                reply_to_message_id=message.message_id
+                            )
                     logger.info(f"Запрос создан от пользователя {telegram_user_id} ({author_name})")
                 
             else:
@@ -221,7 +261,7 @@ class CastingAgencyBot:
                 file = await self.application.bot.get_file(photo.file_id)
                 
                 # Скачиваем изображение
-                file_url = f"https://api.telegram.org/file/bot{self.bot_token}/{file.file_path}"
+                file_url = file.file_path
                 image_response = requests.get(file_url, timeout=30)
                 
                 if image_response.status_code == 200:

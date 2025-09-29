@@ -33,6 +33,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=password
       - DB_PORT=5432
+      - BOT_TOKEN=8046240714:AAGzNfvrGPnjxGw20eQcVAGIOlvUUfjSAUY
 
   frontend:
     build: ./frontend
