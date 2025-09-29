@@ -89,6 +89,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       >
                         Кинокомпании
                       </Link>
+                      <Link
+                        to="/persons/agents"
+                        className={`nav-dropdown-link ${location.pathname === '/persons/agents' ? 'active' : ''}`}
+                      >
+                        Агенты
+                      </Link>
                     </div>
                   )}
                 </div>
