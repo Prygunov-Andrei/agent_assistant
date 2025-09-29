@@ -55,62 +55,105 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Заглушки для будущих страниц */}
-        <Route
-          path="/artists"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <div className="text-center py-12">
-                  <h1 className="text-2xl font-bold text-gray-900">Артисты</h1>
-                  <p className="text-gray-600 mt-2">Страница в разработке</p>
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+               {/* Основные страницы */}
+               <Route
+                 path="/projects"
+                 element={
+                   <ProtectedRoute>
+                     <Layout>
+                       <div className="text-center py-12">
+                         <h1 className="text-2xl font-bold text-gray-900">Проекты</h1>
+                         <p className="text-gray-600 mt-2">Страница в разработке</p>
+                       </div>
+                     </Layout>
+                   </ProtectedRoute>
+                 }
+               />
 
-        <Route
-          path="/projects"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <div className="text-center py-12">
-                  <h1 className="text-2xl font-bold text-gray-900">Проекты</h1>
-                  <p className="text-gray-600 mt-2">Страница в разработке</p>
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+               <Route
+                 path="/artists"
+                 element={
+                   <ProtectedRoute>
+                     <Layout>
+                       <div className="text-center py-12">
+                         <h1 className="text-2xl font-bold text-gray-900">Артисты</h1>
+                         <p className="text-gray-600 mt-2">Страница в разработке</p>
+                       </div>
+                     </Layout>
+                   </ProtectedRoute>
+                 }
+               />
 
-        <Route
-          path="/companies"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <div className="text-center py-12">
-                  <h1 className="text-2xl font-bold text-gray-900">Компании</h1>
-                  <p className="text-gray-600 mt-2">Страница в разработке</p>
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+               <Route
+                 path="/casting-directors"
+                 element={
+                   <ProtectedRoute>
+                     <Layout>
+                       <div className="text-center py-12">
+                         <h1 className="text-2xl font-bold text-gray-900">Кастинг-директора</h1>
+                         <p className="text-gray-600 mt-2">Страница в разработке</p>
+                       </div>
+                     </Layout>
+                   </ProtectedRoute>
+                 }
+               />
 
-        <Route
-          path="/telegram-requests"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <div className="text-center py-12">
-                  <h1 className="text-2xl font-bold text-gray-900">Заявки из Telegram</h1>
-                  <p className="text-gray-600 mt-2">Страница в разработке</p>
-                </div>
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+               {/* Персоны - выпадающее меню */}
+               <Route
+                 path="/persons/producers"
+                 element={
+                   <ProtectedRoute>
+                     <Layout>
+                       <div className="text-center py-12">
+                         <h1 className="text-2xl font-bold text-gray-900">Продюсеры</h1>
+                         <p className="text-gray-600 mt-2">Страница в разработке</p>
+                       </div>
+                     </Layout>
+                   </ProtectedRoute>
+                 }
+               />
+
+               <Route
+                 path="/persons/directors"
+                 element={
+                   <ProtectedRoute>
+                     <Layout>
+                       <div className="text-center py-12">
+                         <h1 className="text-2xl font-bold text-gray-900">Режиссеры</h1>
+                         <p className="text-gray-600 mt-2">Страница в разработке</p>
+                       </div>
+                     </Layout>
+                   </ProtectedRoute>
+                 }
+               />
+
+               <Route
+                 path="/persons/companies"
+                 element={
+                   <ProtectedRoute>
+                     <Layout>
+                       <div className="text-center py-12">
+                         <h1 className="text-2xl font-bold text-gray-900">Кинокомпании</h1>
+                         <p className="text-gray-600 mt-2">Страница в разработке</p>
+                       </div>
+                     </Layout>
+                   </ProtectedRoute>
+                 }
+               />
+
+               <Route
+                 path="/settings"
+                 element={
+                   <ProtectedRoute>
+                     <Layout>
+                       <div className="text-center py-12">
+                         <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
+                         <p className="text-gray-600 mt-2">Страница в разработке</p>
+                       </div>
+                     </Layout>
+                   </ProtectedRoute>
+                 }
+               />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" />} />

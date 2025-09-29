@@ -1,4 +1,5 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { AuthProvider, useAuth } from '../AuthContext';
 import { authService } from '../../services/auth';
 import type { User } from '../../types';
@@ -79,6 +80,11 @@ describe('AuthContext', () => {
   it('should handle authentication failure', async () => {
     mockAuthService.isAuthenticated.mockReturnValue(true);
     mockAuthService.getCurrentUser.mockRejectedValue(new Error('Auth failed'));
+    
+    // После logout isAuthenticated должен вернуть false
+    mockAuthService.logout.mockImplementation(async () => {
+      mockAuthService.isAuthenticated.mockReturnValue(false);
+    });
 
     render(
       <AuthProvider>

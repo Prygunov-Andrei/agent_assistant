@@ -1,9 +1,23 @@
 import '@testing-library/jest-dom';
 
 // Polyfill for TextEncoder/TextDecoder
-import { TextEncoder, TextDecoder } from 'util';
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as any;
+if (typeof TextEncoder === 'undefined') {
+  (globalThis as any).TextEncoder = class TextEncoder {
+    encode(input: string): Uint8Array {
+      const encoder = new TextEncoder();
+      return encoder.encode(input);
+    }
+  };
+}
+
+if (typeof TextDecoder === 'undefined') {
+  (globalThis as any).TextDecoder = class TextDecoder {
+    decode(input: Uint8Array): string {
+      const decoder = new TextDecoder();
+      return decoder.decode(input);
+    }
+  };
+}
 
 // Mock localStorage
 const localStorageMock = (() => {

@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import UserProfile from '../UserProfile';
 import type { User } from '../../types';
 
