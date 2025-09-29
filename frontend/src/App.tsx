@@ -1,0 +1,123 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import LoadingSpinner from './components/LoadingSpinner';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+
+// Компонент для защищенных маршрутов
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+  
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
+
+// Компонент для публичных маршрутов (только для неавторизованных)
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+  
+  return !isAuthenticated ? <>{children}</> : <Navigate to="/" />;
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+        {/* Публичные маршруты */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+
+        {/* Защищенные маршруты */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Home />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Заглушки для будущих страниц */}
+        <Route
+          path="/artists"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <div className="text-center py-12">
+                  <h1 className="text-2xl font-bold text-gray-900">Артисты</h1>
+                  <p className="text-gray-600 mt-2">Страница в разработке</p>
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/projects"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <div className="text-center py-12">
+                  <h1 className="text-2xl font-bold text-gray-900">Проекты</h1>
+                  <p className="text-gray-600 mt-2">Страница в разработке</p>
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/companies"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <div className="text-center py-12">
+                  <h1 className="text-2xl font-bold text-gray-900">Компании</h1>
+                  <p className="text-gray-600 mt-2">Страница в разработке</p>
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/telegram-requests"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <div className="text-center py-12">
+                  <h1 className="text-2xl font-bold text-gray-900">Заявки из Telegram</h1>
+                  <p className="text-gray-600 mt-2">Страница в разработке</p>
+                </div>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 */}
+        <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+};
+
+export default App;
