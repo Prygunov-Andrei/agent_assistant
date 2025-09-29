@@ -26,6 +26,13 @@ class SkillAdmin(BaseReferenceAdmin):
     list_filter = ('skill_group', 'is_active', 'created_at')
     search_fields = ('name', 'description', 'skill_group__name')
     ordering = ('skill_group__name', 'name')
+    
+    # Поля для формы редактирования
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('skill_group', 'name', 'description', 'is_active')
+        }),
+    )
 
 
 class EducationAdmin(BaseReferenceAdmin):

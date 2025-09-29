@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
+import Artists from './pages/Artists';
 import Login from './pages/Login';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -75,10 +76,7 @@ const App: React.FC = () => {
                  element={
                    <ProtectedRoute>
                      <Layout>
-                       <div className="text-center py-12">
-                         <h1 className="text-2xl font-bold text-gray-900">Артисты</h1>
-                         <p className="text-gray-600 mt-2">Страница в разработке</p>
-                       </div>
+                       <Artists />
                      </Layout>
                    </ProtectedRoute>
                  }

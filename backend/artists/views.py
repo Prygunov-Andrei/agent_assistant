@@ -293,6 +293,24 @@ class ArtistViewSet(BaseModelViewSet):
     list_serializer_class = ArtistListSerializer
     permission_classes = [permissions.IsAuthenticated, OwnerPermission]
     
+    def get_queryset(self):
+        """Возвращает только артистов, созданных текущим пользователем."""
+        queryset = super().get_queryset()
+        # Фильтруем только по артистам, созданным текущим пользователем
+        queryset = queryset.filter(created_by=self.request.user)
+        return queryset.prefetch_related(
+            'skills__skill__skill_group',
+            'education__education',
+            'links',
+            'photos'
+        )
+    
+    def get_serializer_class(self):
+        """Возвращает соответствующий сериализатор в зависимости от действия."""
+        if self.action == 'list':
+            return ArtistListSerializer
+        return ArtistSerializer
+    
     @action(detail=False, methods=['get'])
     def search(self, request):
         """Поиск артистов по различным параметрам."""

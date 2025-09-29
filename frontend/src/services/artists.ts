@@ -1,59 +1,56 @@
 import apiClient from './api';
-import type { ApiResponse, Artist, CreateArtistRequest } from '../types';
+import type { Artist, ArtistListItem } from '../types';
 
 export const artistsService = {
-  // Получить список артистов
-  async getArtists(page: number = 1, pageSize: number = 20): Promise<ApiResponse<Artist>> {
-    const response = await apiClient.get(`/artists/?page=${page}&page_size=${pageSize}`);
-    return response.data;
+  // Получение списка артистов текущего агента
+  async getArtists(): Promise<ArtistListItem[]> {
+    const response = await apiClient.get('/artists/');
+    return response.data.results || response.data;
   },
 
-  // Получить артиста по ID
+  // Получение детальной информации об артисте
   async getArtist(id: number): Promise<Artist> {
     const response = await apiClient.get(`/artists/${id}/`);
     return response.data;
   },
 
-  // Создать нового артиста
-  async createArtist(artistData: CreateArtistRequest): Promise<Artist> {
+  // Создание нового артиста
+  async createArtist(artistData: Partial<Artist>): Promise<Artist> {
     const response = await apiClient.post('/artists/', artistData);
     return response.data;
   },
 
-  // Обновить артиста
+  // Обновление артиста
   async updateArtist(id: number, artistData: Partial<Artist>): Promise<Artist> {
+    const response = await apiClient.put(`/artists/${id}/`, artistData);
+    return response.data;
+  },
+
+  // Частичное обновление артиста
+  async patchArtist(id: number, artistData: Partial<Artist>): Promise<Artist> {
     const response = await apiClient.patch(`/artists/${id}/`, artistData);
     return response.data;
   },
 
-  // Удалить артиста
+  // Удаление артиста
   async deleteArtist(id: number): Promise<void> {
     await apiClient.delete(`/artists/${id}/`);
   },
 
-  // Поиск артистов
-  async searchArtists(query: string, page: number = 1): Promise<ApiResponse<Artist>> {
-    const response = await apiClient.get(`/artists/?search=${encodeURIComponent(query)}&page=${page}`);
+  // Получение навыков артиста
+  async getArtistSkills(artistId: number) {
+    const response = await apiClient.get(`/artists/${artistId}/skills/`);
     return response.data;
   },
 
-  // Фильтрация артистов
-  async filterArtists(filters: {
-    hair_color?: string;
-    eye_color?: string;
-    height_min?: number;
-    height_max?: number;
-    special_skills?: string;
-  }, page: number = 1): Promise<ApiResponse<Artist>> {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params.append(key, value.toString());
-      }
-    });
-    params.append('page', page.toString());
-
-    const response = await apiClient.get(`/artists/?${params.toString()}`);
+  // Добавление навыка артисту
+  async addArtistSkill(artistId: number, skillData: any) {
+    const response = await apiClient.post(`/artists/${artistId}/skills/`, skillData);
     return response.data;
-  }
+  },
+
+  // Удаление навыка у артиста
+  async removeArtistSkill(artistId: number, skillId: number) {
+    await apiClient.delete(`/artists/${artistId}/skills/${skillId}/`);
+  },
 };

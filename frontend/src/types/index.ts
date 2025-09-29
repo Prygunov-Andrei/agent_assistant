@@ -26,6 +26,83 @@ export interface User {
   updated_at?: string;
 }
 
+// Типы для артистов
+
+export interface ArtistSkill {
+  id: number;
+  artist: number;
+  skill: number;
+  skill_name: string;
+  skill_group_name: string;
+  proficiency_level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  proficiency_level_display: string;
+  created_at: string;
+}
+
+export interface ArtistEducation {
+  id: number;
+  artist: number;
+  education: number;
+  education_name: string;
+  graduation_year: number;
+  created_at: string;
+}
+
+export interface ArtistLink {
+  id: number;
+  artist: number;
+  title: string;
+  url: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface ArtistPhoto {
+  id: number;
+  artist: number;
+  photo: string;
+  is_main: boolean;
+  description?: string;
+  created_at: string;
+}
+
+// Упрощенный тип для списка артистов
+export interface ArtistListItem {
+  id: number;
+  first_name: string;
+  last_name: string;
+  stage_name?: string;
+  full_name: string;
+  gender: 'male' | 'female';
+  gender_display: string;
+  age?: number;
+  media_presence: boolean;
+  main_photo?: string;
+  height?: number;
+  weight?: number;
+  city?: string;
+  availability_status: boolean;
+  availability_status_display: string;
+  travel_availability: boolean;
+  skills: ArtistSkillListItem[];
+  skills_count: number;
+  education_count: number;
+  links_count: number;
+  photos_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Упрощенный тип для навыка в списке артистов
+export interface ArtistSkillListItem {
+  id: number;
+  name: string;
+  skill_group: string;
+  proficiency_level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  proficiency_level_display: string;
+}
+
 // Типы для событий
 export interface ImageErrorEvent {
   currentTarget: {
@@ -64,21 +141,45 @@ export interface Agent {
   updated_at: string;
 }
 
-// Типы для артистов
+// Типы для артистов (полная модель)
 export interface Artist {
   id: number;
-  user: User;
-  bio: string;
-  phone: string;
-  backup_phone?: string;
-  clothing_size?: string;
-  shoe_size?: string;
+  first_name: string;
+  last_name: string;
+  middle_name?: string;
+  stage_name?: string;
+  full_name: string;
+  short_name: string;
+  gender: 'male' | 'female';
+  gender_display: string;
+  birth_date?: string;
+  age?: number;
+  media_presence: boolean;
+  main_photo?: string;
+  bio?: string;
   height?: number;
   weight?: number;
+  body_type?: string;
   hair_color?: string;
+  hairstyle?: string;
   eye_color?: string;
-  special_skills?: string;
-  experience?: string;
+  clothing_size?: string;
+  shoe_size?: string;
+  nationality?: string;
+  phone?: string;
+  backup_phone?: string;
+  email?: string;
+  telegram_username?: string;
+  city?: string;
+  availability_status: boolean;
+  availability_status_display: string;
+  rate_per_day?: string;
+  travel_availability: boolean;
+  skills: ArtistSkill[];
+  education: ArtistEducation[];
+  links: ArtistLink[];
+  photos: ArtistPhoto[];
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

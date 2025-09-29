@@ -607,6 +607,119 @@ body {
   margin-left: 0.5rem;
 }
 
+/* Artists Table */
+.artists-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+
+.artists-table-row {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s;
+}
+
+.artists-table-row:hover {
+  background-color: #f9fafb;
+}
+
+.artists-table-row:last-child {
+  border-bottom: none;
+}
+
+.artists-table-cell {
+  padding: 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Artist Photo */
+.artist-photo {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+}
+
+.artist-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #e5e7eb;
+}
+
+.artist-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #3182ce;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.875rem;
+}
+
+/* Artist Name */
+.artist-name {
+  min-width: 150px;
+}
+
+.artist-name-main {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Artist Skills */
+.artist-skills {
+  color: #4b5563;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  max-width: 300px;
+}
+
+.artist-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.artist-skill-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.artist-skill-group-name {
+  font-weight: 600;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.artist-skill-names {
+  color: #6b7280;
+}
+
+
+/* Responsive table */
+@media (max-width: 768px) {
+  .artists-table-cell {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .artist-photo {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  
+  .artist-name {
+    min-width: 120px;
+  }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from {

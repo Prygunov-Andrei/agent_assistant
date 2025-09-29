@@ -238,7 +238,10 @@ class ArtistListSerializer(BaseListSerializer):
         help_text="Текстовое представление статуса доступности"
     )
     
-    # Счетчики связанных объектов
+    # Связанные объекты
+    skills = serializers.SerializerMethodField(
+        help_text="Список навыков артиста"
+    )
     skills_count = serializers.SerializerMethodField(
         help_text="Количество навыков артиста"
     )
@@ -252,12 +255,13 @@ class ArtistListSerializer(BaseListSerializer):
         help_text="Количество фотографий артиста"
     )
     
+    
     class Meta(BaseListSerializer.Meta):
         model = Artist
         fields = BaseListSerializer.Meta.fields + [
             # Основная информация
             'first_name', 'last_name', 'stage_name', 'full_name',
-            'gender', 'gender_display', 'age', 'media_presence',
+            'gender', 'gender_display', 'age', 'media_presence', 'main_photo',
             
             # Физические характеристики
             'height', 'weight', 'city',
@@ -266,13 +270,26 @@ class ArtistListSerializer(BaseListSerializer):
             'availability_status', 'availability_status_display',
             'travel_availability',
             
-            # Счетчики
-            'skills_count', 'education_count', 'links_count', 'photos_count',
+            # Связанные объекты и счетчики
+            'skills', 'skills_count', 'education_count', 'links_count', 'photos_count',
         ]
     
     def get_availability_status_display(self, obj):
         """Возвращает текстовое представление статуса доступности."""
         return "Доступен" if obj.availability_status else "Не доступен"
+    
+    def get_skills(self, obj):
+        """Возвращает список навыков артиста."""
+        skills = []
+        for artist_skill in obj.skills.all():
+            skills.append({
+                'id': artist_skill.skill.id,
+                'name': artist_skill.skill.name,
+                'skill_group': artist_skill.skill.skill_group.name,
+                'proficiency_level': artist_skill.proficiency_level,
+                'proficiency_level_display': artist_skill.get_proficiency_level_display(),
+            })
+        return skills
     
     def get_skills_count(self, obj):
         """Возвращает количество навыков артиста."""
@@ -280,12 +297,18 @@ class ArtistListSerializer(BaseListSerializer):
     
     def get_education_count(self, obj):
         """Возвращает количество образований артиста."""
+        if hasattr(obj, '_prefetched_objects_cache') and 'education' in obj._prefetched_objects_cache:
+            return len(obj.education.all())
         return obj.education.count()
     
     def get_links_count(self, obj):
         """Возвращает количество ссылок артиста."""
+        if hasattr(obj, '_prefetched_objects_cache') and 'links' in obj._prefetched_objects_cache:
+            return len(obj.links.all())
         return obj.links.count()
     
     def get_photos_count(self, obj):
         """Возвращает количество фотографий артиста."""
+        if hasattr(obj, '_prefetched_objects_cache') and 'photos' in obj._prefetched_objects_cache:
+            return len(obj.photos.all())
         return obj.photos.count()
