@@ -6,49 +6,95 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 from .models import ProjectType, Genre, RoleType, Project, ProjectRole
 from .serializers import (
     ProjectTypeSerializer, GenreSerializer, RoleTypeSerializer,
-    ProjectSerializer, ProjectListSerializer,
-    ProjectRoleSerializer, ProjectRoleListSerializer
+    ProjectSerializer, ProjectListSerializer, ProjectRoleSerializer, ProjectRoleListSerializer
 )
-from core.views import BaseReferenceViewSet, BaseModelViewSet
-from core.permissions import ProjectRolePermission
 
 
-class ProjectTypeViewSet(BaseReferenceViewSet):
+class ProjectPermission(permissions.BasePermission):
     """
-    ViewSet для управления типами проектов.
-    
-    Наследует от BaseReferenceViewSet все стандартные методы CRUD
-    и настройки для справочных моделей.
+    Custom permission to only allow owners of an object to edit or delete it.
     """
-    
-    queryset = ProjectType.objects.all()
+    def has_object_permission(self, request, view, obj):
+        # Read permissions are allowed to any authenticated request.
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # Write permissions are only allowed to the owner of the object.
+        return obj.created_by == request.user
+
+
+class ProjectRolePermission(permissions.BasePermission):
+    """
+    Custom permission to only allow owners of the project to edit or delete roles.
+    """
+    def has_object_permission(self, request, view, obj):
+        # Read permissions are allowed to any authenticated request.
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # Write permissions are only allowed to the owner of the project.
+        return obj.project.created_by == request.user
+
+
+# Вспомогательные ViewSets для справочников
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список типов проектов",
+        description="Получить список всех активных типов проектов",
+        tags=["Справочники"]
+    ),
+    retrieve=extend_schema(
+        summary="Получить тип проекта",
+        description="Получить информацию о конкретном типе проекта",
+        tags=["Справочники"]
+    ),
+)
+class ProjectTypeViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet для типов проектов (только чтение)"""
+    queryset = ProjectType.objects.filter(is_active=True)
     serializer_class = ProjectTypeSerializer
+    permission_classes = [permissions.AllowAny]
 
 
-class GenreViewSet(BaseReferenceViewSet):
-    """
-    ViewSet для управления жанрами проектов.
-    
-    Наследует от BaseReferenceViewSet все стандартные методы CRUD
-    и настройки для справочных моделей.
-    """
-    
-    queryset = Genre.objects.all()
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список жанров",
+        description="Получить список всех активных жанров",
+        tags=["Справочники"]
+    ),
+    retrieve=extend_schema(
+        summary="Получить жанр",
+        description="Получить информацию о конкретном жанре",
+        tags=["Справочники"]
+    ),
+)
+class GenreViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet для жанров (только чтение)"""
+    queryset = Genre.objects.filter(is_active=True)
     serializer_class = GenreSerializer
+    permission_classes = [permissions.AllowAny]
 
 
-class RoleTypeViewSet(BaseReferenceViewSet):
-    """
-    ViewSet для управления типами ролей.
-    
-    Наследует от BaseReferenceViewSet все стандартные методы CRUD
-    и настройки для справочных моделей.
-    """
-    
-    queryset = RoleType.objects.all()
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список типов ролей",
+        description="Получить список всех активных типов ролей",
+        tags=["Справочники"]
+    ),
+    retrieve=extend_schema(
+        summary="Получить тип роли",
+        description="Получить информацию о конкретном типе роли",
+        tags=["Справочники"]
+    ),
+)
+class RoleTypeViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet для типов ролей (только чтение)"""
+    queryset = RoleType.objects.filter(is_active=True)
     serializer_class = RoleTypeSerializer
+    permission_classes = [permissions.AllowAny]
 
 
+# Основные ViewSets
 @extend_schema_view(
     list=extend_schema(
         summary="Список проектов",
@@ -77,48 +123,31 @@ class RoleTypeViewSet(BaseReferenceViewSet):
     ),
     destroy=extend_schema(
         summary="Удалить проект",
-        description="Удалить проект",
+        description="Удалить проект из системы",
         tags=["Проекты"]
     ),
 )
-class ProjectViewSet(BaseModelViewSet):
-    """
-    ViewSet для управления проектами.
-    
-    Наследует от BaseModelViewSet базовые методы и добавляет специфичные
-    для проектов методы поиска и фильтрации.
-    """
+class ProjectViewSet(viewsets.ModelViewSet):
+    """ViewSet для управления проектами"""
     
     queryset = Project.objects.all()
+    permission_classes = [permissions.IsAuthenticated, ProjectPermission]
+    
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
     
     def get_serializer_class(self):
-        """
-        Возвращает соответствующий сериализатор в зависимости от действия.
-        
-        Returns:
-            Serializer: сериализатор для списка или детального представления
-        """
-        if self.action in ['list', 'my_items', 'search']:
+        """Выбор сериализатора в зависимости от действия"""
+        if self.action == 'list':
             return ProjectListSerializer
         return ProjectSerializer
     
-    def _apply_search_filter(self, queryset, search_query):
-        """
-        Применяет поисковый фильтр для проектов.
-        
-        Ищет по названию проекта и описанию.
-        
-        Args:
-            queryset: исходный queryset
-            search_query: поисковый запрос
-            
-        Returns:
-            QuerySet: отфильтрованный queryset
-        """
-        return queryset.filter(
-            Q(title__icontains=search_query) |
-            Q(description__icontains=search_query)
-        )
+    def get_queryset(self):
+        """Фильтрация queryset для списка активных проектов"""
+        queryset = super().get_queryset()
+        if self.action == 'list':
+            queryset = queryset.filter(is_active=True)
+        return queryset
     
     @extend_schema(
         summary="Мои проекты",
@@ -127,80 +156,60 @@ class ProjectViewSet(BaseModelViewSet):
     )
     @action(detail=False, methods=['get'])
     def my_projects(self, request):
-        """
-        Получение списка проектов текущего пользователя.
-        
-        Переопределяет базовый метод my_items для соответствия API.
-        
-        Returns:
-            Response: список проектов пользователя
-        """
-        return self.my_items(request)
+        """Получить список проектов, созданных текущим агентом"""
+        projects = self.get_queryset().filter(created_by=request.user)
+        serializer = self.get_serializer(projects, many=True)
+        return Response(serializer.data)
     
     @extend_schema(
         summary="Поиск проектов",
-        description="Поиск проектов по названию, статусу, типу или жанру",
+        description="Поиск проектов по названию, типу, жанру и другим параметрам",
         parameters=[
             OpenApiParameter(
-                name='search',
+                name='title',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='Поиск по названию или описанию проекта'
+                description='Часть названия проекта для поиска'
             ),
             OpenApiParameter(
-                name='status',
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description='Статус проекта для фильтрации (in_production, cancelled, completed)'
-            ),
-            OpenApiParameter(
-                name='project_type_id',
+                name='project_type',
                 type=OpenApiTypes.INT,
                 location=OpenApiParameter.QUERY,
                 description='ID типа проекта для фильтрации'
             ),
             OpenApiParameter(
-                name='genre_id',
+                name='genre',
                 type=OpenApiTypes.INT,
                 location=OpenApiParameter.QUERY,
-                description='ID жанра проекта для фильтрации'
+                description='ID жанра для фильтрации'
+            ),
+            OpenApiParameter(
+                name='status',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Статус проекта для фильтрации'
             ),
         ],
         tags=["Проекты"]
     )
     @action(detail=False, methods=['get'])
     def search(self, request):
-        """
-        Поиск проектов по различным параметрам.
-        
-        Поддерживает поиск по:
-        - Названию и описанию проекта
-        - Статусу проекта
-        - Типу проекта
-        - Жанру проекта
-        
-        Returns:
-            Response: список найденных проектов
-        """
+        """Поиск проектов по различным параметрам"""
         queryset = self.get_queryset()
         
-        # Поиск по тексту (использует базовый метод)
-        search_query = request.query_params.get('search', None)
-        if search_query:
-            queryset = self._apply_search_filter(queryset, search_query)
-        
-        # Дополнительные фильтры для проектов
+        title = request.query_params.get('title', None)
+        project_type = request.query_params.get('project_type', None)
+        genre = request.query_params.get('genre', None)
         status = request.query_params.get('status', None)
+        
+        if title:
+            queryset = queryset.filter(title__icontains=title)
+        if project_type:
+            queryset = queryset.filter(project_type_id=project_type)
+        if genre:
+            queryset = queryset.filter(genre_id=genre)
         if status:
             queryset = queryset.filter(status=status)
-        
-        project_type_id = request.query_params.get('project_type_id', None)
-        if project_type_id:
-            queryset = queryset.filter(project_type_id=project_type_id)
-        
-        genre_id = request.query_params.get('genre_id', None)
-        if genre_id:
-            queryset = queryset.filter(genre_id=genre_id)
         
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -208,139 +217,92 @@ class ProjectViewSet(BaseModelViewSet):
 
 @extend_schema_view(
     list=extend_schema(
-        summary="Список ролей в проектах",
-        description="Получить список всех ролей в проектах",
-        tags=["Роли в проектах"]
+        summary="Список ролей",
+        description="Получить список всех активных ролей в проектах",
+        tags=["Роли"]
     ),
     create=extend_schema(
-        summary="Создать роль в проекте",
-        description="Создать новую роль для проекта",
-        tags=["Роли в проектах"]
+        summary="Создать роль",
+        description="Создать новую роль в проекте",
+        tags=["Роли"]
     ),
     retrieve=extend_schema(
-        summary="Получить роль в проекте",
+        summary="Получить роль",
         description="Получить информацию о конкретной роли",
-        tags=["Роли в проектах"]
+        tags=["Роли"]
     ),
     update=extend_schema(
-        summary="Обновить роль в проекте",
+        summary="Обновить роль",
         description="Полностью обновить информацию о роли",
-        tags=["Роли в проектах"]
+        tags=["Роли"]
     ),
     partial_update=extend_schema(
-        summary="Частично обновить роль в проекте",
+        summary="Частично обновить роль",
         description="Частично обновить информацию о роли",
-        tags=["Роли в проектах"]
+        tags=["Роли"]
     ),
     destroy=extend_schema(
-        summary="Удалить роль в проекте",
-        description="Удалить роль в проекте",
-        tags=["Роли в проектах"]
+        summary="Удалить роль",
+        description="Удалить роль из системы",
+        tags=["Роли"]
     ),
 )
-class ProjectRoleViewSet(BaseModelViewSet):
-    """
-    ViewSet для управления ролями в проектах.
-    
-    Наследует от BaseModelViewSet базовые методы и добавляет специфичные
-    для ролей методы поиска и фильтрации по проектам.
-    """
+class ProjectRoleViewSet(viewsets.ModelViewSet):
+    """ViewSet для управления ролями в проектах"""
     
     queryset = ProjectRole.objects.all()
     permission_classes = [permissions.IsAuthenticated, ProjectRolePermission]
     
     def get_serializer_class(self):
-        """
-        Возвращает соответствующий сериализатор в зависимости от действия.
-        
-        Returns:
-            Serializer: сериализатор для списка или детального представления
-        """
-        if self.action in ['list', 'by_project', 'search']:
+        """Выбор сериализатора в зависимости от действия"""
+        if self.action == 'list':
             return ProjectRoleListSerializer
         return ProjectRoleSerializer
     
-    def _apply_search_filter(self, queryset, search_query):
-        """
-        Применяет поисковый фильтр для ролей в проектах.
-        
-        Ищет по названию роли и описанию.
-        
-        Args:
-            queryset: исходный queryset
-            search_query: поисковый запрос
-            
-        Returns:
-            QuerySet: отфильтрованный queryset
-        """
-        return queryset.filter(
-            Q(name__icontains=search_query) |
-            Q(description__icontains=search_query)
-        )
+    def get_queryset(self):
+        """Фильтрация queryset для списка активных ролей"""
+        queryset = super().get_queryset()
+        if self.action == 'list':
+            queryset = queryset.filter(is_active=True)
+        return queryset
     
     @extend_schema(
-        summary="Роли по проекту",
-        description="Получить список ролей для конкретного проекта",
+        summary="Роли проекта",
+        description="Получить список ролей конкретного проекта",
         parameters=[
             OpenApiParameter(
                 name='project_id',
                 type=OpenApiTypes.INT,
                 location=OpenApiParameter.QUERY,
-                description='ID проекта для фильтрации ролей',
-                required=True
+                description='ID проекта для фильтрации ролей'
             ),
         ],
-        tags=["Роли в проектах"]
+        tags=["Роли"]
     )
     @action(detail=False, methods=['get'])
     def by_project(self, request):
-        """
-        Получение ролей для конкретного проекта.
-        
-        Проверяет права доступа к проекту перед возвратом ролей.
-        
-        Returns:
-            Response: список ролей проекта
-        """
+        """Получить роли конкретного проекта"""
         project_id = request.query_params.get('project_id', None)
-        if not project_id:
-            return Response(
-                {"detail": "Параметр project_id обязателен."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if project_id:
+            queryset = self.get_queryset().filter(project_id=project_id)
+        else:
+            queryset = self.get_queryset()
         
-        # Проверяем, что проект существует и текущий пользователь имеет к нему доступ
-        try:
-            project = Project.objects.get(id=project_id)
-            # Используем ProjectPermission для проверки доступа к родительскому проекту
-            self.check_object_permissions(request, project) 
-        except Project.DoesNotExist:
-            return Response(
-                {"detail": "Проект не найден."}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except permissions.PermissionDenied:
-            return Response(
-                {"detail": "У вас нет разрешения на просмотр ролей в этом проекте."}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        roles = self.get_queryset().filter(project=project)
-        serializer = self.get_serializer(roles, many=True)
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
     @extend_schema(
-        summary="Поиск ролей в проектах",
-        description="Поиск ролей по названию, типу, медийности и другим параметрам",
+        summary="Поиск ролей",
+        description="Поиск ролей по названию, типу и другим параметрам",
         parameters=[
             OpenApiParameter(
-                name='search',
+                name='name',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='Поиск по названию или описанию роли'
+                description='Часть названия роли для поиска'
             ),
             OpenApiParameter(
-                name='role_type_id',
+                name='role_type',
                 type=OpenApiTypes.INT,
                 location=OpenApiParameter.QUERY,
                 description='ID типа роли для фильтрации'
@@ -349,37 +311,24 @@ class ProjectRoleViewSet(BaseModelViewSet):
                 name='media_presence',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='Медийность (yes, no, doesnt_matter)'
+                description='Медийность для фильтрации'
             ),
         ],
-        tags=["Роли в проектах"]
+        tags=["Роли"]
     )
     @action(detail=False, methods=['get'])
     def search(self, request):
-        """
-        Поиск ролей по различным параметрам.
-        
-        Поддерживает поиск по:
-        - Названию и описанию роли
-        - Типу роли
-        - Медийности
-        
-        Returns:
-            Response: список найденных ролей
-        """
+        """Поиск ролей по различным параметрам"""
         queryset = self.get_queryset()
         
-        # Поиск по тексту (использует базовый метод)
-        search_query = request.query_params.get('search', None)
-        if search_query:
-            queryset = self._apply_search_filter(queryset, search_query)
-        
-        # Дополнительные фильтры для ролей
-        role_type_id = request.query_params.get('role_type_id', None)
-        if role_type_id:
-            queryset = queryset.filter(role_type_id=role_type_id)
-        
+        name = request.query_params.get('name', None)
+        role_type = request.query_params.get('role_type', None)
         media_presence = request.query_params.get('media_presence', None)
+        
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+        if role_type:
+            queryset = queryset.filter(role_type_id=role_type)
         if media_presence:
             queryset = queryset.filter(media_presence=media_presence)
         

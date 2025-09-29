@@ -216,7 +216,7 @@ class Artist(BaseModel):
     )
     
     clothing_size = models.CharField(
-        max_length=50,
+        max_length=20,
         blank=True,
         null=True,
         verbose_name="Размер одежды",
@@ -224,7 +224,7 @@ class Artist(BaseModel):
     )
     
     shoe_size = models.CharField(
-        max_length=50,
+        max_length=20,
         blank=True,
         null=True,
         verbose_name="Размер обуви",
@@ -241,7 +241,7 @@ class Artist(BaseModel):
     
     # Контакты
     phone = models.CharField(
-        max_length=50,
+        max_length=20,
         blank=True,
         null=True,
         verbose_name="Основной телефон",
@@ -249,7 +249,7 @@ class Artist(BaseModel):
     )
     
     backup_phone = models.CharField(
-        max_length=50,
+        max_length=20,
         blank=True,
         null=True,
         verbose_name="Запасной телефон",

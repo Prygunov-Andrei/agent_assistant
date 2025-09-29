@@ -1,62 +1,40 @@
 from django.contrib import admin
 from .models import ProjectType, Genre, RoleType, Project, ProjectRole
-from core.admin import BaseReferenceAdmin, BaseModelAdmin
 
 
 @admin.register(ProjectType)
-class ProjectTypeAdmin(BaseReferenceAdmin):
-    """
-    Админ-панель для типов проектов.
-    
-    Наследует от BaseReferenceAdmin стандартную конфигурацию
-    для справочных моделей.
-    """
-    pass
+class ProjectTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
 
 
 @admin.register(Genre)
-class GenreAdmin(BaseReferenceAdmin):
-    """
-    Админ-панель для жанров.
-    
-    Наследует от BaseReferenceAdmin стандартную конфигурацию
-    для справочных моделей.
-    """
-    pass
+class GenreAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
 
 
 @admin.register(RoleType)
-class RoleTypeAdmin(BaseReferenceAdmin):
-    """
-    Админ-панель для типов ролей.
-    
-    Наследует от BaseReferenceAdmin стандартную конфигурацию
-    для справочных моделей.
-    """
-    pass
+class RoleTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
 
 
 class ProjectRoleInline(admin.TabularInline):
-    """
-    Inline админ-панель для ролей в проекте.
-    
-    Позволяет управлять ролями прямо из админ-панели проекта.
-    """
     model = ProjectRole
-    extra = 0  # Не показывать дополнительные пустые формы
+    extra = 0
     fields = ('name', 'role_type', 'media_presence', 'is_active')
     readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(Project)
-class ProjectAdmin(BaseModelAdmin):
-    """
-    Админ-панель для проектов.
-    
-    Наследует от BaseModelAdmin базовую конфигурацию и добавляет
-    специфичные для проектов настройки отображения и фильтрации.
-    """
-    
+class ProjectAdmin(admin.ModelAdmin):
     list_display = (
         'title',
         'project_type',
@@ -110,19 +88,18 @@ class ProjectAdmin(BaseModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    filter_horizontal = ('producers',)  # Удобный виджет для ManyToMany поля
-    inlines = [ProjectRoleInline]  # Встроенное управление ролями
+    readonly_fields = ('created_by', 'created_at', 'updated_at')
+    filter_horizontal = ('producers',)
+    inlines = [ProjectRoleInline]
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:  # Only set created_by for new objects
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(ProjectRole)
-class ProjectRoleAdmin(BaseModelAdmin):
-    """
-    Админ-панель для ролей в проектах.
-    
-    Наследует от BaseModelAdmin базовую конфигурацию и добавляет
-    специфичные для ролей настройки отображения и фильтрации.
-    """
-    
+class ProjectRoleAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'project',
@@ -194,3 +171,4 @@ class ProjectRoleAdmin(BaseModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    readonly_fields = ('created_at', 'updated_at')

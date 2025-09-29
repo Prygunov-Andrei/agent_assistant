@@ -50,15 +50,14 @@ class TestProjectTypeAPI:
         assert response.data['name'] == 'Фильм'
         assert response.data['is_active'] is True
 
-    def test_project_type_can_be_updated(self, authenticated_client):
-        """Тест что типы проектов могут быть обновлены аутентифицированными пользователями"""
+    def test_project_type_cannot_be_updated(self, authenticated_client):
+        """Тест что типы проектов не могут быть обновлены (только чтение)"""
         project_type = ProjectTypeFactory()
         url = reverse('projecttype-detail', kwargs={'pk': project_type.pk})
 
-        # PUT поддерживается для аутентифицированных пользователей
+        # PUT не поддерживается для ReadOnlyModelViewSet
         response = authenticated_client.put(url, {'name': 'Обновленный тип', 'description': 'Новое описание'})
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data['name'] == 'Обновленный тип'
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
 
 @pytest.mark.django_db
@@ -260,19 +259,21 @@ class TestProjectAPI:
     def test_project_search_by_title(self, authenticated_client):
         """Тест поиска проектов по названию"""
         # Создаем проекты с уникальными названиями
-        ProjectFactory(title='УникальныйТестФильм о любви')
-        ProjectFactory(title='УникальныйТестФильм о войне')
-        ProjectFactory(title='УникальныйТестСериал о детективах')
+        project1 = ProjectFactory(title='УникальныйТестФильм о любви')
+        project2 = ProjectFactory(title='УникальныйТестФильм о войне')
+        project3 = ProjectFactory(title='УникальныйТестСериал о детективах')
 
         url = reverse('project-search')
         response = authenticated_client.get(url, {'title': 'УникальныйТестФильм'})
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 3  # Все 3 проекта содержат 'УникальныйТестФильм'
-        titles = [item['title'] for item in response.data]
+        # Фильтруем только созданные нами проекты
+        created_project_ids = {project1.id, project2.id, project3.id}
+        filtered_results = [item for item in response.data if item['id'] in created_project_ids]
+        assert len(filtered_results) == 2  # Только 2 проекта содержат 'УникальныйТестФильм'
+        titles = [item['title'] for item in filtered_results]
         assert 'УникальныйТестФильм о любви' in titles
         assert 'УникальныйТестФильм о войне' in titles
-        assert 'УникальныйТестСериал о детективах' in titles
 
     def test_project_search_by_status(self, authenticated_client):
         """Тест поиска проектов по статусу"""
@@ -291,9 +292,9 @@ class TestProjectAPI:
         """Тест поиска проектов по типу и жанру"""
         project_type = ProjectTypeFactory(name='УникальныйТестФильм')
         genre = GenreFactory(name='УникальныйТестДрама')
-        ProjectFactory(title='УникальныйТестДраматический фильм', project_type=project_type, genre=genre)
-        ProjectFactory(title='УникальныйТестКомедийный фильм', project_type=project_type)
-        ProjectFactory(title='УникальныйТестДраматический сериал', genre=genre)
+        project1 = ProjectFactory(title='УникальныйТестДраматический фильм', project_type=project_type, genre=genre)
+        project2 = ProjectFactory(title='УникальныйТестКомедийный фильм', project_type=project_type)
+        project3 = ProjectFactory(title='УникальныйТестДраматический сериал', genre=genre)
 
         url = reverse('project-search')
         response = authenticated_client.get(url, {
@@ -302,10 +303,11 @@ class TestProjectAPI:
         })
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 3  # Все 3 проекта содержат совпадающие элементы
-        # Проверяем, что в результатах есть нужный проект
-        titles = [item['title'] for item in response.data]
-        assert 'УникальныйТестДраматический фильм' in titles
+        # Фильтруем только созданные нами проекты
+        created_project_ids = {project1.id, project2.id, project3.id}
+        filtered_results = [item for item in response.data if item['id'] in created_project_ids]
+        assert len(filtered_results) == 1  # Только 1 проект соответствует ОБОИМ критериям
+        assert filtered_results[0]['title'] == 'УникальныйТестДраматический фильм'
 
     def test_project_list_serializer_fields(self, authenticated_client):
         """Тест полей в сериализаторе списка проектов"""
@@ -473,17 +475,19 @@ class TestProjectRoleAPI:
 
     def test_project_role_search_by_name(self, authenticated_client):
         """Тест поиска ролей по названию"""
-        ProjectRoleFactory(name='УникальныйТестГлавный герой')
-        ProjectRoleFactory(name='УникальныйТестВторостепенный герой')
-        ProjectRoleFactory(name='УникальныйТестЗлодей')
+        role1 = ProjectRoleFactory(name='УникальныйТестГлавный герой')
+        role2 = ProjectRoleFactory(name='УникальныйТестВторостепенный герой')
+        role3 = ProjectRoleFactory(name='УникальныйТестЗлодей')
 
         url = reverse('projectrole-search')
         response = authenticated_client.get(url, {'name': 'УникальныйТестГлавный'})
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 3  # Все 3 роли содержат 'УникальныйТест'
-        names = [item['name'] for item in response.data]
-        assert 'УникальныйТестГлавный герой' in names
+        # Фильтруем только созданные нами роли
+        created_role_ids = {role1.id, role2.id, role3.id}
+        filtered_results = [item for item in response.data if item['id'] in created_role_ids]
+        assert len(filtered_results) == 1  # Только 1 роль содержит 'УникальныйТестГлавный'
+        assert filtered_results[0]['name'] == 'УникальныйТестГлавный герой'
 
     def test_project_role_search_by_media_presence(self, authenticated_client):
         """Тест поиска ролей по медийности"""
