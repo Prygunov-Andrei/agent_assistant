@@ -1,20 +1,24 @@
 #!/bin/bash
 
-# Останавливаем все процессы Python с bot.py
-echo "Останавливаем все экземпляры бота..."
-pkill -f "python3 bot.py"
-pkill -f "bot.py"
+# Убиваем все существующие процессы bot.py
+echo "Останавливаем все существующие экземпляры бота..."
+pkill -f "python.*bot.py" 2>/dev/null || true
+pkill -f "bot.py" 2>/dev/null || true
 
-# Ждем 3 секунды
-sleep 3
+# Ждем немного, чтобы процессы завершились
+sleep 2
 
-# Проверяем, что процессы остановлены
-if pgrep -f "bot.py" > /dev/null; then
-    echo "Предупреждение: некоторые процессы бота все еще запущены"
-    pkill -9 -f "bot.py"
-    sleep 2
+# Проверяем, что все процессы остановлены
+REMAINING=$(ps aux | grep -E "(python.*bot\.py|bot\.py)" | grep -v grep | wc -l)
+if [ "$REMAINING" -gt 0 ]; then
+    echo "Предупреждение: остались запущенные процессы бота"
+    ps aux | grep -E "(python.*bot\.py|bot\.py)" | grep -v grep
 fi
 
 # Запускаем новый экземпляр
-echo "Запускаем бота..."
-python3 bot.py
+echo "Запускаем новый экземпляр бота..."
+python3 backend/telegram_requests/bot/bot.py &
+BOT_PID=$!
+
+echo "Бот запущен с PID: $BOT_PID"
+echo "Для остановки используйте: kill $BOT_PID"

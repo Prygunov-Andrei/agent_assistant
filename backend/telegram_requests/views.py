@@ -12,6 +12,7 @@ from datetime import datetime
 import pytz
 import json
 import os
+import logging
 
 from core.views import BaseModelViewSet
 from core.permissions import OwnerPermission
@@ -22,6 +23,9 @@ from .serializers import (
     RequestImageSerializer, RequestFileSerializer, TelegramWebhookDataSerializer
 )
 from .services import TelegramFileService
+from .duplicate_detection import duplicate_detector
+
+logger = logging.getLogger(__name__)
 
 
 class RequestViewSet(BaseModelViewSet):
@@ -239,6 +243,26 @@ class TelegramWebhookViewSet(viewsets.ViewSet):
                         'request_id': existing_request.id,
                         'message': f'Фотографии добавлены к существующему запросу {existing_request.id}'
                     })
+            
+            # Проверяем на дубликаты ТОЛЬКО для новых запросов (не для медиагрупп)
+            request_text = author_info.get('text', '')
+            logger.info(f"Проверяем на дубликаты текст: '{request_text[:100]}...'")
+            duplicate_info = duplicate_detector.get_duplicate_info(request_text)
+            logger.info(f"Результат проверки дубликатов: {duplicate_info is not None}")
+            
+            if duplicate_info:
+                # Найден дубликат - возвращаем предупреждение
+                return Response({
+                    'status': 'duplicate',
+                    'message': f'Похожий запрос уже существует (ID: {duplicate_info["duplicate_id"]}, схожесть: {duplicate_info["similarity"]:.1%})',
+                    'duplicate_info': {
+                        'duplicate_id': duplicate_info['duplicate_id'],
+                        'duplicate_author': duplicate_info['duplicate_author'],
+                        'duplicate_created_at': duplicate_info['duplicate_created_at'].isoformat(),
+                        'similarity': duplicate_info['similarity'],
+                        'text_preview': duplicate_info['duplicate_text_preview']
+                    }
+                }, status=status.HTTP_409_CONFLICT)
             
             # Создаем новый запрос
             request_serializer = RequestCreateSerializer(data=author_info)

@@ -178,7 +178,9 @@ class TelegramWebhookDataSerializer(serializers.Serializer):
             # Переслано из канала/чата
             forward_from_chat = message['forward_from_chat']
             author_id = forward_from_chat.get('id')
-            author_name = forward_from_chat.get('title') or f"Chat_{author_id}"
+            chat_name = forward_from_chat.get('title') or f"Chat_{author_id}"
+            
+            author_name = chat_name
         else:
             # Обычное сообщение
             author_id = from_user.get('id')

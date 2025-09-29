@@ -136,6 +136,21 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Настройки обнаружения дубликатов запросов
+DUPLICATE_SIMILARITY_THRESHOLD = 0.9  # 90% схожести
+DUPLICATE_TIME_WINDOW_DAYS = 30  # 30 дней
+DUPLICATE_COMPARISON_METHOD = 'token_sort_ratio'  # Метод сравнения
+DUPLICATE_NORMALIZE_CASE = True  # Приводить к нижнему регистру
+DUPLICATE_NORMALIZE_WHITESPACE = True  # Нормализовать пробелы
+DUPLICATE_REMOVE_PUNCTUATION = False  # Убирать знаки препинания
+DUPLICATE_MIN_TEXT_LENGTH = 10  # Минимальная длина текста для сравнения
+DUPLICATE_EXCLUDE_PATTERNS = [  # Паттерны для исключения
+    '[Сообщение без текста]',
+    # '[Прикреплено',  # Не исключаем сообщения с медиафайлами
+    # 'Переслано из',   # Не исключаем пересланные сообщения
+]
+DUPLICATE_DEBUG_LOGGING = False  # Включить отладочное логирование
+
 # Медиафайлы
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
