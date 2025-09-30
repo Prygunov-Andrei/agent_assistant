@@ -27,51 +27,11 @@ const RequestsTable: React.FC = () => {
     fetchRequests();
   }, []);
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Не указано';
-    const date = new Date(dateString);
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'status-pending';
-      case 'in_progress':
-        return 'status-in-progress';
-      case 'completed':
-        return 'status-completed';
-      case 'cancelled':
-        return 'status-cancelled';
-      default:
-        return 'status-pending';
-    }
-  };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'Ожидает';
-      case 'in_progress':
-        return 'В работе';
-      case 'completed':
-        return 'Выполнен';
-      case 'cancelled':
-        return 'Отменен';
-      default:
-        return status;
-    }
-  };
-
-  const truncateText = (text: string, maxLength: number = 100) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+  // Убираем обрезку текста - показываем полный текст
+  const displayText = (text: string) => {
+    return text;
   };
 
   if (loading) {
@@ -115,7 +75,19 @@ const RequestsTable: React.FC = () => {
                 <tr key={request.id} className="requests-table-row">
                   <td className="requests-table-cell">
                     <div className="request-date">
-                      {formatDate(request.original_created_at)}
+                      <div className="request-date-date">
+                        {new Date(request.original_created_at).toLocaleDateString('ru-RU', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit'
+                        })}
+                      </div>
+                      <div className="request-date-time">
+                        {new Date(request.original_created_at).toLocaleTimeString('ru-RU', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
                     </div>
                   </td>
                   <td className="requests-table-cell">
@@ -132,7 +104,7 @@ const RequestsTable: React.FC = () => {
                   </td>
                   <td className="requests-table-cell">
                     <div className="request-text">
-                      {truncateText(request.text)}
+                      {displayText(request.text)}
                     </div>
                   </td>
                   <td className="requests-table-cell">
@@ -176,11 +148,6 @@ const RequestsTable: React.FC = () => {
                       {(!request.images || request.images.length === 0) && (!request.files || request.files.length === 0) && (
                         <span className="no-media">Нет медиа</span>
                       )}
-                    </div>
-                  </td>
-                  <td className="requests-table-cell">
-                    <div className={`request-status ${getStatusColor(request.status)}`}>
-                      {getStatusText(request.status)}
                     </div>
                   </td>
                 </tr>
