@@ -235,6 +235,39 @@ class TestProjectModel:
         assert project.status == 'in_production'
         assert project.description == 'Тестовое описание'
         assert str(project.premiere_date) == '2024-12-31'
+    
+    def test_project_request_relationship(self):
+        """Тест связи с исходным запросом"""
+        from telegram_requests.tests.factories import RequestFactory
+        
+        # Создаем запрос
+        request = RequestFactory()
+        
+        # Создаем проект с запросом
+        project = ProjectFactory(request=request)
+        assert project.request == request
+        
+        # Проверяем обратную связь через related_name
+        assert request.created_project == project
+    
+    def test_project_request_relationship_null(self):
+        """Тест связи с исходным запросом (null)"""
+        project = ProjectFactory(request=None)
+        assert project.request is None
+    
+    def test_project_type_raw_field(self):
+        """Тест поля project_type_raw"""
+        # Тест с пустым значением
+        project = ProjectFactory(project_type_raw='')
+        assert project.project_type_raw == ''
+        
+        # Тест с значением
+        project = ProjectFactory(project_type_raw='фильм')
+        assert project.project_type_raw == 'фильм'
+        
+        # Тест с None
+        project = ProjectFactory(project_type_raw=None)
+        assert project.project_type_raw is None
 
 
 @pytest.mark.django_db
@@ -361,3 +394,46 @@ class TestProjectRoleModel:
         role = ProjectRoleFactory()
         assert role.audition_files is not None
         assert 'test_audition' in role.audition_files.name
+    
+    def test_project_role_suggested_artists_relationship(self):
+        """Тест связи с предложенными артистами"""
+        from artists.tests.factories import ArtistFactory
+        
+        # Создаем артистов
+        artist1 = ArtistFactory()
+        artist2 = ArtistFactory()
+        
+        # Создаем роль с предложенными артистами
+        role = ProjectRoleFactory()
+        role.suggested_artists.add(artist1, artist2)
+        
+        # Проверяем связи
+        assert artist1 in role.suggested_artists.all()
+        assert artist2 in role.suggested_artists.all()
+        assert role in artist1.suggested_roles.all()
+        assert role in artist2.suggested_roles.all()
+    
+    def test_project_role_suggested_artists_empty(self):
+        """Тест пустого списка предложенных артистов"""
+        role = ProjectRoleFactory()
+        assert role.suggested_artists.count() == 0
+    
+    def test_project_role_skills_required_field(self):
+        """Тест поля skills_required"""
+        # Тест с пустым списком
+        role = ProjectRoleFactory(skills_required=[])
+        assert role.skills_required == []
+        
+        # Тест с навыками
+        skills = ['Актерское мастерство', 'Драма', 'Комедия']
+        role = ProjectRoleFactory(skills_required=skills)
+        assert role.skills_required == skills
+        
+        # Тест с None
+        role = ProjectRoleFactory(skills_required=None)
+        assert role.skills_required is None
+    
+    def test_project_role_skills_required_default(self):
+        """Тест дефолтного значения skills_required"""
+        role = ProjectRoleFactory(skills_required=[])
+        assert role.skills_required == []

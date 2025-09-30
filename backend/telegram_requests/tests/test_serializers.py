@@ -125,9 +125,10 @@ class RequestListSerializerTest(TestCase):
         self.assertIn('images_count', data)
         self.assertIn('files_count', data)
         
-        # Проверяем, что детальные поля отсутствуют
-        self.assertNotIn('images', data)
-        self.assertNotIn('files', data)
+        # Проверяем, что детальные поля присутствуют
+        self.assertIn('images', data)
+        self.assertIn('files', data)
+        # Проверяем, что response_text отсутствует
         self.assertNotIn('response_text', data)
 
 

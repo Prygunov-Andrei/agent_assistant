@@ -128,6 +128,10 @@ export interface RequestListItem {
   files_count: number;
   images?: RequestImage[];
   files?: RequestFile[];
+  // Новые поля для LLM интеграции
+  project?: number; // ID связанного проекта
+  analysis_status: 'new' | 'analyzed' | 'processed';
+  analysis_status_display: string;
   created_at: string;
   updated_at: string;
 }
@@ -260,6 +264,13 @@ export interface Project {
   end_date?: string;
   budget?: number;
   status: 'draft' | 'active' | 'completed' | 'cancelled';
+  // Новые поля для LLM интеграции
+  project_type?: number; // ID типа проекта
+  project_type_raw?: string; // Сырой тип из LLM
+  genre?: number; // ID жанра
+  director?: number; // ID персоны
+  production_company?: number; // ID компании
+  request?: number; // ID исходного запроса
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -276,6 +287,9 @@ export interface ProjectRole {
   start_date?: string;
   end_date?: string;
   status: 'open' | 'filled' | 'cancelled';
+  // Новые поля для LLM интеграции
+  suggested_artists: number[]; // ID артистов, предложенных LLM
+  skills_required: string[]; // Навыки, извлеченные LLM
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -339,3 +353,9 @@ export interface CreateArtistRequest {
   special_skills?: string;
   experience?: string;
 }
+
+// Экспорт новых типов для LLM интеграции
+export * from './llm';
+export * from './projects';
+export * from './matching';
+export * from './media';

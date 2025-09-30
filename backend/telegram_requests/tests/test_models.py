@@ -140,6 +140,41 @@ class RequestModelTest(TestCase):
         request = RequestFactory(has_images=False, has_files=True)
         self.assertFalse(request.has_images)
         self.assertTrue(request.has_files)
+    
+    def test_analysis_status_field(self):
+        """Тест поля analysis_status"""
+        # Тест дефолтного значения
+        request = RequestFactory(analysis_status='new')
+        self.assertEqual(request.analysis_status, 'new')
+        
+        # Тест установки значения
+        request = RequestFactory(analysis_status='analyzed')
+        self.assertEqual(request.analysis_status, 'analyzed')
+        
+        # Тест всех возможных значений
+        valid_statuses = ['new', 'analyzed', 'processed']
+        for status in valid_statuses:
+            request = RequestFactory(analysis_status=status)
+            self.assertEqual(request.analysis_status, status)
+    
+    def test_project_relationship(self):
+        """Тест связи с проектом"""
+        from projects.tests.factories import ProjectFactory
+        
+        # Создаем запрос
+        request = RequestFactory()
+        
+        # Создаем проект с запросом
+        project = ProjectFactory(request=request)
+        self.assertEqual(project.request, request)
+        
+        # Проверяем обратную связь
+        self.assertEqual(request.created_project, project)
+    
+    def test_project_relationship_null(self):
+        """Тест связи с проектом (null)"""
+        request = RequestFactory(project=None)
+        self.assertIsNone(request.project)
 
 
 class RequestImageModelTest(TestCase):

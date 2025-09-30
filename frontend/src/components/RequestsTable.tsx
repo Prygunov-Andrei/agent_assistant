@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { requestsService } from '../services/requests';
 import LoadingSpinner from './LoadingSpinner';
 import type { RequestListItem } from '../types';
@@ -76,17 +76,17 @@ const RequestsTable: React.FC = () => {
                   <td className="requests-table-cell">
                     <div className="request-date">
                       <div className="request-date-date">
-                        {new Date(request.original_created_at).toLocaleDateString('ru-RU', {
+                        {request.original_created_at ? new Date(request.original_created_at).toLocaleDateString('ru-RU', {
                           day: '2-digit',
                           month: '2-digit',
                           year: '2-digit'
-                        })}
+                        }) : 'Не указано'}
                       </div>
                       <div className="request-date-time">
-                        {new Date(request.original_created_at).toLocaleTimeString('ru-RU', {
+                        {request.original_created_at ? new Date(request.original_created_at).toLocaleTimeString('ru-RU', {
                           hour: '2-digit',
                           minute: '2-digit'
-                        })}
+                        }) : 'Не указано'}
                       </div>
                     </div>
                   </td>

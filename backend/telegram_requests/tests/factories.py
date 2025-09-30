@@ -24,25 +24,31 @@ class RequestFactory(DjangoModelFactory):
     has_files = factory.Faker('boolean')
     original_created_at = factory.LazyFunction(lambda: timezone.now() - timedelta(days=1))
     status = factory.Iterator(['pending', 'in_progress', 'completed', 'cancelled'])
+    analysis_status = factory.Iterator(['new', 'analyzed', 'processed'])
     created_by = factory.SubFactory('users.tests.factories.AgentFactory')
     agent = factory.SubFactory('users.tests.factories.AgentFactory')
     processed_at = None
     response_text = factory.Faker('sentence', nb_words=10, locale='ru_RU')
+    project = None
 
 
 class PendingRequestFactory(RequestFactory):
     """Фабрика для запросов в статусе ожидания"""
     status = 'pending'
+    analysis_status = 'new'
     agent = None
     processed_at = None
     response_text = ''
+    project = None
 
 
 class CompletedRequestFactory(RequestFactory):
     """Фабрика для выполненных запросов"""
     status = 'completed'
+    analysis_status = 'processed'
     processed_at = factory.LazyFunction(lambda: timezone.now() - timedelta(hours=2))
     response_text = factory.Faker('sentence', nb_words=15, locale='ru_RU')
+    project = None
 
 
 class RequestWithMediaFactory(RequestFactory):

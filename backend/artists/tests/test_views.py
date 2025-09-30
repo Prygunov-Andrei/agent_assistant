@@ -155,7 +155,7 @@ class TestArtistAPI(TestCase):
     
     def test_artist_detail(self):
         """Тест получения детальной информации об артисте."""
-        artist = ArtistFactory()
+        artist = ArtistFactory(created_by=self.agent)
         url = reverse('artist-detail', kwargs={'pk': artist.pk})
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
@@ -192,8 +192,8 @@ class TestArtistAPI(TestCase):
     
     def test_artist_search_by_name(self):
         """Тест поиска артистов по имени."""
-        ArtistFactory(first_name='Иван', last_name='Петров')
-        ArtistFactory(first_name='Петр', last_name='Иванов')
+        ArtistFactory(first_name='Иван', last_name='Петров', created_by=self.agent)
+        ArtistFactory(first_name='Петр', last_name='Иванов', created_by=self.agent)
         
         url = reverse('artist-search')
         response = self.client.get(url, {'name': 'Иван'})
@@ -202,8 +202,8 @@ class TestArtistAPI(TestCase):
     
     def test_artist_search_by_gender(self):
         """Тест поиска артистов по полу."""
-        ArtistFactory.create_batch(2, gender='male')
-        ArtistFactory(gender='female')
+        ArtistFactory.create_batch(2, gender='male', created_by=self.agent)
+        ArtistFactory(gender='female', created_by=self.agent)
         
         url = reverse('artist-search')
         response = self.client.get(url, {'gender': 'male'})
@@ -215,8 +215,8 @@ class TestArtistAPI(TestCase):
     
     def test_artist_search_by_city(self):
         """Тест поиска артистов по городу."""
-        ArtistFactory.create_batch(2, city='Москва')
-        ArtistFactory(city='Санкт-Петербург')
+        ArtistFactory.create_batch(2, city='Москва', created_by=self.agent)
+        ArtistFactory(city='Санкт-Петербург', created_by=self.agent)
         
         url = reverse('artist-search')
         response = self.client.get(url, {'city': 'Москва'})
@@ -225,8 +225,8 @@ class TestArtistAPI(TestCase):
     
     def test_artist_search_by_availability(self):
         """Тест поиска артистов по статусу доступности."""
-        ArtistFactory.create_batch(2, availability_status=True)
-        ArtistFactory(availability_status=False)
+        ArtistFactory.create_batch(2, availability_status=True, created_by=self.agent)
+        ArtistFactory(availability_status=False, created_by=self.agent)
         
         url = reverse('artist-search')
         response = self.client.get(url, {'availability_status': 'true'})
@@ -240,9 +240,9 @@ class TestArtistAPI(TestCase):
         """Тест поиска артистов по возрастному диапазону."""
         from datetime import date, timedelta
         # Создаем артистов с конкретными возрастами
-        ArtistFactory(birth_date=date.today() - timedelta(days=365*25))  # 25 лет
-        ArtistFactory(birth_date=date.today() - timedelta(days=365*30))  # 30 лет
-        ArtistFactory(birth_date=date.today() - timedelta(days=365*35))  # 35 лет
+        ArtistFactory(birth_date=date.today() - timedelta(days=365*25), created_by=self.agent)  # 25 лет
+        ArtistFactory(birth_date=date.today() - timedelta(days=365*30), created_by=self.agent)  # 30 лет
+        ArtistFactory(birth_date=date.today() - timedelta(days=365*35), created_by=self.agent)  # 35 лет
         
         url = reverse('artist-search')
         response = self.client.get(url, {'age_min': 26, 'age_max': 34})
@@ -251,17 +251,17 @@ class TestArtistAPI(TestCase):
     
     def test_artist_by_skills(self):
         """Тест поиска артистов по навыкам."""
-        skill1 = SkillFactory()
-        skill2 = SkillFactory()
+        skill1 = SkillFactory(created_by=self.agent)
+        skill2 = SkillFactory(created_by=self.agent)
         
-        artist1 = ArtistFactory()
+        artist1 = ArtistFactory(created_by=self.agent)
         ArtistSkillFactory(artist=artist1, skill=skill1)
         ArtistSkillFactory(artist=artist1, skill=skill2)
         
-        artist2 = ArtistFactory()
+        artist2 = ArtistFactory(created_by=self.agent)
         ArtistSkillFactory(artist=artist2, skill=skill1)
         
-        url = reverse('artist-by-skills')
+        url = '/api/artists/by_skills/'
         response = self.client.get(url, {'skill_ids': f'{skill1.pk},{skill2.pk}'})
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1  # Только artist1 имеет оба навыка
@@ -391,9 +391,10 @@ class TestArtistPermissions(TestCase):
     
     def setUp(self):
         """Настройка тестов."""
+        from users.tests.factories import AgentFactory
         self.client = APIClient()
-        self.agent1 = ArtistFactory().created_by
-        self.agent2 = ArtistFactory().created_by
+        self.agent1 = AgentFactory()
+        self.agent2 = AgentFactory()
     
     def test_unauthenticated_access(self):
         """Тест доступа без аутентификации."""
@@ -418,10 +419,10 @@ class TestArtistPermissions(TestCase):
         response = self.client.put(url, data)
         assert response.status_code == status.HTTP_200_OK
         
-        # agent1 пытается редактировать артиста agent2
+        # agent1 пытается редактировать артиста agent2 (не найден)
         url = reverse('artist-detail', kwargs={'pk': artist2.pk})
         response = self.client.put(url, data)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_404_NOT_FOUND
     
     def test_agent_can_delete_only_own_artists(self):
         """Тест того, что агент может удалять только своих артистов."""
@@ -434,7 +435,7 @@ class TestArtistPermissions(TestCase):
         response = self.client.delete(url)
         assert response.status_code == status.HTTP_204_NO_CONTENT
         
-        # agent1 пытается удалить артиста agent2
+        # agent1 пытается удалить артиста agent2 (не найден)
         url = reverse('artist-detail', kwargs={'pk': artist2.pk})
         response = self.client.delete(url)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_404_NOT_FOUND

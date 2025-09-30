@@ -13,6 +13,12 @@ class Request(BaseModel):
         ('cancelled', 'Отменен'),
     ]
     
+    ANALYSIS_STATUS_CHOICES = [
+        ('new', 'Новый'),
+        ('analyzed', 'Проанализирован'),
+        ('processed', 'Обработан'),
+    ]
+    
     # Основные поля
     text = models.TextField(verbose_name="Текст запроса", help_text="Содержимое запроса от пользователя")
     
@@ -99,6 +105,24 @@ class Request(BaseModel):
         verbose_name="Ответ агента",
         help_text="Текст ответа агента на запрос"
     )
+    
+    # LLM интеграция
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='source_requests',
+        verbose_name="Проект",
+        help_text="Проект, созданный на основе этого запроса"
+    )
+    analysis_status = models.CharField(
+        max_length=20,
+        choices=ANALYSIS_STATUS_CHOICES,
+        default='new',
+        verbose_name="Статус анализа",
+        help_text="Статус анализа запроса через LLM"
+    )
 
     class Meta(BaseModel.Meta):
         verbose_name = "Запрос"
@@ -111,6 +135,8 @@ class Request(BaseModel):
             models.Index(fields=['author_telegram_id']),
             models.Index(fields=['telegram_message_id']),
             models.Index(fields=['original_created_at']),
+            models.Index(fields=['analysis_status']),
+            models.Index(fields=['project']),
             *BaseModel.Meta.indexes
         ]
 

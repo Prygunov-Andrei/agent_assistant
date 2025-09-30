@@ -1,0 +1,109 @@
+# Конфигурация поиска совпадений
+search:
+  # Общие настройки
+  algorithm: "rapidfuzz"  # или "fuzzywuzzy"
+  case_sensitive: false
+  normalize_unicode: true
+  
+  # Пороги схожести для разных типов сущностей
+  thresholds:
+    persons:
+      casting_directors: 0.7
+      directors: 0.6
+      producers: 0.6
+      agents: 0.8
+    companies: 0.8
+    projects: 0.6
+    artists: 0.7
+    
+  # Лимиты результатов
+  limits:
+    max_results: 5
+    min_confidence: 0.4
+    max_candidates: 50  # Максимум кандидатов для анализа
+    
+  # Настройки для разных полей
+  field_weights:
+    persons:
+      email: 1.0
+      phone: 0.9
+      telegram_username: 0.8
+      first_name: 0.6
+      last_name: 0.6
+      full_name: 0.7
+    companies:
+      name: 1.0
+      website: 0.8
+      email: 0.7
+    projects:
+      title: 1.0
+      description: 0.5
+    artists:
+      first_name: 0.6
+      last_name: 0.6
+      stage_name: 0.8
+      full_name: 0.7
+      
+  # Настройки кэширования
+  caching:
+    enabled: true
+    ttl: 3600  # Время жизни кэша в секундах (1 час)
+    max_size: 1000  # Максимальное количество записей в кэше
+    
+  # Настройки производительности
+  performance:
+    batch_size: 100  # Размер батча для обработки
+    parallel_workers: 4  # Количество параллельных воркеров
+    timeout: 5.0  # Таймаут для поиска в секундах
+    
+  # Настройки для fuzzy matching
+  fuzzy_matching:
+    # Настройки для rapidfuzz
+    rapidfuzz:
+      scorer: "fuzz.ratio"  # fuzz.ratio, fuzz.partial_ratio, fuzz.token_sort_ratio
+      limit: 10
+      
+    # Настройки для fuzzywuzzy
+    fuzzywuzzy:
+      scorer: "fuzz.ratio"
+      limit: 10
+      
+  # Настройки нормализации текста
+  text_normalization:
+    remove_punctuation: true
+    remove_extra_spaces: true
+    to_lowercase: true
+    remove_accents: false
+    
+  # Настройки для специальных случаев
+  special_cases:
+    # Обработка сокращений
+    abbreviations:
+      "ооо": "общество с ограниченной ответственностью"
+      "оао": "открытое акционерное общество"
+      "зао": "закрытое акционерное общество"
+      "ип": "индивидуальный предприниматель"
+      
+    # Обработка титулов и званий
+    titles:
+      - "г-н"
+      - "г-жа"
+      - "доктор"
+      - "профессор"
+      - "доцент"
+      - "кандидат"
+      - "доктор наук"
+      - "кандидат наук"
+      
+  # Настройки для разных языков
+  languages:
+    default: "ru"
+    supported: ["ru", "en"]
+    transliteration: true  # Использовать транслитерацию
+    
+  # Настройки отладки
+  debug:
+    enabled: false
+    log_matches: false
+    log_performance: false
+    detailed_logging: false

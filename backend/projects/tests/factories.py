@@ -79,6 +79,8 @@ class ProjectFactory(factory.django.DjangoModelFactory):
     production_company = factory.SubFactory(CompanyFactory)
     is_active = True
     created_by = factory.SubFactory(AgentFactory)
+    request = None
+    project_type_raw = factory.Faker('word')
 
     @factory.post_generation
     def producers(self, create, extracted, **kwargs):
@@ -121,6 +123,7 @@ class ProjectRoleFactory(factory.django.DjangoModelFactory):
     shooting_location = factory.Faker('city')
     notes = factory.Faker('text', max_nb_chars=150)
     is_active = True
+    skills_required = factory.LazyFunction(lambda: ['Актерское мастерство', 'Драма'])
 
     @factory.post_generation
     def reference_photo(self, create, extracted, **kwargs):
@@ -139,6 +142,14 @@ class ProjectRoleFactory(factory.django.DjangoModelFactory):
             self.audition_files = extracted
         else:
             self.audition_files = create_test_audition_file()
+    
+    @factory.post_generation
+    def suggested_artists(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for artist in extracted:
+                self.suggested_artists.add(artist)
 
 
 # Специализированные фабрики

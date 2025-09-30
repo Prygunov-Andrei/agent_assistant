@@ -42,6 +42,7 @@ class ProjectAdmin(admin.ModelAdmin):
         'genre',
         'director',
         'production_company',
+        'request_link',
         'is_active',
         'created_by',
         'created_at'
@@ -79,6 +80,13 @@ class ProjectAdmin(admin.ModelAdmin):
                 'production_company'
             )
         }),
+        ('LLM интеграция', {
+            'fields': (
+                'request',
+                'project_type_raw'
+            ),
+            'classes': ('collapse',)
+        }),
         ('Системная информация', {
             'fields': (
                 'created_by',
@@ -96,6 +104,20 @@ class ProjectAdmin(admin.ModelAdmin):
         if not obj.pk:  # Only set created_by for new objects
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+    
+    def request_link(self, obj):
+        """Ссылка на исходный запрос"""
+        if obj.request:
+            from django.utils.html import format_html
+            from django.urls import reverse
+            return format_html(
+                '<a href="{}">Запрос #{}</a>',
+                reverse('admin:telegram_requests_request_change', args=[obj.request.id]),
+                obj.request.id
+            )
+        return 'Создан вручную'
+    request_link.short_description = 'Исходный запрос'
+    request_link.admin_order_field = 'request__id'
 
 
 @admin.register(ProjectRole)
@@ -163,6 +185,13 @@ class ProjectRoleAdmin(admin.ModelAdmin):
         ('Дополнительно', {
             'fields': ('notes',)
         }),
+        ('LLM интеграция', {
+            'fields': (
+                'suggested_artists',
+                'skills_required'
+            ),
+            'classes': ('collapse',)
+        }),
         ('Системная информация', {
             'fields': (
                 'created_at',
@@ -172,3 +201,4 @@ class ProjectRoleAdmin(admin.ModelAdmin):
         }),
     )
     readonly_fields = ('created_at', 'updated_at')
+    filter_horizontal = ('suggested_artists',)

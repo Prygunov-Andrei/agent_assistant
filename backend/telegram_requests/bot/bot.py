@@ -379,6 +379,87 @@ class CastingAgencyBot:
             logger.error(f"Неожиданная ошибка при отправке реакции: {str(e)}")
         return False
     
+    def _get_author_info(self, message, user):
+        """Извлекает информацию об авторе сообщения"""
+        # Проверяем, является ли сообщение пересланным
+        if message.forward_from or message.forward_from_chat:
+            if message.forward_from:
+                # Переслано от пользователя
+                original_user = message.forward_from
+                author_name = f"{original_user.first_name or ''} {original_user.last_name or ''}".strip()
+                if not author_name:
+                    author_name = original_user.username or f"User_{original_user.id}"
+                return {
+                    'telegram_id': user.id,  # ID того, кто переслал
+                    'name': author_name,
+                    'username': original_user.username,
+                    'first_name': original_user.first_name,
+                    'last_name': original_user.last_name,
+                    'is_forwarded': True
+                }
+            else:
+                # Переслано из чата/канала
+                original_chat = message.forward_from_chat
+                chat_name = original_chat.title or f"Chat_{original_chat.id}"
+                return {
+                    'telegram_id': user.id,  # ID того, кто переслал
+                    'name': chat_name,
+                    'username': None,
+                    'first_name': None,
+                    'last_name': None,
+                    'is_forwarded': True
+                }
+        else:
+            # Обычное сообщение
+            author_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+            if not author_name:
+                author_name = user.username or f"User_{user.id}"
+            return {
+                'telegram_id': user.id,
+                'name': author_name,
+                'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_forwarded': False
+            }
+    
+    def _get_user_name(self, user):
+        """Формирует имя пользователя из доступных полей"""
+        if user.first_name and user.last_name:
+            return f"{user.first_name} {user.last_name}"
+        elif user.first_name:
+            return user.first_name
+        elif user.username:
+            return user.username
+        else:
+            return f"User_{user.id}"
+    
+    async def _process_message_content(self, message):
+        """Обрабатывает содержимое сообщения"""
+        result = {
+            'text': '',
+            'has_images': False,
+            'has_files': False,
+            'photo': None,
+            'document': None
+        }
+        
+        if message.text:
+            result['text'] = message.text
+        elif message.caption:
+            result['text'] = message.caption
+        else:
+            result['text'] = "[Сообщение без текста]"
+        
+        if message.photo:
+            result['has_images'] = True
+            result['photo'] = message.photo[-1]  # Берем фото наивысшего качества
+        elif message.document:
+            result['has_files'] = True
+            result['document'] = message.document
+        
+        return result
+
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик ошибок"""
         logger.error(f"Ошибка при обработке обновления: {context.error}")

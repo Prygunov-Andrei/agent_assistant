@@ -74,8 +74,8 @@ class ArtistFactory(DjangoModelFactory):
     nationality = factory.Faker('random_element', elements=['Русский', 'Украинец', 'Белорус', 'Татарин'])
     
     # Контакты
-    phone = factory.Faker('phone_number')
-    backup_phone = factory.Faker('phone_number')
+    phone = factory.Faker('random_element', elements=['+7-123-456-78-90', '+7-987-654-32-10', '+7-555-123-45-67'])
+    backup_phone = factory.Faker('random_element', elements=['+7-111-222-33-44', '+7-999-888-77-66', '+7-444-555-66-77'])
     email = factory.Faker('email')
     telegram_username = factory.Faker('user_name')
     city = factory.Faker('city')

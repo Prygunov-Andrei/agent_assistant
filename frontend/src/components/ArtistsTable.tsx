@@ -34,7 +34,7 @@ const ArtistsTable: React.FC = () => {
     return `${firstName[0]}${lastName[0]}`.toUpperCase();
   };
 
-  const formatSkills = (skills: ArtistSkillListItem[]): JSX.Element => {
+  const formatSkills = (skills: ArtistSkillListItem[]): React.JSX.Element => {
     if (skills.length === 0) return <span>Нет навыков</span>;
     
     // Группируем навыки по группам
@@ -49,7 +49,7 @@ const ArtistsTable: React.FC = () => {
     // Формируем JSX элементы для каждой группы
     return (
       <div className="artist-skills-list">
-        {Object.entries(groupedSkills).map(([group, groupSkills], index) => (
+        {Object.entries(groupedSkills).map(([group, groupSkills]) => (
           <div key={group} className="artist-skill-group">
             <span className="artist-skill-group-name">{group}:</span>
             <span className="artist-skill-names">

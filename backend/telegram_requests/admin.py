@@ -12,11 +12,11 @@ class RequestAdmin(BaseModelAdmin):
     """Админка для запросов"""
     
     list_display = [
-        'id', 'author_name', 'status', 'has_media', 'agent_name', 
-        'created_at', 'original_created_at', 'processed_at'
+        'id', 'author_name', 'status', 'analysis_status', 'has_media', 'agent_name', 
+        'project_link', 'created_at', 'original_created_at', 'processed_at'
     ]
     list_filter = [
-        'status', 'has_images', 'has_files', 'agent', 'is_active',
+        'status', 'analysis_status', 'has_images', 'has_files', 'agent', 'is_active',
         'created_at', 'original_created_at', 'processed_at'
     ]
     search_fields = ['text', 'author_name', 'telegram_message_id']
@@ -45,8 +45,12 @@ class RequestAdmin(BaseModelAdmin):
         }),
         ('Обработка', {
             'fields': (
-                'status', 'agent', 'processed_at', 'response_text'
+                'status', 'analysis_status', 'agent', 'processed_at', 'response_text'
             )
+        }),
+        ('LLM интеграция', {
+            'fields': ('project',),
+            'classes': ('collapse',)
         }),
         ('Системная информация', {
             'fields': ('is_active', 'created_at', 'updated_at'),
@@ -104,6 +108,18 @@ class RequestAdmin(BaseModelAdmin):
         updated = queryset.update(agent=request.user)
         self.message_user(request, f'{updated} запросов назначено вам.')
     assign_to_me.short_description = 'Назначить себе'
+    
+    def project_link(self, obj):
+        """Ссылка на проект"""
+        if obj.project:
+            return format_html(
+                '<a href="{}">Проект #{}</a>',
+                reverse('admin:projects_project_change', args=[obj.project.id]),
+                obj.project.id
+            )
+        return 'Не создан'
+    project_link.short_description = 'Проект'
+    project_link.admin_order_field = 'project__id'
 
 
 class RequestImageInline(admin.TabularInline):

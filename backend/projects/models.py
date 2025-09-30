@@ -128,6 +128,24 @@ class Project(BaseModel):
         help_text="Компания, производящая проект"
     )
     
+    # LLM интеграция
+    request = models.OneToOneField(
+        'telegram_requests.Request',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_project',
+        verbose_name="Исходный запрос",
+        help_text="Запрос, на основе которого создан проект"
+    )
+    project_type_raw = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="Сырой тип проекта",
+        help_text="Тип проекта, извлеченный LLM из текста запроса"
+    )
+    
     class Meta(BaseModel.Meta):
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"
@@ -136,6 +154,7 @@ class Project(BaseModel):
             models.Index(fields=['status']),
             models.Index(fields=['project_type']),
             models.Index(fields=['genre']),
+            models.Index(fields=['request']),
         ]
     
     def __str__(self):
@@ -327,6 +346,22 @@ class ProjectRole(BaseModel):
         null=True,
         verbose_name="Заметки",
         help_text="Дополнительные заметки по роли"
+    )
+    
+    # LLM интеграция
+    suggested_artists = models.ManyToManyField(
+        'artists.Artist',
+        related_name='suggested_roles',
+        blank=True,
+        verbose_name="Предложенные артисты",
+        help_text="Артисты, предложенные LLM для этой роли"
+    )
+    skills_required = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        verbose_name="Требуемые навыки",
+        help_text="Навыки, требуемые для роли (JSON массив)"
     )
     
     class Meta(BaseModel.Meta):

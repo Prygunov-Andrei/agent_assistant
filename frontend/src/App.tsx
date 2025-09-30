@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import Home from './pages/Home';
 import Artists from './pages/Artists';
 import Requests from './pages/Requests';
 import Login from './pages/Login';

@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 from datetime import datetime, timedelta
 
-from telegram_requests.bot.bot import TelegramRequestsBot
+from telegram_requests.bot.bot import CastingAgencyBot
 from telegram_requests.models import Request
 from .factories import TelegramWebhookDataFactory
 
@@ -14,7 +14,7 @@ class TelegramRequestsBotTest(TestCase):
     """Тесты для TelegramRequestsBot"""
     
     def setUp(self):
-        self.bot = TelegramRequestsBot()
+        self.bot = CastingAgencyBot()
     
     def test_bot_initialization(self):
         """Тест инициализации бота"""
@@ -64,7 +64,7 @@ class TelegramRequestsBotTest(TestCase):
         
         result = self.bot._get_author_info(mock_message, mock_sender)
         
-        self.assertEqual(result['telegram_id'], 987654321)
+        self.assertEqual(result['telegram_id'], 123456789)  # ID того, кто переслал
         self.assertEqual(result['name'], 'Original User')
         self.assertEqual(result['username'], 'originaluser')
         self.assertEqual(result['first_name'], 'Original')
@@ -89,7 +89,7 @@ class TelegramRequestsBotTest(TestCase):
         
         result = self.bot._get_author_info(mock_message, mock_sender)
         
-        self.assertEqual(result['telegram_id'], 555666777)
+        self.assertEqual(result['telegram_id'], 123456789)  # ID того, кто переслал
         self.assertEqual(result['name'], 'Test Channel')
         self.assertIsNone(result['username'])
         self.assertIsNone(result['first_name'])
@@ -194,8 +194,8 @@ class TelegramRequestsBotTest(TestCase):
         self.assertTrue(result['has_images'])
         self.assertFalse(result['has_files'])
         self.assertIsNotNone(result['photo'])
-        self.assertEqual(len(result['photo']), 1)
-        self.assertEqual(result['photo'][0]['file_id'], "BAADBAADrwADBREAAZ123456789")
+        self.assertEqual(result['photo'], mock_photo)
+        self.assertEqual(result['photo'].file_id, "BAADBAADrwADBREAAZ123456789")
     
     @pytest.mark.asyncio
     async def test_process_message_content_document(self):
@@ -219,7 +219,8 @@ class TelegramRequestsBotTest(TestCase):
         self.assertFalse(result['has_images'])
         self.assertTrue(result['has_files'])
         self.assertIsNotNone(result['document'])
-        self.assertEqual(result['document']['file_name'], "test_document.pdf")
+        self.assertEqual(result['document'], mock_document)
+        self.assertEqual(result['document'].file_name, "test_document.pdf")
     
     @pytest.mark.asyncio
     async def test_process_message_content_empty(self):
@@ -332,7 +333,7 @@ class TelegramRequestsBotTest(TestCase):
         # Проверяем, что было отправлено сообщение об ошибке
         mock_message.reply_text.assert_called_once()
         call_args = mock_message.reply_text.call_args[0]
-        self.assertIn("Ошибка API", call_args[0])
+        self.assertIn("Ошибка при отправке запроса", call_args[0])
     
     @patch('telegram_requests.bot.bot.requests.post')
     @pytest.mark.asyncio
@@ -428,9 +429,9 @@ class TelegramRequestsBotTest(TestCase):
         webhook_data = call_args[1]['json']
         message_data = webhook_data['message']
         
-        # Автор должен быть оригинальным пользователем
-        self.assertEqual(message_data['from']['id'], 987654321)
-        self.assertEqual(message_data['from']['first_name'], 'Original')
+        # ID должен быть того, кто переслал (для уведомлений)
+        self.assertEqual(message_data['from']['id'], 123456789)
+        self.assertEqual(message_data['from']['first_name'], 'Sender')
         self.assertEqual(message_data['from']['last_name'], 'User')
         
         # Проверяем, что было отправлено сообщение о пересланном запросе
