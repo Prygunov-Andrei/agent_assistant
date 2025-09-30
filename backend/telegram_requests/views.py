@@ -235,13 +235,15 @@ class TelegramWebhookViewSet(viewsets.ViewSet):
                 # Ищем существующий запрос с таким media_group_id
                 existing_request = Request.objects.filter(media_group_id=media_group_id).first()
                 if existing_request:
-                    # Добавляем фотографии к существующему запросу
+                    # Добавляем медиафайлы к существующему запросу
                     if webhook_data['message'].get('photo'):
                         self._process_images(existing_request, webhook_data['message']['photo'])
+                    if webhook_data['message'].get('document'):
+                        self._process_documents(existing_request, webhook_data['message']['document'])
                     return Response({
                         'status': 'ok',
                         'request_id': existing_request.id,
-                        'message': f'Фотографии добавлены к существующему запросу {existing_request.id}'
+                        'message': f'Медиафайлы добавлены к существующему запросу {existing_request.id}'
                     })
             
             # Проверяем на дубликаты ТОЛЬКО для новых запросов (не для медиагрупп)

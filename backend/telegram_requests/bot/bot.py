@@ -136,9 +136,10 @@ class CastingAgencyBot:
                 author_name = user.username or f"User_{user.id}"
             telegram_user_id = user.id
             
-        # Определяем текст сообщения и наличие изображений
+        # Определяем текст сообщения и наличие медиафайлов
         message_text = ""
         has_images = False
+        has_files = False
         
         if message.text:
             message_text = message.text
@@ -152,22 +153,31 @@ class CastingAgencyBot:
             has_images = True
             message_text += f"\n\n[Прикреплено {len(message.photo)} изображений]"
         
+        # Проверяем наличие документов
+        if message.document:
+            has_files = True
+            message_text += f"\n\n[Прикреплен файл: {message.document.file_name}]"
+        
         # Подготавливаем данные для API
         request_data = {
             "text": message_text,
             "author": author_name,
             "telegram_user_id": telegram_user_id,
             "telegram_message_id": message.message_id,
-            "has_images": has_images
+            "has_images": has_images,
+            "has_files": has_files
         }
         
         # Отладочная информация
         logger.info(f"Message ID: {message.message_id}")
         logger.info(f"Media Group ID: {message.media_group_id}")
         logger.info(f"Photo count: {len(message.photo) if message.photo else 0}")
+        logger.info(f"Document: {message.document.file_name if message.document else 'None'}")
         if message.photo:
             for i, photo in enumerate(message.photo):
                 logger.info(f"  Photo {i}: {photo.file_id} ({photo.file_size} bytes)")
+        if message.document:
+            logger.info(f"  Document: {message.document.file_id} ({message.document.file_size} bytes) - {message.document.file_name}")
         
         try:
             # Отправляем запрос через webhook
@@ -182,6 +192,12 @@ class CastingAgencyBot:
                     "message_id": message.message_id,
                     "text": message_text,
                     "photo": [{"file_id": message.photo[-1].file_id, "file_size": message.photo[-1].file_size}] if message.photo else None,
+                    "document": {
+                        "file_id": message.document.file_id,
+                        "file_name": message.document.file_name,
+                        "mime_type": message.document.mime_type,
+                        "file_size": message.document.file_size
+                    } if message.document else None,
                     "media_group_id": message.media_group_id,
                     "chat": {"id": message.chat.id},
                     "date": int(message.date.timestamp()),
@@ -382,6 +398,7 @@ class CastingAgencyBot:
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
         self.application.add_handler(MessageHandler(filters.PHOTO, self.handle_message))
+        self.application.add_handler(MessageHandler(filters.Document.ALL, self.handle_message))
         
         # Добавляем обработчик ошибок
         self.application.add_error_handler(self.error_handler)
