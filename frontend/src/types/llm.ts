@@ -1,92 +1,184 @@
 // Типы для LLM интеграции
 
-// Статусы анализа запроса
-export type AnalysisStatus = 'new' | 'analyzed' | 'processed';
-
-// Результат анализа LLM
 export interface LLMAnalysisResult {
+  project_analysis: ProjectAnalysis;
+}
+
+export interface ProjectAnalysis {
+  project_title: string;
   project_type: string;
   project_type_raw?: string;
-  genre?: string;
+  genre: string;
   description: string;
-  roles: LLMRole[];
-  suggested_persons: LLMPerson[];
-  suggested_companies: LLMCompany[];
-  suggested_projects: LLMProject[];
+  premiere_date: string;
+  roles: ProjectRole[];
+  contacts: ProjectContacts;
+  confidence: number;
 }
 
-// Роль в проекте из анализа LLM
-export interface LLMRole {
-  title: string;
+export interface ProjectRole {
+  role_type: string;
+  character_name: string;
   description: string;
-  gender?: 'male' | 'female' | 'any';
-  age_range?: {
-    min: number;
-    max: number;
-  };
-  skills_required: string[];
-  suggested_artists: number[]; // ID артистов
+  age_range: string;
+  gender: string;
+  suggested_artists: number[];
+  skills_required: SkillsRequired;
+  confidence?: number;
 }
 
-// Персона из анализа LLM
-export interface LLMPerson {
+export interface SkillsRequired {
+  acting_skills: string[];
+  physical_skills: string[];
+  languages: string[];
+  special_requirements: string[];
+}
+
+export interface ProjectContacts {
+  casting_director: ContactPerson;
+  director: ContactPerson;
+  producers: ContactPerson[];
+  production_company: ContactCompany;
+}
+
+export interface ContactPerson {
   name: string;
-  type: 'director' | 'producer' | 'casting_director';
-  email?: string;
-  phone?: string;
-  telegram_username?: string;
-  company?: string;
-  confidence: number; // 0-1, уверенность в совпадении
+  phone: string;
+  email: string;
+  telegram: string;
+  confidence?: number;
 }
 
-// Компания из анализа LLM
-export interface LLMCompany {
+export interface ContactCompany {
   name: string;
-  type: 'production' | 'distribution' | 'other';
-  website?: string;
-  email?: string;
-  phone?: string;
-  confidence: number; // 0-1, уверенность в совпадении
+  phone: string;
+  email: string;
+  website: string;
+  confidence?: number;
 }
 
-// Проект из анализа LLM
-export interface LLMProject {
-  title: string;
-  description: string;
-  status: 'draft' | 'active' | 'completed' | 'cancelled';
-  confidence: number; // 0-1, уверенность в совпадении
-}
-
-// Запрос на анализ
 export interface LLMAnalysisRequest {
   request_id: number;
-  text: string;
-  images?: string[];
-  files?: string[];
+  use_emulator?: boolean;
 }
 
-// Ответ на анализ
 export interface LLMAnalysisResponse {
   success: boolean;
   data?: LLMAnalysisResult;
   error?: string;
-  retry_count?: number;
 }
 
-// Конфигурация LLM
+export type AnalysisStatus = 'new' | 'analyzing' | 'analyzed' | 'processed' | 'error';
+
+export interface LLMStatus {
+  is_available: boolean;
+  model: string;
+  use_emulator: boolean;
+  last_check: string;
+  error_message?: string;
+}
+
 export interface LLMConfig {
   model: string;
   temperature: number;
   max_tokens: number;
-  retry_attempts: number;
+  max_retries: number;
   timeout: number;
+  use_emulator: boolean;
+  emulator_delay?: number;
 }
 
-// Статус LLM сервиса
-export interface LLMStatus {
-  is_available: boolean;
-  is_analyzing: boolean;
-  last_analysis?: string;
-  error_count: number;
-  success_count: number;
+export interface ValidationError {
+  field: string;
+  message: string;
+  code: string;
+}
+
+export interface LLMValidationResult {
+  is_valid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationError[];
+}
+
+// Типы для эмулятора
+export interface EmulatorConfig {
+  enabled: boolean;
+  delay: number;
+  scenarios: EmulatorScenario[];
+}
+
+export interface EmulatorScenario {
+  keywords: string[];
+  project_type: string;
+  genre: string;
+  template: string;
+}
+
+// Типы для промптов
+export interface PromptTemplate {
+  system: string;
+  user_template: string;
+  variables: string[];
+}
+
+export interface PromptConfig {
+  templates: Record<string, PromptTemplate>;
+  default_template: string;
+}
+
+// Типы для мониторинга
+export interface LLMMetrics {
+  total_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  average_response_time: number;
+  tokens_used: number;
+  cost: number;
+}
+
+export interface LLMMonitoringData {
+  metrics: LLMMetrics;
+  recent_requests: LLMRequest[];
+  error_rate: number;
+  success_rate: number;
+}
+
+export interface LLMRequest {
+  id: string;
+  timestamp: string;
+  status: AnalysisStatus;
+  response_time: number;
+  tokens_used?: number;
+  cost?: number;
+  error_message?: string;
+}
+
+// Типы для экспорта данных
+export interface TrainingDataset {
+  id: string;
+  name: string;
+  description: string;
+  records_count: number;
+  created_at: string;
+  status: 'pending' | 'processing' | 'ready' | 'error';
+  files: string[];
+}
+
+export interface DatasetExportRequest {
+  records_per_file: number;
+  include_metadata: boolean;
+  date_range?: {
+    start: string;
+    end: string;
+  };
+  filters?: Record<string, any>;
+}
+
+export interface DatasetExportResponse {
+  success: boolean;
+  dataset_id: string;
+  files_created: number;
+  total_records: number;
+  files: string[];
+  error?: string;
 }

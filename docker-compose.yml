@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: agent_assistant_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -33,7 +33,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=password
       - DB_PORT=5432
-      - BOT_TOKEN=8046240714:AAGzNfvrGPnjxGw20eQcVAGIOlvUUfjSAUY
+      - BOT_TOKEN=${BOT_TOKEN}
 
   frontend:
     build: ./frontend
