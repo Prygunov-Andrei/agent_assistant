@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'projects',
     'artists',
     'telegram_requests',  # Запросы от пользователей Telegram
+    'llm',  # LLM сервисы и эмулятор
 ]
 
 MIDDLEWARE = [

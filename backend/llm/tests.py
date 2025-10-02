@@ -180,7 +180,11 @@ class TestLLMEmulatorService(TestCase):
         self.assertIn('description', project)
         self.assertIn('premiere_date', project)
         self.assertIn('roles', project)
-        self.assertIn('contacts', project)
+        # Контакты теперь как отдельные поля
+        self.assertIn('casting_director', project)
+        self.assertIn('director', project)
+        self.assertIn('producers', project)
+        self.assertIn('production_company', project)
         self.assertIn('confidence', project)
         
         # Проверяем типы данных
@@ -190,7 +194,11 @@ class TestLLMEmulatorService(TestCase):
         self.assertIsInstance(project['description'], str)
         self.assertIsInstance(project['premiere_date'], str)
         self.assertIsInstance(project['roles'], list)
-        self.assertIsInstance(project['contacts'], dict)
+        # Контакты теперь как отдельные поля
+        self.assertIsInstance(project['casting_director'], dict)
+        self.assertIsInstance(project['director'], dict)
+        self.assertIsInstance(project['producers'], list)
+        self.assertIsInstance(project['production_company'], dict)
         self.assertIsInstance(project['confidence'], (int, float))
         
         # Проверяем роли

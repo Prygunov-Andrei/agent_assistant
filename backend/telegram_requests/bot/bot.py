@@ -109,32 +109,10 @@ class CastingAgencyBot:
             # Если это не первое сообщение медиа-группы, мы все равно его обработаем,
             # но будем добавлять фотографии к существующему запросу
         
-        # Проверяем, является ли сообщение пересланным
-        if message.forward_from or message.forward_from_chat:
-            # Это пересланное сообщение - используем оригинального автора, но сохраняем ID того, кто переслал для уведомлений
-            if message.forward_from:
-                # Переслано от пользователя
-                original_user = message.forward_from
-                author_name = f"{original_user.first_name or ''} {original_user.last_name or ''}".strip()
-                if not author_name:
-                    author_name = original_user.username or f"User_{original_user.id}"
-                # Для уведомлений используем ID того, кто переслал
-                telegram_user_id = user.id
-            else:
-                # Переслано из чата/канала
-                original_chat = message.forward_from_chat
-                chat_name = original_chat.title or f"Chat_{original_chat.id}"
-                
-                author_name = chat_name
-                
-                # Для уведомлений используем ID того, кто переслал
-                telegram_user_id = user.id
-        else:
-            # Обычное сообщение
-            author_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-            if not author_name:
-                author_name = user.username or f"User_{user.id}"
-            telegram_user_id = user.id
+        # Получаем информацию об авторе
+        author_info = self._get_author_info(message, user)
+        author_name = author_info['name']
+        telegram_user_id = author_info['telegram_id']
             
         # Определяем текст сообщения и наличие медиафайлов
         message_text = ""
@@ -423,42 +401,6 @@ class CastingAgencyBot:
                 'is_forwarded': False
             }
     
-    def _get_user_name(self, user):
-        """Формирует имя пользователя из доступных полей"""
-        if user.first_name and user.last_name:
-            return f"{user.first_name} {user.last_name}"
-        elif user.first_name:
-            return user.first_name
-        elif user.username:
-            return user.username
-        else:
-            return f"User_{user.id}"
-    
-    async def _process_message_content(self, message):
-        """Обрабатывает содержимое сообщения"""
-        result = {
-            'text': '',
-            'has_images': False,
-            'has_files': False,
-            'photo': None,
-            'document': None
-        }
-        
-        if message.text:
-            result['text'] = message.text
-        elif message.caption:
-            result['text'] = message.caption
-        else:
-            result['text'] = "[Сообщение без текста]"
-        
-        if message.photo:
-            result['has_images'] = True
-            result['photo'] = message.photo[-1]  # Берем фото наивысшего качества
-        elif message.document:
-            result['has_files'] = True
-            result['document'] = message.document
-        
-        return result
 
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик ошибок"""

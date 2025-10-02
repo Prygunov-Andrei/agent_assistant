@@ -1,5 +1,6 @@
 import apiClient from './api';
 import type { ApiResponse, Project, ProjectRole, Genre } from '../types';
+import type { ProjectType } from '../types/projects';
 
 export const projectsService = {
   // Получить список проектов
@@ -38,15 +39,21 @@ export const projectsService = {
   },
 
   // Создать роль в проекте
-  async createProjectRole(projectId: number, roleData: Partial<ProjectRole>): Promise<ProjectRole> {
-    const response = await apiClient.post(`/projects/${projectId}/roles/`, roleData);
+  async createProjectRole(roleData: Partial<ProjectRole>): Promise<ProjectRole> {
+    const response = await apiClient.post('/project-roles/', roleData);
     return response.data;
+  },
+
+  // Получить список типов проектов
+  async getProjectTypes(): Promise<ProjectType[]> {
+    const response = await apiClient.get('/project-types/');
+    return response.data.results || response.data;
   },
 
   // Получить список жанров
   async getGenres(): Promise<Genre[]> {
-    const response = await apiClient.get('/projects/genres/');
-    return response.data;
+    const response = await apiClient.get('/genres/');
+    return response.data.results || response.data;
   },
 
   // Поиск проектов

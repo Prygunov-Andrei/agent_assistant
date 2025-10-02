@@ -131,7 +131,7 @@ class LLMEmulatorService:
             # Извлекаем контактную информацию
             contacts = self._extract_contacts(request_data)
             
-            # Формируем финальный ответ
+            # Формируем финальный ответ согласно концепции
             result = {
                 'project_analysis': {
                     'project_title': self._generate_project_title(project_info['template']),
@@ -141,7 +141,11 @@ class LLMEmulatorService:
                     'description': self._generate_description(request_data.get('text', ''), project_info['template']),
                     'premiere_date': self._generate_premiere_date(),
                     'roles': roles,
-                    'contacts': contacts,
+                    # Контакты как отдельные поля для поиска совпадений
+                    'casting_director': contacts['casting_director'],
+                    'director': contacts['director'],
+                    'producers': contacts['producers'],
+                    'production_company': contacts['production_company'],
                     'confidence': random.uniform(0.7, 0.95)
                 }
             }

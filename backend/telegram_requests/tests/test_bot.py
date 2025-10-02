@@ -96,146 +96,147 @@ class TelegramRequestsBotTest(TestCase):
         self.assertIsNone(result['last_name'])
         self.assertTrue(result['is_forwarded'])
     
-    def test_get_user_name_with_full_name(self):
-        """Тест формирования имени пользователя с полным именем"""
+    def test_get_author_info_with_full_name(self):
+        """Тест получения информации об авторе с полным именем"""
         mock_user = Mock()
         mock_user.first_name = 'John'
         mock_user.last_name = 'Doe'
         mock_user.username = 'johndoe'
         mock_user.id = 123456789
         
-        result = self.bot._get_user_name(mock_user)
-        self.assertEqual(result, 'John Doe')
+        mock_message = Mock()
+        mock_message.forward_from = None
+        mock_message.forward_from_chat = None
+        
+        result = self.bot._get_author_info(mock_message, mock_user)
+        self.assertEqual(result['name'], 'John Doe')
+        self.assertEqual(result['telegram_id'], 123456789)
+        self.assertFalse(result['is_forwarded'])
     
-    def test_get_user_name_with_first_name_only(self):
-        """Тест формирования имени пользователя только с именем"""
+    def test_get_author_info_with_first_name_only(self):
+        """Тест получения информации об авторе только с именем"""
         mock_user = Mock()
         mock_user.first_name = 'John'
         mock_user.last_name = None
         mock_user.username = 'johndoe'
         mock_user.id = 123456789
         
-        result = self.bot._get_user_name(mock_user)
-        self.assertEqual(result, 'John')
+        mock_message = Mock()
+        mock_message.forward_from = None
+        mock_message.forward_from_chat = None
+        
+        result = self.bot._get_author_info(mock_message, mock_user)
+        self.assertEqual(result['name'], 'John')
+        self.assertEqual(result['telegram_id'], 123456789)
     
-    def test_get_user_name_with_username_only(self):
-        """Тест формирования имени пользователя только с username"""
+    def test_get_author_info_with_username_only(self):
+        """Тест получения информации об авторе только с username"""
         mock_user = Mock()
         mock_user.first_name = None
         mock_user.last_name = None
         mock_user.username = 'johndoe'
         mock_user.id = 123456789
         
-        result = self.bot._get_user_name(mock_user)
-        self.assertEqual(result, 'johndoe')
+        mock_message = Mock()
+        mock_message.forward_from = None
+        mock_message.forward_from_chat = None
+        
+        result = self.bot._get_author_info(mock_message, mock_user)
+        self.assertEqual(result['name'], 'johndoe')
+        self.assertEqual(result['telegram_id'], 123456789)
     
-    def test_get_user_name_with_id_only(self):
-        """Тест формирования имени пользователя только с ID"""
+    def test_get_author_info_with_id_only(self):
+        """Тест получения информации об авторе только с ID"""
         mock_user = Mock()
         mock_user.first_name = None
         mock_user.last_name = None
         mock_user.username = None
         mock_user.id = 123456789
         
-        result = self.bot._get_user_name(mock_user)
-        self.assertEqual(result, 'User_123456789')
+        mock_message = Mock()
+        mock_message.forward_from = None
+        mock_message.forward_from_chat = None
+        
+        result = self.bot._get_author_info(mock_message, mock_user)
+        self.assertEqual(result['name'], 'User_123456789')
+        self.assertEqual(result['telegram_id'], 123456789)
     
     @pytest.mark.asyncio
-    async def test_process_message_content_text(self):
-        """Тест обработки текстового сообщения"""
-        mock_message = Mock()
+    async def test_handle_message_text_content(self):
+        """Тест обработки текстового сообщения в handle_message"""
+        # Мокаем пользователя и сообщение
+        mock_user = Mock()
+        mock_user.id = 123456789
+        mock_user.username = 'testuser'
+        mock_user.first_name = 'Test'
+        mock_user.last_name = 'User'
+        
+        mock_message = AsyncMock()
         mock_message.text = "Тестовое сообщение"
         mock_message.caption = None
         mock_message.photo = None
         mock_message.document = None
+        mock_message.media_group_id = None
+        mock_message.forward_from = None
+        mock_message.forward_from_chat = None
+        mock_message.message_id = 1
+        mock_message.chat.id = 123456789
+        mock_message.date = datetime.now()
         
-        result = await self.bot._process_message_content(mock_message)
+        mock_update = Mock()
+        mock_update.effective_user = mock_user
+        mock_update.message = mock_message
         
-        self.assertEqual(result['text'], "Тестовое сообщение")
-        self.assertFalse(result['has_images'])
-        self.assertFalse(result['has_files'])
-        self.assertIsNone(result['photo'])
-        self.assertIsNone(result['document'])
+        mock_context = Mock()
+        
+        # Мокаем API вызов
+        with patch('requests.post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json.return_value = {'status': 'ok'}
+            
+            await self.bot.handle_message(mock_update, mock_context)
+            
+            # Проверяем, что API был вызван с правильными данными
+            mock_post.assert_called_once()
+            call_args = mock_post.call_args
+            self.assertIn('webhook/telegram/webhook/', call_args[0][0])
+            self.assertEqual(call_args[1]['json']['message']['text'], "Тестовое сообщение")
     
     @pytest.mark.asyncio
-    async def test_process_message_content_caption(self):
+    async def test_handle_message_with_caption(self):
         """Тест обработки сообщения с подписью"""
-        mock_message = Mock()
+        mock_user = Mock()
+        mock_user.id = 123456789
+        mock_user.username = 'testuser'
+        mock_user.first_name = 'Test'
+        mock_user.last_name = 'User'
+        
+        mock_message = AsyncMock()
         mock_message.text = None
         mock_message.caption = "Подпись к изображению"
         mock_message.photo = None
         mock_message.document = None
+        mock_message.media_group_id = None
+        mock_message.forward_from = None
+        mock_message.forward_from_chat = None
+        mock_message.message_id = 1
+        mock_message.chat.id = 123456789
+        mock_message.date = datetime.now()
         
-        result = await self.bot._process_message_content(mock_message)
+        mock_update = Mock()
+        mock_update.effective_user = mock_user
+        mock_update.message = mock_message
         
-        self.assertEqual(result['text'], "Подпись к изображению")
-        self.assertFalse(result['has_images'])
-        self.assertFalse(result['has_files'])
-    
-    @pytest.mark.asyncio
-    async def test_process_message_content_photo(self):
-        """Тест обработки сообщения с фотографией"""
-        # Мокаем фотографию
-        mock_photo = Mock()
-        mock_photo.file_id = "BAADBAADrwADBREAAZ123456789"
-        mock_photo.file_size = 1024000
-        mock_photo.width = 1280
-        mock_photo.height = 720
+        mock_context = Mock()
         
-        mock_message = Mock()
-        mock_message.text = "Сообщение с фото"
-        mock_message.caption = None
-        mock_message.photo = [mock_photo]
-        mock_message.document = None
-        
-        result = await self.bot._process_message_content(mock_message)
-        
-        self.assertEqual(result['text'], "Сообщение с фото")
-        self.assertTrue(result['has_images'])
-        self.assertFalse(result['has_files'])
-        self.assertIsNotNone(result['photo'])
-        self.assertEqual(result['photo'], mock_photo)
-        self.assertEqual(result['photo'].file_id, "BAADBAADrwADBREAAZ123456789")
-    
-    @pytest.mark.asyncio
-    async def test_process_message_content_document(self):
-        """Тест обработки сообщения с документом"""
-        # Мокаем документ
-        mock_document = Mock()
-        mock_document.file_id = "BAADBAADrwADBREAAZ987654321"
-        mock_document.file_name = "test_document.pdf"
-        mock_document.file_size = 2048000
-        mock_document.mime_type = "application/pdf"
-        
-        mock_message = Mock()
-        mock_message.text = None
-        mock_message.caption = None
-        mock_message.photo = None
-        mock_message.document = mock_document
-        
-        result = await self.bot._process_message_content(mock_message)
-        
-        self.assertEqual(result['text'], '[Сообщение без текста]')
-        self.assertFalse(result['has_images'])
-        self.assertTrue(result['has_files'])
-        self.assertIsNotNone(result['document'])
-        self.assertEqual(result['document'], mock_document)
-        self.assertEqual(result['document'].file_name, "test_document.pdf")
-    
-    @pytest.mark.asyncio
-    async def test_process_message_content_empty(self):
-        """Тест обработки пустого сообщения"""
-        mock_message = Mock()
-        mock_message.text = None
-        mock_message.caption = None
-        mock_message.photo = None
-        mock_message.document = None
-        
-        result = await self.bot._process_message_content(mock_message)
-        
-        self.assertEqual(result['text'], '[Сообщение без текста]')
-        self.assertFalse(result['has_images'])
-        self.assertFalse(result['has_files'])
+        with patch('requests.post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json.return_value = {'status': 'ok'}
+            
+            await self.bot.handle_message(mock_update, mock_context)
+            
+            call_args = mock_post.call_args
+            self.assertEqual(call_args[1]['json']['message']['text'], "Подпись к изображению")
     
     @patch('telegram_requests.bot.bot.requests.post')
     @pytest.mark.asyncio

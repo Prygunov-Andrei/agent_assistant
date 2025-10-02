@@ -166,6 +166,23 @@ class ProjectSerializer(BaseModelSerializer):
     
     roles = ProjectRoleListSerializer(many=True, read_only=True)
     
+    # Поле для создания проекта из запроса
+    request_id = serializers.IntegerField(
+        write_only=True,
+        required=False,
+        help_text="ID запроса для создания проекта из LLM анализа"
+    )
+    
+    def validate_request_id(self, value):
+        """Валидация request_id"""
+        if value is not None:
+            try:
+                from telegram_requests.models import Request
+                Request.objects.get(id=value)
+            except Request.DoesNotExist:
+                raise serializers.ValidationError(f"Запрос с ID {value} не найден")
+        return value
+    
     class Meta(BaseModelSerializer.Meta):
         model = Project
         fields = BaseModelSerializer.Meta.fields + [
@@ -183,6 +200,9 @@ class ProjectSerializer(BaseModelSerializer):
             'producers_names',
             'production_company',
             'production_company_name',
+            'request',
+            'request_id',
+            'project_type_raw',
             'roles'
         ]
         extra_kwargs = {
@@ -195,7 +215,9 @@ class ProjectSerializer(BaseModelSerializer):
             'premiere_date': {'help_text': 'Дата премьеры'},
             'director': {'help_text': 'ID режиссера проекта'},
             'producers': {'help_text': 'Список ID продюсеров проекта'},
-            'production_company': {'help_text': 'ID кинокомпании проекта'}
+            'production_company': {'help_text': 'ID кинокомпании проекта'},
+            'request': {'help_text': 'ID исходного запроса (только для чтения)'},
+            'project_type_raw': {'help_text': 'Сырой тип проекта от LLM'}
         }
 
 

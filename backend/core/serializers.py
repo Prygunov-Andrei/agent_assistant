@@ -1,7 +1,8 @@
 from rest_framework import serializers
+from .mixins import BaseSerializerMixin
 
 
-class BaseReferenceSerializer(serializers.ModelSerializer):
+class BaseReferenceSerializer(BaseSerializerMixin, serializers.ModelSerializer):
     """
     Базовый сериализатор для справочных моделей.
     
@@ -40,7 +41,7 @@ class BaseReferenceSerializer(serializers.ModelSerializer):
         }
 
 
-class BaseModelSerializer(serializers.ModelSerializer):
+class BaseModelSerializer(BaseSerializerMixin, serializers.ModelSerializer):
     """
     Базовый сериализатор для основных моделей.
     
@@ -51,6 +52,7 @@ class BaseModelSerializer(serializers.ModelSerializer):
     - created_at/updated_at: временные метки
     """
     
+    # Переопределяем поле created_by чтобы оно возвращало username
     created_by = serializers.ReadOnlyField(
         source='created_by.username',
         help_text="Имя пользователя, создавшего объект"
@@ -73,22 +75,20 @@ class BaseModelSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'is_active': {
                 'help_text': 'Активен ли объект в системе'
+            },
+            'created_by': {
+                'help_text': 'Имя пользователя, создавшего объект'
             }
         }
 
 
-class BaseListSerializer(serializers.ModelSerializer):
+class BaseListSerializer(BaseSerializerMixin, serializers.ModelSerializer):
     """
     Базовый упрощенный сериализатор для списков.
     
     Используется для отображения списков объектов с минимальным набором полей
     для улучшения производительности API.
     """
-    
-    created_by = serializers.ReadOnlyField(
-        source='created_by.username',
-        help_text="Имя пользователя, создавшего объект"
-    )
     
     class Meta:
         fields = [

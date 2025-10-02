@@ -1,8 +1,9 @@
 // Форма создания проекта
 
-import React, { useState } from 'react';
-import type { ProjectCreationForm as ProjectForm } from '../../../types/projects';
+import React, { useState, useEffect } from 'react';
+import type { ProjectCreationForm as ProjectForm, ProjectType, Genre } from '../../../types/projects';
 import type { LLMAnalysisResult } from '../../../types/llm';
+import { projectsService } from '../../../services/projects';
 
 interface ProjectCreationFormProps {
   initialData?: Partial<ProjectForm>;
@@ -20,27 +21,47 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
   onCancel,
 }) => {
   const [formData, setFormData] = useState<ProjectForm>({
-    title: initialData?.title || analysisResult?.project_type || '',
-    description: initialData?.description || analysisResult?.description || '',
+    title: initialData?.title || analysisResult?.project_analysis?.project_title || '',
+    description: initialData?.description || analysisResult?.project_analysis?.description || '',
     project_type: initialData?.project_type || 1,
     genre: initialData?.genre,
-    start_date: initialData?.start_date,
-    end_date: initialData?.end_date,
-    budget: initialData?.budget,
-    director: initialData?.director,
-    production_company: initialData?.production_company,
+    premiere_date: initialData?.premiere_date || analysisResult?.project_analysis?.premiere_date,
     request_id: requestId,
-    roles: initialData?.roles || analysisResult?.roles.map((role: any) => ({
-      title: role.title,
+    roles: initialData?.roles || analysisResult?.project_analysis?.roles?.map((role: any) => ({
+      title: role.name || role.title,
       description: role.description,
-      gender: role.gender,
+      gender: role.gender || 'any',
       age_range: role.age_range,
-      skills_required: role.skills_required,
-      selected_artists: role.suggested_artists,
+      skills_required: role.skills_required || [],
+      selected_artists: role.suggested_artists || [],
     })) || [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [projectTypes, setProjectTypes] = useState<ProjectType[]>([]);
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Загрузка справочников при монтировании компонента
+  useEffect(() => {
+    const loadReferenceData = async () => {
+      try {
+        setLoading(true);
+        const [projectTypesData, genresData] = await Promise.all([
+          projectsService.getProjectTypes(),
+          projectsService.getGenres(),
+        ]);
+        setProjectTypes(projectTypesData);
+        setGenres(genresData);
+      } catch (error) {
+        console.error('Ошибка загрузки справочников:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReferenceData();
+  }, []);
 
   const handleInputChange = (field: keyof ProjectForm, value: any) => {
     setFormData(prev => ({
@@ -98,6 +119,10 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
       newErrors.project_type = 'Тип проекта обязателен';
     }
 
+    if (!formData.genre) {
+      newErrors.genre = 'Жанр обязателен';
+    }
+
     formData.roles.forEach((role, index) => {
       if (!role.title.trim()) {
         newErrors[`role_${index}_title`] = 'Название роли обязательно';
@@ -112,7 +137,17 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     e.preventDefault();
     
     if (validateForm()) {
-      onSubmit(formData);
+      // Отправляем все поля проекта, включая roles
+      const projectData = {
+        title: formData.title,
+        description: formData.description,
+        project_type: formData.project_type,
+        genre: formData.genre,
+        premiere_date: formData.premiere_date,
+        request_id: formData.request_id,
+        roles: formData.roles,
+      };
+      onSubmit(projectData);
     }
   };
 
@@ -147,11 +182,14 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
             className={`w-full px-3 py-2 border rounded-md ${
               errors.project_type ? 'border-red-500' : 'border-gray-300'
             }`}
+            disabled={loading}
           >
-            <option value={1}>Фильм</option>
-            <option value={2}>Сериал</option>
-            <option value={3}>Реклама</option>
-            <option value={4}>Клип</option>
+            <option value="">Выберите тип проекта</option>
+            {projectTypes.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
           </select>
           {errors.project_type && (
             <p className="text-red-500 text-xs mt-1">{errors.project_type}</p>
@@ -159,55 +197,54 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Жанр *
+          </label>
+          <select
+            value={formData.genre || ''}
+            onChange={(e) => handleInputChange('genre', parseInt(e.target.value))}
+            className={`w-full px-3 py-2 border rounded-md ${
+              errors.genre ? 'border-red-500' : 'border-gray-300'
+            }`}
+            disabled={loading}
+          >
+            <option value="">Выберите жанр</option>
+            {genres.map((genre) => (
+              <option key={genre.id} value={genre.id}>
+                {genre.name}
+              </option>
+            ))}
+          </select>
+          {errors.genre && (
+            <p className="text-red-500 text-xs mt-1">{errors.genre}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Дата премьеры
+          </label>
+          <input
+            type="date"
+            value={formData.premiere_date || ''}
+            onChange={(e) => handleInputChange('premiere_date', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Описание
+          Описание проекта
         </label>
         <textarea
-          value={formData.description}
+          value={formData.description || ''}
           onChange={(e) => handleInputChange('description', e.target.value)}
           rows={4}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
           placeholder="Описание проекта"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Дата начала
-          </label>
-          <input
-            type="date"
-            value={formData.start_date || ''}
-            onChange={(e) => handleInputChange('start_date', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Дата окончания
-          </label>
-          <input
-            type="date"
-            value={formData.end_date || ''}
-            onChange={(e) => handleInputChange('end_date', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Бюджет
-        </label>
-        <input
-          type="number"
-          value={formData.budget || ''}
-          onChange={(e) => handleInputChange('budget', e.target.value ? parseInt(e.target.value) : undefined)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          placeholder="Бюджет проекта"
         />
       </div>
 

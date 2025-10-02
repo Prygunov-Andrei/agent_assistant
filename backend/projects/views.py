@@ -134,7 +134,29 @@ class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, ProjectPermission]
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        # Обрабатываем request_id если он передан
+        request_id = serializer.validated_data.pop('request_id', None)
+        
+        if request_id:
+            try:
+                from telegram_requests.models import Request
+                request_obj = Request.objects.get(id=request_id)
+                
+                # Проверяем, не связан ли уже этот запрос с проектом
+                if hasattr(request_obj, 'created_project'):
+                    # Создаем проект без связи с запросом, но сохраняем request_id в project_type_raw для отслеживания
+                    serializer.save(
+                        created_by=self.request.user, 
+                        project_type_raw=f"from_request_{request_id}"
+                    )
+                else:
+                    # Создаем проект с связью с запросом
+                    serializer.save(created_by=self.request.user, request=request_obj)
+            except Request.DoesNotExist:
+                # Если запрос не найден, создаем проект без связи
+                serializer.save(created_by=self.request.user)
+        else:
+            serializer.save(created_by=self.request.user)
     
     def get_serializer_class(self):
         """Выбор сериализатора в зависимости от действия"""

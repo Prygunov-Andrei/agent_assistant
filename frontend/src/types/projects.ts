@@ -46,11 +46,7 @@ export interface ProjectCreationForm {
   description?: string;
   project_type: number;
   genre?: number;
-  start_date?: string;
-  end_date?: string;
-  budget?: number;
-  director?: number;
-  production_company?: number;
+  premiere_date?: string; // Дата премьеры
   request_id?: number; // ID исходного запроса
   roles: ProjectRoleForm[];
 }

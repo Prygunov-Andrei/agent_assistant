@@ -182,3 +182,45 @@ export interface DatasetExportResponse {
   files: string[];
   error?: string;
 }
+
+// Типы для API endpoints Дня 3
+
+export interface LLMAnalysisResponse {
+  project_analysis: ProjectAnalysis;
+  confidence: number;
+  processing_time: number;
+  used_emulator: boolean;
+  errors?: string[];
+}
+
+export interface ArtistForLLM {
+  id: number;
+  name: string;
+  age: number;
+  gender: 'male' | 'female';
+  height: number;
+  weight: number;
+  clothing_size: string;
+  shoe_size: string;
+  hair_color: string;
+  eye_color: string;
+  skills: string[];
+  languages: string[];
+  special_requirements: string[];
+}
+
+export interface RequestAnalysisStatus {
+  request_id: number;
+  analysis_status: 'new' | 'analyzed' | 'processed' | 'error';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LLMError {
+  error_type: string;
+  error_message: string;
+  request_id: number;
+  timestamp: string;
+  retry_count: number;
+  fallback_used: boolean;
+}

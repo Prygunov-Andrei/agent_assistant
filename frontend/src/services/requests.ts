@@ -1,5 +1,6 @@
 import api from './api';
 import type { RequestListItem } from '../types';
+import type { LLMAnalysisResponse, LLMStatus, RequestAnalysisStatus } from '../types/llm';
 
 export interface RequestsResponse {
   count: number;
@@ -41,6 +42,24 @@ class RequestsService {
       response_text: responseText,
       status: 'completed'
     });
+    return response.data;
+  }
+
+  /**
+   * Анализ запроса через LLM
+   */
+  async analyzeRequest(id: number, useEmulator: boolean = true): Promise<LLMAnalysisResponse> {
+    const response = await api.post<LLMAnalysisResponse>(`/requests/${id}/analyze/`, {
+      use_emulator: useEmulator
+    });
+    return response.data;
+  }
+
+  /**
+   * Получить статус анализа запроса
+   */
+  async getAnalysisStatus(id: number): Promise<RequestAnalysisStatus> {
+    const response = await api.get<RequestAnalysisStatus>(`/requests/${id}/analysis-status/`);
     return response.data;
   }
 }
