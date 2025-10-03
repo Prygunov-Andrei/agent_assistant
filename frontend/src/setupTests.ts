@@ -34,14 +34,16 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
-// Mock window.location
-delete (window as any).location;
-(window as any).location = {
-  href: 'http://localhost:3000',
-  assign: jest.fn(),
-  replace: jest.fn(),
-  reload: jest.fn(),
-};
+// Mock window.location - simplified approach
+// Note: JSDOM has limited location support, so we'll mock only what we need
+if (typeof window.location === 'undefined') {
+  (window as any).location = {
+    href: 'http://localhost:3000',
+    assign: jest.fn(),
+    replace: jest.fn(),
+    reload: jest.fn(),
+  };
+}
 
 // Mock console methods to avoid noise in tests
 const originalConsole = console;

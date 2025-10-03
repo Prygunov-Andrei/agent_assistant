@@ -155,6 +155,13 @@ class Project(BaseModel):
             models.Index(fields=['project_type']),
             models.Index(fields=['genre']),
             models.Index(fields=['request']),
+            # Индексы для поиска совпадений
+            models.Index(fields=['title']),
+            models.Index(fields=['description']),
+            # Составные индексы для оптимизации поиска
+            models.Index(fields=['is_active', 'status']),
+            models.Index(fields=['title', 'is_active']),
+            models.Index(fields=['project_type', 'is_active']),
         ]
     
     def __str__(self):

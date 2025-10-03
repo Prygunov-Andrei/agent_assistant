@@ -110,6 +110,18 @@ class Company(models.Model):
         verbose_name = "Кинокомпания"
         verbose_name_plural = "Кинокомпании"
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['created_by']),
+            models.Index(fields=['company_type']),
+            # Индексы для поиска совпадений
+            models.Index(fields=['name']),
+            models.Index(fields=['website']),
+            models.Index(fields=['email']),
+            # Составные индексы для оптимизации поиска
+            models.Index(fields=['is_active', 'company_type']),
+            models.Index(fields=['name', 'is_active']),
+        ]
     
     def __str__(self):
         return self.name

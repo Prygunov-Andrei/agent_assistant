@@ -12,8 +12,16 @@ search:
       directors: 0.3
       producers: 0.3
       agents: 0.3
-    companies: 0.8
-    projects: 0.6
+    companies:
+      production: 0.6
+      distribution: 0.7
+      post_production: 0.8
+      other: 0.5
+    projects:
+      completed: 0.6
+      in_production: 0.7
+      cancelled: 0.8
+      draft: 0.5
     artists: 0.7
     
   # Лимиты результатов
@@ -34,10 +42,12 @@ search:
     companies:
       name: 1.0
       website: 0.8
-      email: 0.7
+      email: 0.6
+      phone: 0.4
+      description: 0.3
     projects:
       title: 1.0
-      description: 0.5
+      description: 0.6
     artists:
       first_name: 0.6
       last_name: 0.6

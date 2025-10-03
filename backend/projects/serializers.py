@@ -311,3 +311,74 @@ class ProjectListSerializer(BaseListSerializer):
             int: количество активных ролей
         """
         return obj.roles.filter(is_active=True).count()
+
+
+class ProjectMatchSerializer(serializers.Serializer):
+    """Сериализатор для результатов поиска совпадений проектов"""
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    project_type = serializers.CharField(allow_null=True)
+    status = serializers.CharField(allow_null=True)
+    status_display = serializers.CharField(allow_null=True)
+    description = serializers.CharField(allow_null=True)
+    genre = serializers.CharField(allow_null=True)
+    premiere_date = serializers.CharField(allow_null=True)
+    director = serializers.DictField(allow_null=True)
+    production_company = serializers.DictField(allow_null=True)
+    created_at = serializers.CharField()
+    score = serializers.FloatField(help_text="Оценка схожести (0-1)")
+    confidence = serializers.CharField(help_text="Уровень уверенности (high/medium/low)")
+    matched_fields = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="Поля, по которым найдено совпадение"
+    )
+    field_scores = serializers.DictField(
+        help_text="Оценки схожести по каждому полю"
+    )
+
+
+class ProjectSearchRequestSerializer(serializers.Serializer):
+    """Сериализатор для запроса поиска совпадений проектов"""
+    title = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        help_text="Название проекта для поиска"
+    )
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Описание проекта для поиска"
+    )
+    limit = serializers.IntegerField(
+        default=5,
+        min_value=1,
+        max_value=20,
+        help_text="Максимальное количество результатов"
+    )
+    
+    def validate(self, data):
+        search_fields = ['title', 'description']
+        if not any(data.get(field) for field in search_fields):
+            raise serializers.ValidationError("Необходимо указать хотя бы один критерий поиска")
+        return data
+
+
+class ProjectNameSearchRequestSerializer(serializers.Serializer):
+    """Сериализатор для поиска проектов по названию"""
+    title = serializers.CharField(
+        max_length=255,
+        help_text="Название проекта для поиска"
+    )
+    limit = serializers.IntegerField(
+        default=5,
+        min_value=1,
+        max_value=20,
+        help_text="Максимальное количество результатов"
+    )
+
+
+class ProjectStatusSerializer(serializers.Serializer):
+    """Сериализатор для статусов проектов"""
+    value = serializers.CharField(help_text="Значение статуса проекта")
+    label = serializers.CharField(help_text="Отображаемое название статуса проекта")

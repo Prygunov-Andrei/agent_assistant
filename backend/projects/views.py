@@ -6,8 +6,13 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 from .models import ProjectType, Genre, RoleType, Project, ProjectRole
 from .serializers import (
     ProjectTypeSerializer, GenreSerializer, RoleTypeSerializer,
-    ProjectSerializer, ProjectListSerializer, ProjectRoleSerializer, ProjectRoleListSerializer
+    ProjectSerializer, ProjectListSerializer, ProjectRoleSerializer, ProjectRoleListSerializer,
+    ProjectMatchSerializer,
+    ProjectSearchRequestSerializer,
+    ProjectNameSearchRequestSerializer,
+    ProjectStatusSerializer
 )
+from .services import project_matching_service
 
 
 class ProjectPermission(permissions.BasePermission):
@@ -234,6 +239,91 @@ class ProjectViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=status)
         
         serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @extend_schema(
+        summary="Поиск совпадений проектов",
+        description="Поиск совпадений проектов по различным критериям с fuzzy matching",
+        tags=["Проекты"],
+        request=ProjectSearchRequestSerializer,
+        responses={200: ProjectMatchSerializer(many=True)}
+    )
+    @action(detail=False, methods=['post'])
+    def search_matches(self, request):
+        """Поиск совпадений проектов"""
+        serializer = ProjectSearchRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            search_data = {
+                'title': serializer.validated_data.get('title', ''),
+                'description': serializer.validated_data.get('description', ''),
+            }
+            limit = serializer.validated_data.get('limit', 5)
+            
+            matches = project_matching_service.search_matches(search_data, limit)
+            result_serializer = ProjectMatchSerializer(matches, many=True)
+            
+            return Response({
+                'matches': result_serializer.data,
+                'total': len(matches),
+                'search_criteria': search_data
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @extend_schema(
+        summary="Поиск проектов по названию",
+        description="Поиск проектов по названию с fuzzy matching",
+        tags=["Проекты"],
+        request=ProjectNameSearchRequestSerializer,
+        responses={200: ProjectMatchSerializer(many=True)}
+    )
+    @action(detail=False, methods=['post'])
+    def search_by_title(self, request):
+        """Поиск проектов по названию"""
+        serializer = ProjectNameSearchRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            title = serializer.validated_data['title']
+            limit = serializer.validated_data.get('limit', 5)
+            
+            matches = project_matching_service.search_by_title(title, limit)
+            result_serializer = ProjectMatchSerializer(matches, many=True)
+            
+            return Response({
+                'matches': result_serializer.data,
+                'total': len(matches),
+                'search_title': title
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @extend_schema(
+        summary="Проекты по статусу",
+        description="Получить список проектов определенного статуса",
+        tags=["Проекты"],
+        responses={200: ProjectListSerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'], url_path='by-status/(?P<status>[^/.]+)')
+    def by_status(self, request, status=None):
+        """Получить проекты по статусу"""
+        if not status:
+            return Response(
+                {'error': 'Статус проекта не указан'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        projects = project_matching_service.get_projects_by_status(status)
+        serializer = ProjectListSerializer(projects, many=True)
+        return Response(serializer.data)
+    
+    @extend_schema(
+        summary="Статусы проектов",
+        description="Получить список доступных статусов проектов",
+        tags=["Проекты"],
+        responses={200: ProjectStatusSerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'])
+    def project_statuses(self, request):
+        """Получить статусы проектов"""
+        statuses = project_matching_service.get_project_statuses()
+        serializer = ProjectStatusSerializer(statuses, many=True)
         return Response(serializer.data)
 
 
