@@ -72,6 +72,7 @@ export type AnalysisStatus = 'new' | 'analyzing' | 'analyzed' | 'processed' | 'e
 
 export interface LLMStatus {
   is_available: boolean;
+  is_analyzing: boolean;
   model: string;
   use_emulator: boolean;
   last_check: string;
@@ -185,7 +186,7 @@ export interface DatasetExportResponse {
 
 // Типы для API endpoints Дня 3
 
-export interface LLMAnalysisResponse {
+export interface LLMAnalysisResultDetailed {
   project_analysis: ProjectAnalysis;
   confidence: number;
   processing_time: number;

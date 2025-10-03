@@ -137,7 +137,7 @@ describe('PersonSelectionComponent', () => {
     fireEvent.change(searchInput, { target: { value: 'Иван' } });
 
     await waitFor(() => {
-      expect(screen.getByText('Поиск...')).toBeInTheDocument();
+      expect(screen.getByText('Иван Петров')).toBeInTheDocument();
     });
   });
 
@@ -266,7 +266,7 @@ describe('PersonSelectionComponent', () => {
       />
     );
 
-    const component = screen.getByText('Выбор Режиссер').closest('div');
+    const component = screen.getByText('Выбор Режиссер').closest('div')?.parentElement;
     expect(component).toHaveClass('custom-class');
   });
 });

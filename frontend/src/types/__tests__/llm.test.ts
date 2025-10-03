@@ -315,6 +315,7 @@ describe('LLM Types', () => {
     it('should have all required fields', () => {
       const status: LLMStatus = {
         is_available: true,
+        is_analyzing: false,
         model: 'gpt-4o',
         use_emulator: true,
         last_check: '2024-01-15T10:30:00Z',

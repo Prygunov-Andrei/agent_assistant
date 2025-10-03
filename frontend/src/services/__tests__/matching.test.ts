@@ -1,5 +1,9 @@
+// Mock apiClient
+jest.mock('../api');
+
 import { MatchingService, useMatching } from '../matching';
 import api from '../api';
+
 import type { 
   PersonMatchingRequest,
   PersonMatchingResult,
@@ -9,14 +13,6 @@ import type {
   ProjectMatchingResult,
   SearchConfig 
 } from '../../types/matching';
-
-// Mock api
-jest.mock('../api', () => ({
-  default: {
-    post: jest.fn(),
-    get: jest.fn(),
-  },
-}));
 
 const mockApi = api as jest.Mocked<typeof api>;
 

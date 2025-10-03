@@ -1,56 +1,82 @@
 import apiClient from './api';
-import type { Artist, ArtistListItem } from '../types';
+import type { Artist, ArtistSearchParams } from '../types/artists';
 
-export const artistsService = {
-  // Получение списка артистов текущего агента
-  async getArtists(): Promise<ArtistListItem[]> {
-    const response = await apiClient.get('/artists/');
-    return response.data.results || response.data;
-  },
+class ArtistsService {
+  private baseUrl = '/artists/';
 
-  // Получение детальной информации об артисте
+  /**
+   * Получить список артистов для выбора в ролях
+   */
+  async getArtistsForSelection(params: ArtistSearchParams = {}): Promise<Artist[]> {
+    const searchParams = new URLSearchParams();
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        searchParams.append(key, value.toString());
+      }
+    });
+
+    const response = await apiClient.get(`${this.baseUrl}for-selection/?${searchParams.toString()}`);
+    return response.data;
+  }
+
+  /**
+   * Поиск артистов по различным критериям
+   */
+  async searchArtists(params: ArtistSearchParams = {}): Promise<Artist[]> {
+    const searchParams = new URLSearchParams();
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        searchParams.append(key, value.toString());
+      }
+    });
+
+    const response = await apiClient.get(`${this.baseUrl}search/?${searchParams.toString()}`);
+    return response.data;
+  }
+
+  /**
+   * Получить артистов по навыкам
+   */
+  async getArtistsBySkills(skillIds: number[]): Promise<Artist[]> {
+    const skillIdsString = skillIds.join(',');
+    const response = await apiClient.get(`${this.baseUrl}by-skills/?skill_ids=${skillIdsString}`);
+    return response.data;
+  }
+
+  /**
+   * Получить список всех навыков
+   */
+  async getSkills() {
+    const response = await apiClient.get('/api/skills/');
+    return response.data;
+  }
+
+  /**
+   * Получить список групп навыков
+   */
+  async getSkillGroups() {
+    const response = await apiClient.get('/api/skill-groups/');
+    return response.data;
+  }
+
+  /**
+   * Получить список всех артистов
+   */
+  async getArtists(): Promise<Artist[]> {
+    const response = await apiClient.get(this.baseUrl);
+    return response.data.results; // Возвращаем только results из пагинированного ответа
+  }
+
+  /**
+   * Получить детальную информацию об артисте
+   */
   async getArtist(id: number): Promise<Artist> {
-    const response = await apiClient.get(`/artists/${id}/`);
+    const response = await apiClient.get(`${this.baseUrl}${id}/`);
     return response.data;
-  },
+  }
+}
 
-  // Создание нового артиста
-  async createArtist(artistData: Partial<Artist>): Promise<Artist> {
-    const response = await apiClient.post('/artists/', artistData);
-    return response.data;
-  },
-
-  // Обновление артиста
-  async updateArtist(id: number, artistData: Partial<Artist>): Promise<Artist> {
-    const response = await apiClient.put(`/artists/${id}/`, artistData);
-    return response.data;
-  },
-
-  // Частичное обновление артиста
-  async patchArtist(id: number, artistData: Partial<Artist>): Promise<Artist> {
-    const response = await apiClient.patch(`/artists/${id}/`, artistData);
-    return response.data;
-  },
-
-  // Удаление артиста
-  async deleteArtist(id: number): Promise<void> {
-    await apiClient.delete(`/artists/${id}/`);
-  },
-
-  // Получение навыков артиста
-  async getArtistSkills(artistId: number) {
-    const response = await apiClient.get(`/artists/${artistId}/skills/`);
-    return response.data;
-  },
-
-  // Добавление навыка артисту
-  async addArtistSkill(artistId: number, skillData: any) {
-    const response = await apiClient.post(`/artists/${artistId}/skills/`, skillData);
-    return response.data;
-  },
-
-  // Удаление навыка у артиста
-  async removeArtistSkill(artistId: number, skillId: number) {
-    await apiClient.delete(`/artists/${artistId}/skills/${skillId}/`);
-  },
-};
+export const artistsService = new ArtistsService();
+export default artistsService;

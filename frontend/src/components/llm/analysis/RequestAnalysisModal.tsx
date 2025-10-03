@@ -35,36 +35,22 @@ export const RequestAnalysisModal: React.FC<RequestAnalysisModalProps> = ({
       // Заглушка для демонстрации
       setTimeout(() => {
         const mockResult: LLMAnalysisResult = {
-          project_type: 'Фильм',
-          project_type_raw: 'художественный фильм',
-          genre: 'Драма',
-          description: 'Драматическая история о...',
-          roles: [
-            {
-              title: 'Главный герой',
-              description: 'Молодой человек 25-30 лет',
-              gender: 'male',
-              age_range: { min: 25, max: 30 },
-              skills_required: ['Актерское мастерство', 'Драма'],
-              suggested_artists: [1, 2, 3],
+          project_analysis: {
+            project_title: 'Тестовый проект',
+            project_type: 'Фильм',
+            project_type_raw: 'Фильм',
+            genre: 'Драма',
+            description: 'Описание проекта',
+            premiere_date: '2024-12-31',
+            roles: [],
+            contacts: {
+              casting_director: { name: '', phone: '', email: '', telegram: '' },
+              director: { name: '', phone: '', email: '', telegram: '' },
+              producers: [],
+              production_company: { name: '', phone: '', email: '', website: '' }
             },
-          ],
-          suggested_persons: [
-            {
-              name: 'Иван Петров',
-              type: 'director',
-              email: 'ivan@example.com',
-              confidence: 0.9,
-            },
-          ],
-          suggested_companies: [
-            {
-              name: 'Кинокомпания "Студия"',
-              type: 'production',
-              confidence: 0.8,
-            },
-          ],
-          suggested_projects: [],
+            confidence: 0.8
+          }
         };
         
         setAnalysisResult(mockResult);
@@ -139,40 +125,38 @@ export const RequestAnalysisModal: React.FC<RequestAnalysisModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-gray-50 p-4 rounded">
                 <h4 className="font-medium mb-2">Тип проекта:</h4>
-                <p className="text-sm text-gray-600">{analysisResult.project_type}</p>
-                {analysisResult.project_type_raw && (
+                <p className="text-sm text-gray-600">{analysisResult.project_analysis.project_type}</p>
+                {analysisResult.project_analysis.project_type_raw && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Исходный текст: "{analysisResult.project_type_raw}"
+                    Исходный текст: "{analysisResult.project_analysis.project_type_raw}"
                   </p>
                 )}
               </div>
 
-              {analysisResult.genre && (
+              {analysisResult.project_analysis.genre && (
                 <div className="bg-gray-50 p-4 rounded">
                   <h4 className="font-medium mb-2">Жанр:</h4>
-                  <p className="text-sm text-gray-600">{analysisResult.genre}</p>
+                  <p className="text-sm text-gray-600">{analysisResult.project_analysis.genre}</p>
                 </div>
               )}
             </div>
 
             <div className="bg-gray-50 p-4 rounded">
               <h4 className="font-medium mb-2">Описание:</h4>
-              <p className="text-sm text-gray-600">{analysisResult.description}</p>
+              <p className="text-sm text-gray-600">{analysisResult.project_analysis.description}</p>
             </div>
 
-            {analysisResult.roles.length > 0 && (
+            {analysisResult.project_analysis.roles.length > 0 && (
               <div className="bg-gray-50 p-4 rounded">
                 <h4 className="font-medium mb-2">Роли:</h4>
                 <div className="space-y-2">
-                  {analysisResult.roles.map((role, index) => (
+                  {analysisResult.project_analysis.roles.map((role, index) => (
                     <div key={index} className="text-sm">
-                      <span className="font-medium">{role.title}</span>
+                      <span className="font-medium">{role.character_name}</span>
                       <p className="text-gray-600">{role.description}</p>
-                      {role.skills_required.length > 0 && (
-                        <p className="text-xs text-gray-500">
-                          Навыки: {role.skills_required.join(', ')}
-                        </p>
-                      )}
+                      <p className="text-xs text-gray-500">
+                        Возраст: {role.age_range}, Пол: {role.gender}
+                      </p>
                     </div>
                   ))}
                 </div>

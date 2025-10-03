@@ -2,10 +2,15 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { artistsService } from '../services/artists';
 import LoadingSpinner from './LoadingSpinner';
-import type { ArtistListItem, ArtistSkillListItem, ImageErrorEvent } from '../types';
+import type { Artist, ArtistSkill } from '../types/artists';
+
+// Определяем тип для обработки ошибок изображений
+interface ImageErrorEvent {
+  currentTarget: HTMLImageElement;
+}
 
 const ArtistsTable: React.FC = () => {
-  const [artists, setArtists] = useState<ArtistListItem[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,11 +39,11 @@ const ArtistsTable: React.FC = () => {
     return `${firstName[0]}${lastName[0]}`.toUpperCase();
   };
 
-  const formatSkills = (skills: ArtistSkillListItem[]): React.JSX.Element => {
+  const formatSkills = (skills: ArtistSkill[]): React.JSX.Element => {
     if (skills.length === 0) return <span>Нет навыков</span>;
     
     // Группируем навыки по группам
-    const groupedSkills: { [key: string]: ArtistSkillListItem[] } = {};
+    const groupedSkills: { [key: string]: ArtistSkill[] } = {};
     skills.forEach(skill => {
       if (!groupedSkills[skill.skill_group]) {
         groupedSkills[skill.skill_group] = [];

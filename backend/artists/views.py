@@ -372,3 +372,187 @@ class ArtistViewSet(BaseModelViewSet):
         
         serializer = self.get_serializer(filtered_artists, many=True)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='for-selection')
+    @extend_schema(
+        summary="Артисты для выбора",
+        description="Получить список всех активных артистов для выбора в ролях с расширенной фильтрацией.",
+        parameters=[
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Поисковый запрос по имени, фамилии или сценическому имени'
+            ),
+            OpenApiParameter(
+                name='gender',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Пол артиста для фильтрации (male, female)'
+            ),
+            OpenApiParameter(
+                name='city',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Город проживания для фильтрации'
+            ),
+            OpenApiParameter(
+                name='availability_status',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Статус доступности для фильтрации'
+            ),
+            OpenApiParameter(
+                name='media_presence',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Медийность для фильтрации'
+            ),
+            OpenApiParameter(
+                name='age_min',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Минимальный возраст для фильтрации'
+            ),
+            OpenApiParameter(
+                name='age_max',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Максимальный возраст для фильтрации'
+            ),
+            OpenApiParameter(
+                name='height_min',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Минимальный рост для фильтрации'
+            ),
+            OpenApiParameter(
+                name='height_max',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Максимальный рост для фильтрации'
+            ),
+            OpenApiParameter(
+                name='skill_ids',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Список ID навыков через запятую'
+            ),
+            OpenApiParameter(
+                name='hair_color',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Цвет волос для фильтрации'
+            ),
+            OpenApiParameter(
+                name='eye_color',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Цвет глаз для фильтрации'
+            ),
+            OpenApiParameter(
+                name='body_type',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Тип телосложения для фильтрации'
+            ),
+            OpenApiParameter(
+                name='limit',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Максимальное количество результатов (по умолчанию 50)'
+            ),
+        ],
+        tags=["Артисты"]
+    )
+    def for_selection(self, request):
+        """Получить список артистов для выбора в ролях с расширенной фильтрацией."""
+        # Используем все активные артисты, а не только созданные текущим пользователем
+        queryset = Artist.objects.filter(is_active=True).prefetch_related(
+            'skills__skill__skill_group',
+            'education__education',
+            'links',
+            'photos'
+        )
+        
+        # Применяем фильтры
+        search = request.query_params.get('search', None)
+        gender = request.query_params.get('gender', None)
+        city = request.query_params.get('city', None)
+        availability_status = request.query_params.get('availability_status', None)
+        media_presence = request.query_params.get('media_presence', None)
+        age_min = request.query_params.get('age_min', None)
+        age_max = request.query_params.get('age_max', None)
+        height_min = request.query_params.get('height_min', None)
+        height_max = request.query_params.get('height_max', None)
+        skill_ids = request.query_params.get('skill_ids', None)
+        hair_color = request.query_params.get('hair_color', None)
+        eye_color = request.query_params.get('eye_color', None)
+        body_type = request.query_params.get('body_type', None)
+        limit = request.query_params.get('limit', 50)
+        
+        # Поиск по имени
+        if search:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(stage_name__icontains=search) |
+                Q(middle_name__icontains=search)
+            )
+        
+        # Фильтрация по полу
+        if gender:
+            queryset = queryset.filter(gender=gender)
+        
+        # Фильтрация по городу
+        if city:
+            queryset = queryset.filter(city__icontains=city)
+        
+        # Фильтрация по статусу доступности
+        if availability_status is not None:
+            queryset = queryset.filter(availability_status=availability_status.lower() == 'true')
+        
+        # Фильтрация по медийности
+        if media_presence is not None:
+            queryset = queryset.filter(media_presence=media_presence.lower() == 'true')
+        
+        # Фильтрация по возрасту
+        if age_min:
+            queryset = queryset.filter(age__gte=age_min)
+        if age_max:
+            queryset = queryset.filter(age__lte=age_max)
+        
+        # Фильтрация по росту
+        if height_min:
+            queryset = queryset.filter(height__gte=height_min)
+        if height_max:
+            queryset = queryset.filter(height__lte=height_max)
+        
+        # Фильтрация по навыкам
+        if skill_ids:
+            try:
+                skill_ids_list = [int(sid.strip()) for sid in skill_ids.split(',')]
+                # Артист должен обладать хотя бы одним из указанных навыков
+                queryset = queryset.filter(skills__skill__id__in=skill_ids_list).distinct()
+            except ValueError:
+                return Response({'error': 'Invalid skill_ids format'}, status=400)
+        
+        # Фильтрация по внешним характеристикам
+        if hair_color:
+            queryset = queryset.filter(hair_color__icontains=hair_color)
+        if eye_color:
+            queryset = queryset.filter(eye_color__icontains=eye_color)
+        if body_type:
+            queryset = queryset.filter(body_type__icontains=body_type)
+        
+        # Ограничение количества результатов
+        try:
+            limit = int(limit)
+            if limit > 0:
+                queryset = queryset[:limit]
+        except ValueError:
+            return Response({'error': 'Invalid limit format'}, status=400)
+        
+        # Используем упрощенный сериализатор для списка
+        serializer = ArtistListSerializer(queryset, many=True)
+        return Response(serializer.data)

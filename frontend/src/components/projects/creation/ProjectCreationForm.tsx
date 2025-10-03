@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import type { ProjectCreationForm as ProjectForm, ProjectType, Genre } from '../../../types/projects';
 import type { LLMAnalysisResult } from '../../../types/llm';
 import { projectsService } from '../../../services/projects';
+import ArtistSelectionComponent from '../roles/ArtistSelectionComponent';
 
 interface ProjectCreationFormProps {
   initialData?: Partial<ProjectForm>;
@@ -28,12 +29,26 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     premiere_date: initialData?.premiere_date || analysisResult?.project_analysis?.premiere_date,
     request_id: requestId,
     roles: initialData?.roles || analysisResult?.project_analysis?.roles?.map((role: any) => ({
-      title: role.name || role.title,
+      name: role.name || role.title,
       description: role.description,
-      gender: role.gender || 'any',
-      age_range: role.age_range,
+      media_presence: role.media_presence || 'doesnt_matter',
+      clothing_size: role.clothing_size || '',
+      hairstyle: role.hairstyle || '',
+      hair_color: role.hair_color || '',
+      eye_color: role.eye_color || '',
+      height: role.height || '',
+      body_type: role.body_type || '',
+      reference_text: role.reference_text || '',
+      special_conditions: role.special_conditions || '',
+      audition_requirements: role.audition_requirements || '',
+      audition_text: role.audition_text || '',
+      rate_per_shift: role.rate_per_shift || '',
+      rate_conditions: role.rate_conditions || '',
+      shooting_dates: role.shooting_dates || '',
+      shooting_location: role.shooting_location || '',
+      notes: role.notes || '',
       skills_required: role.skills_required || [],
-      selected_artists: role.suggested_artists || [],
+      suggested_artists: role.suggested_artists || [],
     })) || [],
   });
 
@@ -91,12 +106,26 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     setFormData(prev => ({
       ...prev,
       roles: [...prev.roles, {
-        title: '',
+        name: '',
         description: '',
-        gender: 'any',
-        age_range: undefined,
+        media_presence: 'doesnt_matter',
+        clothing_size: '',
+        hairstyle: '',
+        hair_color: '',
+        eye_color: '',
+        height: '',
+        body_type: '',
+        reference_text: '',
+        special_conditions: '',
+        audition_requirements: '',
+        audition_text: '',
+        rate_per_shift: '',
+        rate_conditions: '',
+        shooting_dates: '',
+        shooting_location: '',
+        notes: '',
         skills_required: [],
-        selected_artists: [],
+        suggested_artists: [],
       }],
     }));
   };
@@ -124,8 +153,8 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     }
 
     formData.roles.forEach((role, index) => {
-      if (!role.title.trim()) {
-        newErrors[`role_${index}_title`] = 'Название роли обязательно';
+      if (!role.name.trim()) {
+        newErrors[`role_${index}_name`] = 'Название роли обязательно';
       }
     });
 
@@ -282,30 +311,30 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={role.title}
-                    onChange={(e) => handleRoleChange(index, 'title', e.target.value)}
+                    value={role.name}
+                    onChange={(e) => handleRoleChange(index, 'name', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-md ${
-                      errors[`role_${index}_title`] ? 'border-red-500' : 'border-gray-300'
+                      errors[`role_${index}_name`] ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Название роли"
                   />
-                  {errors[`role_${index}_title`] && (
-                    <p className="text-red-500 text-xs mt-1">{errors[`role_${index}_title`]}</p>
+                  {errors[`role_${index}_name`] && (
+                    <p className="text-red-500 text-xs mt-1">{errors[`role_${index}_name`]}</p>
                   )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Пол
+                    Медийность
                   </label>
                   <select
-                    value={role.gender}
-                    onChange={(e) => handleRoleChange(index, 'gender', e.target.value)}
+                    value={role.media_presence || 'doesnt_matter'}
+                    onChange={(e) => handleRoleChange(index, 'media_presence', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
-                    <option value="any">Любой</option>
-                    <option value="male">Мужской</option>
-                    <option value="female">Женский</option>
+                    <option value="doesnt_matter">Неважно</option>
+                    <option value="yes">Да</option>
+                    <option value="no">Нет</option>
                   </select>
                 </div>
               </div>
@@ -333,6 +362,19 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
                   onChange={(e) => handleRoleChange(index, 'skills_required', e.target.value.split(', ').filter(s => s.trim()))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   placeholder="Навыки через запятую"
+                />
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Предложенные артисты
+                </label>
+                <ArtistSelectionComponent
+                  selectedArtists={role.suggested_artists}
+                  onSelectionChange={(artistIds) => handleRoleChange(index, 'suggested_artists', artistIds)}
+                  placeholder="Выберите артистов для этой роли..."
+                  maxSelections={10}
+                  className="border border-gray-300 rounded-md p-3"
                 />
               </div>
             </div>

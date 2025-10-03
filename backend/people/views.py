@@ -4,7 +4,15 @@ from rest_framework.response import Response
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
 from .models import Person
-from .serializers import PersonSerializer, PersonListSerializer
+from .serializers import (
+    PersonSerializer, 
+    PersonListSerializer, 
+    PersonMatchSerializer,
+    PersonSearchRequestSerializer,
+    PersonNameSearchRequestSerializer,
+    PersonTypeSerializer
+)
+from .services import person_matching_service
 
 
 class PersonPermission(permissions.BasePermission):
@@ -168,4 +176,144 @@ class PersonViewSet(viewsets.ModelViewSet):
         """Получить список всех кастинг-директоров"""
         casting_directors = self.get_queryset().filter(person_type='casting_director')
         serializer = self.get_serializer(casting_directors, many=True)
+        return Response(serializer.data)
+    
+    @extend_schema(
+        summary="Поиск совпадений персон",
+        description="Поиск персон по email, телефону, telegram и другим критериям с использованием fuzzy matching",
+        request=PersonSearchRequestSerializer,
+        responses={200: PersonMatchSerializer(many=True)},
+        tags=["Персоны"]
+    )
+    @action(detail=False, methods=['post'])
+    def search_matches(self, request):
+        """Поиск совпадений персон по различным критериям"""
+        serializer = PersonSearchRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        search_data = serializer.validated_data
+        person_type = search_data.pop('person_type', None)
+        limit = search_data.pop('limit', 5)
+        
+        # Выполняем поиск совпадений
+        matches = person_matching_service.search_matches(
+            search_data=search_data,
+            person_type=person_type,
+            limit=limit
+        )
+        
+        # Сериализуем результаты
+        result_data = []
+        for match in matches:
+            person = match['person']
+            person_data = {
+                'id': person.id,
+                'person_type': person.person_type,
+                'person_type_display': person.get_person_type_display(),
+                'first_name': person.first_name,
+                'last_name': person.last_name,
+                'middle_name': person.middle_name,
+                'full_name': person.full_name,
+                'short_name': person.short_name,
+                'photo': person.photo.url if person.photo else None,
+                'email': person.email,
+                'phone': person.phone,
+                'telegram_username': person.telegram_username,
+                'score': match['score'],
+                'confidence': match['confidence'],
+            }
+            result_data.append(person_data)
+        
+        return Response(result_data)
+    
+    @extend_schema(
+        summary="Поиск персон по имени",
+        description="Поиск персон по имени с использованием fuzzy matching",
+        request=PersonNameSearchRequestSerializer,
+        responses={200: PersonMatchSerializer(many=True)},
+        tags=["Персоны"]
+    )
+    @action(detail=False, methods=['post'])
+    def search_by_name(self, request):
+        """Поиск персон по имени с использованием fuzzy matching"""
+        serializer = PersonNameSearchRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        search_data = serializer.validated_data
+        name = search_data['name']
+        person_type = search_data.get('person_type')
+        limit = search_data.get('limit', 5)
+        
+        # Выполняем поиск по имени
+        matches = person_matching_service.search_by_name(
+            name=name,
+            person_type=person_type,
+            limit=limit
+        )
+        
+        # Сериализуем результаты
+        result_data = []
+        for match in matches:
+            person = match['person']
+            person_data = {
+                'id': person.id,
+                'person_type': person.person_type,
+                'person_type_display': person.get_person_type_display(),
+                'first_name': person.first_name,
+                'last_name': person.last_name,
+                'middle_name': person.middle_name,
+                'full_name': person.full_name,
+                'short_name': person.short_name,
+                'photo': person.photo.url if person.photo else None,
+                'email': person.email,
+                'phone': person.phone,
+                'telegram_username': person.telegram_username,
+                'score': match['score'],
+                'confidence': match['confidence'],
+            }
+            result_data.append(person_data)
+        
+        return Response(result_data)
+    
+    @extend_schema(
+        summary="Получить персон по типу",
+        description="Получить список персон определенного типа",
+        parameters=[
+            OpenApiParameter(
+                name='person_type',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description='Тип персоны (director, producer, casting_director)',
+                required=True
+            )
+        ],
+        responses={200: PersonListSerializer(many=True)},
+        tags=["Персоны"]
+    )
+    @action(detail=False, methods=['get'], url_path='by-type/(?P<person_type>[^/.]+)')
+    def by_type(self, request, person_type=None):
+        """Получить список персон по типу"""
+        if person_type not in [choice[0] for choice in Person.PERSON_TYPES]:
+            return Response(
+                {'error': f'Неверный тип персоны. Доступные типы: {[choice[0] for choice in Person.PERSON_TYPES]}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        persons = person_matching_service.get_persons_by_type(person_type)
+        serializer = PersonListSerializer(persons, many=True)
+        return Response(serializer.data)
+    
+    @extend_schema(
+        summary="Получить типы персон",
+        description="Получить список доступных типов персон",
+        responses={200: PersonTypeSerializer(many=True)},
+        tags=["Персоны"]
+    )
+    @action(detail=False, methods=['get'])
+    def person_types(self, request):
+        """Получить список доступных типов персон"""
+        types = person_matching_service.get_person_types()
+        serializer = PersonTypeSerializer(types, many=True)
         return Response(serializer.data)

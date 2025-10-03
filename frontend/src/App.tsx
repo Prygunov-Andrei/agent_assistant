@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Artists from './pages/Artists';
 import Requests from './pages/Requests';
 import Login from './pages/Login';
+import TestPersonMatching from './pages/TestPersonMatching';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -162,6 +163,18 @@ const App: React.FC = () => {
                          <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
                          <p className="text-gray-600 mt-2">Страница в разработке</p>
                        </div>
+                     </Layout>
+                   </ProtectedRoute>
+                 }
+               />
+
+               {/* Тестовая страница для поиска персон */}
+               <Route
+                 path="/test-person-matching"
+                 element={
+                   <ProtectedRoute>
+                     <Layout>
+                       <TestPersonMatching />
                      </Layout>
                    </ProtectedRoute>
                  }

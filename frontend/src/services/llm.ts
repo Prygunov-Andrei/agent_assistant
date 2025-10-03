@@ -10,8 +10,7 @@ import type {
   LLMMonitoringData,
   TrainingDataset,
   DatasetExportRequest,
-  DatasetExportResponse,
-  ArtistForLLM
+  DatasetExportResponse
 } from '../types/llm';
 
 export class LLMService {
@@ -223,6 +222,7 @@ export class LLMService {
       throw error;
     }
   }
+
 }
 
 // Хук для работы с LLM
@@ -421,38 +421,5 @@ export const LLMUtils = {
     }
     
     return errors;
-  }
-
-  // Получение артистов для LLM
-  static async getArtistsForLLM(): Promise<{ artists: ArtistForLLM[]; total_count: number }> {
-    try {
-      const response = await api.get<{ artists: ArtistForLLM[]; total_count: number }>('/artists/for-llm/');
-      return response.data;
-    } catch (error) {
-      console.error('Ошибка получения артистов для LLM:', error);
-      throw error;
-    }
-  }
-
-  // Получение статуса LLM
-  static async getLLMStatus(): Promise<LLMStatus> {
-    try {
-      const response = await api.get<LLMStatus>('/status/');
-      return response.data;
-    } catch (error) {
-      console.error('Ошибка получения статуса LLM:', error);
-      throw error;
-    }
-  }
-
-  // Получение статуса анализа запроса
-  static async getRequestAnalysisStatus(requestId: number): Promise<AnalysisStatus> {
-    try {
-      const response = await api.get<AnalysisStatus>(`/requests/${requestId}/analysis-status/`);
-      return response.data;
-    } catch (error) {
-      console.error('Ошибка получения статуса анализа запроса:', error);
-      throw error;
-    }
-  }
+  },
 };

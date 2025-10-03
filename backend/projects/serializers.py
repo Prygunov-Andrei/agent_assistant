@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import ProjectType, Genre, RoleType, Project, ProjectRole
 from core.serializers import BaseReferenceSerializer, BaseModelSerializer, BaseListSerializer
+from artists.models import Artist
 
 
 class ProjectTypeSerializer(BaseReferenceSerializer):
@@ -48,6 +49,25 @@ class ProjectRoleSerializer(BaseModelSerializer):
         help_text="Название проекта"
     )
     
+    suggested_artists = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Artist.objects.none(),  # Будет установлен в __init__
+        required=False,
+        help_text="ID артистов, предложенных для роли"
+    )
+    
+    skills_required = serializers.JSONField(
+        required=False,
+        help_text="Требуемые навыки (JSON массив)"
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Устанавливаем queryset для suggested_artists
+        if 'suggested_artists' in self.fields:
+            from artists.models import Artist
+            self.fields['suggested_artists'].queryset = Artist.objects.filter(is_active=True)
+    
     class Meta(BaseModelSerializer.Meta):
         model = ProjectRole
         fields = BaseModelSerializer.Meta.fields + [
@@ -73,7 +93,9 @@ class ProjectRoleSerializer(BaseModelSerializer):
             'rate_conditions',
             'shooting_dates',
             'shooting_location',
-            'notes'
+            'notes',
+            'suggested_artists',
+            'skills_required'
         ]
         extra_kwargs = {
             **BaseModelSerializer.Meta.extra_kwargs,
@@ -98,7 +120,9 @@ class ProjectRoleSerializer(BaseModelSerializer):
             'rate_conditions': {'help_text': 'Условия по ставке'},
             'shooting_dates': {'help_text': 'Даты смен'},
             'shooting_location': {'help_text': 'Место съемки'},
-            'notes': {'help_text': 'Заметки'}
+            'notes': {'help_text': 'Заметки'},
+            'suggested_artists': {'help_text': 'ID артистов, предложенных для роли'},
+            'skills_required': {'help_text': 'Требуемые навыки (JSON массив)'}
         }
 
 
@@ -117,6 +141,9 @@ class ProjectRoleListSerializer(BaseListSerializer):
         source='role_type.name',
         help_text="Название типа роли"
     )
+    suggested_artists_count = serializers.SerializerMethodField(
+        help_text="Количество предложенных артистов"
+    )
     
     class Meta(BaseListSerializer.Meta):
         model = ProjectRole
@@ -126,8 +153,13 @@ class ProjectRoleListSerializer(BaseListSerializer):
             'name',
             'role_type',
             'role_type_name',
-            'media_presence'
+            'media_presence',
+            'suggested_artists_count'
         ]
+    
+    def get_suggested_artists_count(self, obj):
+        """Возвращает количество предложенных артистов для роли"""
+        return obj.suggested_artists.count()
 
 
 class ProjectSerializer(BaseModelSerializer):

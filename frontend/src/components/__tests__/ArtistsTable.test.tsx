@@ -98,11 +98,11 @@ describe('ArtistsTable', () => {
     // Check artist data
     expect(screen.getByText('Петров Иван')).toBeInTheDocument();
     expect(screen.getByText('25 лет')).toBeInTheDocument();
-    expect(screen.getByText('Нет навыков')).toBeInTheDocument();
+    expect(screen.getAllByText('Нет навыков')).toHaveLength(2);
 
     expect(screen.getByText('Сидорова Анна')).toBeInTheDocument();
     expect(screen.getByText('28 лет')).toBeInTheDocument();
-    expect(screen.getByText('Нет навыков')).toBeInTheDocument();
+    expect(screen.getAllByText('Нет навыков')).toHaveLength(2);
   });
 
   it('renders error state when API call fails', async () => {

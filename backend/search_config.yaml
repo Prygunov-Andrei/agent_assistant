@@ -8,10 +8,10 @@ search:
   # Пороги схожести для разных типов сущностей
   thresholds:
     persons:
-      casting_directors: 0.7
-      directors: 0.6
-      producers: 0.6
-      agents: 0.8
+      casting_directors: 0.3
+      directors: 0.3
+      producers: 0.3
+      agents: 0.3
     companies: 0.8
     projects: 0.6
     artists: 0.7

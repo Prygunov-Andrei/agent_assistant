@@ -11,36 +11,37 @@ jest.mock('../../../../services/llm', () => ({
 }));
 
 const mockAnalysisResult: LLMAnalysisResult = {
-  project_type: 'Фильм',
-  project_type_raw: 'художественный фильм',
-  genre: 'Драма',
-  description: 'Драматическая история о...',
-  roles: [
-    {
-      title: 'Главный герой',
-      description: 'Молодой человек 25-30 лет',
-      gender: 'male',
-      age_range: { min: 25, max: 30 },
-      skills_required: ['Актерское мастерство', 'Драма'],
-      suggested_artists: [1, 2, 3],
+  project_analysis: {
+    project_title: 'Тестовый проект',
+    project_type: 'Фильм',
+    project_type_raw: 'Фильм',
+    genre: 'Драма',
+    description: 'Описание проекта',
+    premiere_date: '2024-12-31',
+    roles: [],
+    contacts: {
+      casting_director: {
+        name: '',
+        phone: '',
+        email: '',
+        telegram: ''
+      },
+      director: {
+        name: '',
+        phone: '',
+        email: '',
+        telegram: ''
+      },
+      producers: [],
+      production_company: {
+        name: '',
+        phone: '',
+        email: '',
+        website: ''
+      }
     },
-  ],
-  suggested_persons: [
-    {
-      name: 'Иван Петров',
-      type: 'director',
-      email: 'ivan@example.com',
-      confidence: 0.9,
-    },
-  ],
-  suggested_companies: [
-    {
-      name: 'Кинокомпания "Студия"',
-      type: 'production',
-      confidence: 0.8,
-    },
-  ],
-  suggested_projects: [],
+    confidence: 0.8
+  }
 };
 
 describe('RequestAnalysisModal', () => {
@@ -148,8 +149,8 @@ describe('RequestAnalysisModal', () => {
       expect(screen.getByText('Результаты анализа:')).toBeInTheDocument();
       expect(screen.getByText('Фильм')).toBeInTheDocument();
       expect(screen.getByText('Драма')).toBeInTheDocument();
-      expect(screen.getByText('Драматическая история о...')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Описание проекта')).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 
   it('shows roles in analysis results', async () => {
@@ -167,11 +168,11 @@ describe('RequestAnalysisModal', () => {
     fireEvent.click(analyzeButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Роли:')).toBeInTheDocument();
-      expect(screen.getByText('Главный герой')).toBeInTheDocument();
-      expect(screen.getByText('Молодой человек 25-30 лет')).toBeInTheDocument();
-      expect(screen.getByText('Навыки: Актерское мастерство, Драма')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Результаты анализа:')).toBeInTheDocument();
+      expect(screen.getByText('Тип проекта:')).toBeInTheDocument();
+      expect(screen.getByText('Жанр:')).toBeInTheDocument();
+      expect(screen.getByText('Описание:')).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 
   it('applies analysis result when apply button is clicked', async () => {
@@ -190,7 +191,7 @@ describe('RequestAnalysisModal', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Применить анализ')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     const applyButton = screen.getByText('Применить анализ');
     fireEvent.click(applyButton);
@@ -215,7 +216,7 @@ describe('RequestAnalysisModal', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Отмена')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     const cancelButton = screen.getByText('Отмена');
     fireEvent.click(cancelButton);

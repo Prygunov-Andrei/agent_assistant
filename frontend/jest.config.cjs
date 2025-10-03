@@ -3,14 +3,18 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^../config/api$': '<rootDir>/src/__mocks__/config/api.ts',
+  },
+  globals: {
+    'import.meta': {
+      env: {
+        VITE_API_URL: 'http://localhost:8000/api'
+      }
+    }
   },
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: {
-        jsx: 'react-jsx',
-        esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
-      },
+      tsconfig: 'tsconfig.test.json',
     }],
   },
   testMatch: [

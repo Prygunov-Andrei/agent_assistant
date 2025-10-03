@@ -53,19 +53,27 @@ export interface ProjectCreationForm {
 
 // Форма роли в проекте
 export interface ProjectRoleForm {
-  title: string;
+  name: string;
   description?: string;
-  requirements?: string;
-  salary?: number;
-  start_date?: string;
-  end_date?: string;
-  gender?: 'male' | 'female' | 'any';
-  age_range?: {
-    min: number;
-    max: number;
-  };
+  role_type?: number;
+  media_presence?: 'yes' | 'no' | 'doesnt_matter';
+  clothing_size?: string;
+  hairstyle?: string;
+  hair_color?: string;
+  eye_color?: string;
+  height?: string;
+  body_type?: string;
+  reference_text?: string;
+  special_conditions?: string;
+  audition_requirements?: string;
+  audition_text?: string;
+  rate_per_shift?: string;
+  rate_conditions?: string;
+  shooting_dates?: string;
+  shooting_location?: string;
+  notes?: string;
   skills_required: string[];
-  selected_artists: number[];
+  suggested_artists: number[];
 }
 
 // Тип проекта

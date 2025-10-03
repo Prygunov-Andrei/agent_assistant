@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { LLMStatusIndicator, LLMStatusIndicatorWithAnimation } from '../LLMStatusIndicator';
-import type { AnalysisStatus, LLMStatus } from '../../../../types/llm';
+import type { LLMStatus } from '../../../../types/llm';
 
 describe('LLMStatusIndicator', () => {
   describe('AnalysisStatus', () => {
@@ -39,8 +39,9 @@ describe('LLMStatusIndicator', () => {
       const status: LLMStatus = {
         is_available: true,
         is_analyzing: false,
-        error_count: 0,
-        success_count: 10,
+        model: 'test-model',
+        use_emulator: false,
+        last_check: '2024-01-01T00:00:00Z'
       };
       
       render(<LLMStatusIndicator status={status} />);
@@ -53,8 +54,9 @@ describe('LLMStatusIndicator', () => {
       const status: LLMStatus = {
         is_available: true,
         is_analyzing: true,
-        error_count: 0,
-        success_count: 10,
+        model: 'test-model',
+        use_emulator: false,
+        last_check: '2024-01-01T00:00:00Z'
       };
       
       render(<LLMStatusIndicator status={status} />);
@@ -67,8 +69,10 @@ describe('LLMStatusIndicator', () => {
       const status: LLMStatus = {
         is_available: false,
         is_analyzing: false,
-        error_count: 5,
-        success_count: 10,
+        model: 'test-model',
+        use_emulator: false,
+        last_check: '2024-01-01T00:00:00Z',
+        error_message: 'Test error'
       };
       
       render(<LLMStatusIndicator status={status} />);
@@ -91,7 +95,7 @@ describe('LLMStatusIndicatorWithAnimation', () => {
     render(<LLMStatusIndicatorWithAnimation status="new" isLoading={true} />);
     
     expect(screen.getByText('Анализ...')).toBeInTheDocument();
-    expect(screen.getByRole('status', { hidden: true })).toBeInTheDocument();
+    expect(screen.getByText('⏳')).toBeInTheDocument();
   });
 
   it('renders without animation when not loading', () => {

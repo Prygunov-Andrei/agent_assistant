@@ -137,6 +137,15 @@ class Person(models.Model):
             models.Index(fields=['person_type']),
             models.Index(fields=['is_active']),
             models.Index(fields=['created_by']),
+            # Индексы для поиска совпадений
+            models.Index(fields=['email']),
+            models.Index(fields=['phone']),
+            models.Index(fields=['telegram_username']),
+            models.Index(fields=['first_name']),
+            models.Index(fields=['last_name']),
+            # Составные индексы для оптимизации поиска
+            models.Index(fields=['person_type', 'is_active']),
+            models.Index(fields=['first_name', 'last_name']),
         ]
     
     def __str__(self):

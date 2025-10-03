@@ -134,3 +134,66 @@ class PersonListSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = fields
+
+
+class PersonMatchSerializer(serializers.Serializer):
+    """Сериализатор для результата поиска совпадений персон"""
+    
+    id = serializers.IntegerField()
+    person_type = serializers.CharField()
+    person_type_display = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    middle_name = serializers.CharField(allow_null=True)
+    full_name = serializers.CharField()
+    short_name = serializers.CharField()
+    photo = serializers.URLField(allow_null=True)
+    email = serializers.EmailField(allow_null=True)
+    phone = serializers.CharField(allow_null=True)
+    telegram_username = serializers.CharField(allow_null=True)
+    score = serializers.FloatField(help_text="Оценка схожести (0-1)")
+    confidence = serializers.CharField(help_text="Уровень уверенности (high/medium/low)")
+
+
+class PersonSearchRequestSerializer(serializers.Serializer):
+    """Сериализатор для запроса поиска совпадений персон"""
+    
+    email = serializers.EmailField(required=False, allow_blank=True, help_text="Email для поиска")
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=20, help_text="Телефон для поиска")
+    telegram_username = serializers.CharField(required=False, allow_blank=True, max_length=50, help_text="Telegram username для поиска")
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=100, help_text="Имя для поиска")
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=100, help_text="Фамилия для поиска")
+    person_type = serializers.ChoiceField(
+        choices=Person.PERSON_TYPES,
+        required=False,
+        allow_blank=True,
+        help_text="Тип персоны для фильтрации"
+    )
+    limit = serializers.IntegerField(default=5, min_value=1, max_value=20, help_text="Максимальное количество результатов")
+    
+    def validate(self, data):
+        """Проверяем, что указан хотя бы один критерий поиска"""
+        search_fields = ['email', 'phone', 'telegram_username', 'first_name', 'last_name']
+        if not any(data.get(field) for field in search_fields):
+            raise serializers.ValidationError("Необходимо указать хотя бы один критерий поиска")
+        return data
+
+
+class PersonNameSearchRequestSerializer(serializers.Serializer):
+    """Сериализатор для запроса поиска персон по имени"""
+    
+    name = serializers.CharField(max_length=200, help_text="Имя для поиска")
+    person_type = serializers.ChoiceField(
+        choices=Person.PERSON_TYPES,
+        required=False,
+        allow_blank=True,
+        help_text="Тип персоны для фильтрации"
+    )
+    limit = serializers.IntegerField(default=5, min_value=1, max_value=20, help_text="Максимальное количество результатов")
+
+
+class PersonTypeSerializer(serializers.Serializer):
+    """Сериализатор для типов персон"""
+    
+    value = serializers.CharField(help_text="Значение типа персоны")
+    label = serializers.CharField(help_text="Отображаемое название типа персоны")

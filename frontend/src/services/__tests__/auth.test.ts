@@ -1,14 +1,9 @@
-import { authService } from '../auth';
-import apiClient from '../api';
-import type { User } from '../../types';
-
 // Mock apiClient
-jest.mock('../api', () => ({
-  default: {
-    post: jest.fn(),
-    get: jest.fn(),
-  },
-}));
+jest.mock('../api');
+
+import { authService } from '../auth';
+import type { User } from '../../types';
+import apiClient from '../api';
 
 const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
