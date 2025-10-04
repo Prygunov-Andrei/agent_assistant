@@ -1,6 +1,6 @@
 import api from './api';
 import type { RequestListItem } from '../types';
-import type { LLMAnalysisResponse, LLMStatus, RequestAnalysisStatus } from '../types/llm';
+import type { LLMAnalysisResponse, RequestAnalysisStatus } from '../types/llm';
 
 export interface RequestsResponse {
   count: number;

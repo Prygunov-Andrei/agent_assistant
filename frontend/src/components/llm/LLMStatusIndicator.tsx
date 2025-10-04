@@ -1,145 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { LLMService } from '../../services/llm';
-import type { LLMStatus, AnalysisStatus } from '../../types/llm';
+import React from 'react';
+
+export type LLMStatus = 'idle' | 'analyzing' | 'success' | 'error';
 
 interface LLMStatusIndicatorProps {
-  requestId?: number;
+  status: LLMStatus;
+  message?: string;
   className?: string;
-  showDetails?: boolean;
 }
 
 const LLMStatusIndicator: React.FC<LLMStatusIndicatorProps> = ({
-  requestId,
-  className = '',
-  showDetails = false
+  status,
+  message,
+  className = ''
 }) => {
-  const [llmStatus, setLlmStatus] = useState<LLMStatus | null>(null);
-  const [requestStatus, setRequestStatus] = useState<AnalysisStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Получаем общий статус LLM
-        const llmStatusData = await LLMService.getLLMStatus();
-        setLlmStatus(llmStatusData);
-
-        // Если указан requestId, получаем статус конкретного запроса
-        if (requestId) {
-          const requestStatusData = await LLMService.getRequestAnalysisStatus(requestId);
-          setRequestStatus(requestStatusData);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Ошибка загрузки статуса');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStatus();
-
-    // Обновляем статус каждые 5 секунд
-    const interval = setInterval(fetchStatus, 5000);
-
-    return () => clearInterval(interval);
-  }, [requestId]);
-
-  const getStatusColor = (status: string) => {
+  const getStatusIcon = () => {
     switch (status) {
       case 'idle':
-        return 'text-gray-500';
-      case 'processing':
-        return 'text-blue-500';
-      case 'completed':
-        return 'text-green-500';
-      case 'error':
-        return 'text-red-500';
-      default:
-        return 'text-gray-500';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'idle':
-        return '⏸️';
-      case 'processing':
-        return '🔄';
-      case 'completed':
+        return '🤖';
+      case 'analyzing':
+        return (
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+        );
+      case 'success':
         return '✅';
       case 'error':
         return '❌';
       default:
-        return '❓';
+        return '🤖';
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusColor = () => {
     switch (status) {
       case 'idle':
-        return 'Ожидание';
-      case 'processing':
-        return 'Обработка';
-      case 'completed':
-        return 'Завершено';
+        return 'text-gray-600';
+      case 'analyzing':
+        return 'text-blue-600';
+      case 'success':
+        return 'text-green-600';
       case 'error':
-        return 'Ошибка';
+        return 'text-red-600';
       default:
-        return 'Неизвестно';
+        return 'text-gray-600';
     }
   };
 
-  if (loading) {
-    return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-        <span className="text-sm text-gray-600">Загрузка статуса...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <span className="text-red-500">❌</span>
-        <span className="text-sm text-red-600">Ошибка: {error}</span>
-      </div>
-    );
-  }
-
-  const currentStatus = requestStatus?.analysis_status || llmStatus?.status || 'idle';
+  const getStatusText = () => {
+    if (message) return message;
+    
+    switch (status) {
+      case 'idle':
+        return 'Готов к анализу';
+      case 'analyzing':
+        return 'Анализируем запрос...';
+      case 'success':
+        return 'Анализ завершен';
+      case 'error':
+        return 'Ошибка анализа';
+      default:
+        return 'Неизвестный статус';
+    }
+  };
 
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
-      <span className={`text-lg ${getStatusColor(currentStatus)}`}>
-        {getStatusIcon(currentStatus)}
-      </span>
-      
-      <div className="flex flex-col">
-        <span className={`text-sm font-medium ${getStatusColor(currentStatus)}`}>
-          {getStatusText(currentStatus)}
-        </span>
-        
-        {showDetails && llmStatus && (
-          <div className="text-xs text-gray-500 space-y-1">
-            <div>Модель: {llmStatus.current_model}</div>
-            <div>Эмулятор: {llmStatus.emulator_enabled ? 'Включен' : 'Выключен'}</div>
-            <div>Запросов: {llmStatus.total_requests}</div>
-            <div>Успешных: {llmStatus.successful_requests}</div>
-            <div>Ошибок: {llmStatus.failed_requests}</div>
-          </div>
-        )}
-        
-        {requestStatus && (
-          <div className="text-xs text-gray-500">
-            Запрос #{requestStatus.request_id} - {getStatusText(requestStatus.analysis_status)}
-          </div>
-        )}
+      <div className="flex-shrink-0">
+        {getStatusIcon()}
       </div>
+      <span className={`text-sm font-medium ${getStatusColor()}`}>
+        {getStatusText()}
+      </span>
     </div>
   );
 };

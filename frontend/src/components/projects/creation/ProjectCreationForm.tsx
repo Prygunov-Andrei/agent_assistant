@@ -30,8 +30,8 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     premiere_date: initialData?.premiere_date || analysisResult?.project_analysis?.premiere_date,
     request_id: requestId,
     roles: initialData?.roles || analysisResult?.project_analysis?.roles?.map((role: any) => ({
-      name: role.name || role.title,
-      description: role.description,
+      name: role.character_name || role.name || role.title || '',
+      description: role.description || '',
       media_presence: role.media_presence || 'doesnt_matter',
       clothing_size: role.clothing_size || '',
       hairstyle: role.hairstyle || '',

@@ -35,10 +35,10 @@ export interface SkillsRequired {
 }
 
 export interface ProjectContacts {
-  casting_director: ContactPerson;
-  director: ContactPerson;
+  casting_director: ContactPerson | null;
+  director: ContactPerson | null;
   producers: ContactPerson[];
-  production_company: ContactCompany;
+  production_company: ContactCompany | null;
 }
 
 export interface ContactPerson {

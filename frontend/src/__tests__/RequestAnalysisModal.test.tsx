@@ -1,6 +1,14 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RequestAnalysisModal from '../components/analysis/RequestAnalysisModal';
+import { requestsService } from '../services/requests';
+
+// Мокаем сервис запросов
+jest.mock('../services/requests', () => ({
+  requestsService: {
+    analyzeRequest: jest.fn(),
+  },
+}));
 
 describe('RequestAnalysisModal', () => {
   const defaultProps = {
@@ -66,6 +74,44 @@ describe('RequestAnalysisModal', () => {
   });
 
   it('shows analysis result after completion', async () => {
+    // Мокаем успешный ответ от API
+    const mockAnalysisResult = {
+      data: {
+        project_analysis: {
+          project_title: 'Комедийный фильм про друзей',
+          description: 'Фильм о дружбе и приключениях двух друзей',
+          project_type: 'film',
+          genre: 'comedy',
+          premiere_date: '2025-06-15',
+          confidence: 0.85,
+          roles: [
+            {
+              role_type: 'main',
+              character_name: 'Главный герой',
+              description: 'Молодой человек 25-30 лет',
+              age_range: '25-30',
+              gender: 'male',
+              skills_required: {
+                acting_skills: ['Актерское мастерство', 'Чувство юмора'],
+                physical_skills: [],
+                languages: ['Русский'],
+                special_requirements: []
+              },
+              suggested_artists: []
+            }
+          ],
+          contacts: {
+            casting_director: null,
+            director: null,
+            producers: [],
+            production_company: null
+          }
+        }
+      }
+    };
+    
+    (requestsService.analyzeRequest as jest.Mock).mockResolvedValue(mockAnalysisResult);
+    
     render(<RequestAnalysisModal {...defaultProps} requestId={1} />);
     
     const analyzeButton = screen.getByText('Начать анализ');

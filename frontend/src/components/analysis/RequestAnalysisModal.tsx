@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import type { LLMAnalysisResult } from '../../types/llm';
+import { requestsService } from '../../services/requests';
+import LLMStatusIndicator from '../llm/LLMStatusIndicator';
 
 interface RequestAnalysisModalProps {
   isOpen: boolean;
@@ -19,71 +21,58 @@ const RequestAnalysisModal: React.FC<RequestAnalysisModalProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<LLMAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [llmStatus, setLlmStatus] = useState<'idle' | 'analyzing' | 'success' | 'error'>('idle');
 
   const handleAnalyze = async () => {
     if (!requestId) return;
 
     setIsAnalyzing(true);
+    setLlmStatus('analyzing');
     setError(null);
     setAnalysisResult(null);
 
     try {
-      // Здесь будет вызов API для анализа запроса
-      // Пока что используем моковые данные
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Имитация загрузки
+      // Вызываем реальный API для анализа запроса
+      const response = await requestsService.analyzeRequest(requestId, true); // true = использовать эмулятор
       
-      const mockResult: LLMAnalysisResult = {
+      // Преобразуем ответ API в формат LLMAnalysisResult
+      const analysisResult: LLMAnalysisResult = {
         project_analysis: {
-          project_title: "Комедийный фильм про друзей",
-          description: "Фильм о дружбе и приключениях двух друзей",
-          project_type: "film",
-          genre: "comedy",
-          premiere_date: "2025-06-15",
-          confidence: 0.85,
-          roles: [
-            {
-              role_type: "main",
-              character_name: "Главный герой",
-              description: "Молодой человек 25-30 лет",
-              age_range: "25-30",
-              gender: "male",
-              skills_required: {
-                acting_skills: ["Актерское мастерство", "Чувство юмора"],
-                physical_skills: [],
-                languages: ["Русский"],
-                special_requirements: []
-              },
-              suggested_artists: []
-            }
-          ],
-          contacts: {
-            casting_director: {
-              name: "Иван Иванов",
-              phone: "+7-999-123-45-67",
-              email: "casting@example.com",
-              telegram: "@casting_director"
+          project_title: response.data?.project_analysis?.project_title || '',
+          description: response.data?.project_analysis?.description || '',
+          project_type: response.data?.project_analysis?.project_type || '',
+          genre: response.data?.project_analysis?.genre || '',
+          premiere_date: response.data?.project_analysis?.premiere_date || '',
+          confidence: response.data?.project_analysis?.confidence || 0.85,
+          roles: response.data?.project_analysis?.roles?.map((role: any) => ({
+            role_type: role.role_type || 'main',
+            character_name: role.character_name || role.name || role.title,
+            description: role.description,
+            age_range: role.age_range,
+            gender: role.gender,
+            skills_required: role.skills_required || {
+              acting_skills: [],
+              physical_skills: [],
+              languages: [],
+              special_requirements: []
             },
-            director: {
-              name: "Петр Петров",
-              phone: "+7-999-765-43-21",
-              email: "director@example.com",
-              telegram: "@director"
-            },
+            suggested_artists: role.suggested_artists || []
+          })) || [],
+          contacts: response.data?.project_analysis?.contacts || {
+            casting_director: null,
+            director: null,
             producers: [],
-            production_company: {
-              name: "Мосфильм",
-              phone: "+7-495-123-45-67",
-              email: "info@mosfilm.ru",
-              website: "https://mosfilm.ru"
-            }
+            production_company: null
           }
         }
       };
 
-      setAnalysisResult(mockResult);
-      onAnalysisComplete?.(mockResult);
+      setAnalysisResult(analysisResult);
+      setLlmStatus('success');
+      onAnalysisComplete?.(analysisResult);
     } catch (err) {
       setError('Ошибка при анализе запроса');
+      setLlmStatus('error');
       console.error('Analysis error:', err);
     } finally {
       setIsAnalyzing(false);
@@ -97,9 +86,12 @@ const RequestAnalysisModal: React.FC<RequestAnalysisModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
         {/* Заголовок */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Анализ запроса {requestId ? `#${requestId}` : ''}
-          </h2>
+          <div className="flex items-center space-x-4">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Анализ запроса {requestId ? `#${requestId}` : ''}
+            </h2>
+            <LLMStatusIndicator status={llmStatus} />
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
@@ -139,8 +131,18 @@ const RequestAnalysisModal: React.FC<RequestAnalysisModalProps> = ({
 
           {isAnalyzing && (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Анализируем запрос...</p>
+              <LLMStatusIndicator 
+                status={llmStatus} 
+                message="Анализируем запрос с помощью ИИ..."
+                className="justify-center mb-4"
+              />
+              <div className="mt-4">
+                <div className="animate-pulse bg-blue-100 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    ИИ анализирует текст запроса и извлекает информацию о проекте, ролях и контактах...
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
