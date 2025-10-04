@@ -15,5 +15,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('webhook/', include(webhook_router.urls)),
     # Дополнительные endpoints для фронтенда
-    path('api/requests/<int:pk>/text/', RequestViewSet.as_view({'get': 'get_request_text'}), name='request-text'),
+    path('requests/<int:pk>/text/', RequestViewSet.as_view({'get': 'get_request_text'}), name='request-text'),
+    path('requests/<int:pk>/media/', RequestViewSet.as_view({'get': 'get_request_media'}), name='request-media'),
+    path('requests/<int:pk>/media/clear-cache/', RequestViewSet.as_view({'post': 'clear_media_cache'}), name='request-media-clear-cache'),
 ]

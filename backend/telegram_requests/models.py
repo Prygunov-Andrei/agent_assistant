@@ -169,6 +169,13 @@ class RequestImage(BaseModel):
         verbose_name="Изображение",
         help_text="Файл изображения"
     )
+    thumbnail = models.ImageField(
+        upload_to='requests/thumbnails/%Y/%m/%d/',
+        blank=True,
+        null=True,
+        verbose_name="Миниатюра",
+        help_text="Миниатюра изображения для быстрой загрузки"
+    )
     telegram_file_id = models.CharField(
         max_length=200, 
         blank=True, 
@@ -208,6 +215,49 @@ class RequestImage(BaseModel):
         if self.file_size:
             return round(self.file_size / (1024 * 1024), 2)
         return 0
+    
+    def process_image(self):
+        """Обрабатывает изображение: создает миниатюру и оптимизирует"""
+        from .image_processing import image_processing_service
+        
+        if not self.image:
+            return
+        
+        try:
+            # Создаем миниатюру
+            thumbnail_file = image_processing_service.create_thumbnail(self.image)
+            if thumbnail_file:
+                # Сохраняем миниатюру
+                thumbnail_name = f"thumb_{self.image.name.split('/')[-1]}"
+                self.thumbnail.save(thumbnail_name, thumbnail_file, save=False)
+            
+            # Оптимизируем основное изображение
+            optimized_file = image_processing_service.optimize_image(
+                self.image,
+                max_size=(1200, 1200),
+                quality=85
+            )
+            
+            if optimized_file:
+                # Сохраняем оптимизированное изображение
+                optimized_name = f"opt_{self.image.name.split('/')[-1]}"
+                self.image.save(optimized_name, optimized_file, save=False)
+                
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Ошибка обработки изображения {self.id}: {str(e)}")
+    
+    def save(self, *args, **kwargs):
+        """Переопределяем save для обработки изображения"""
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        # Обрабатываем изображение только для новых записей
+        if is_new and self.image:
+            self.process_image()
+            # Сохраняем еще раз после обработки
+            super().save(update_fields=['image', 'thumbnail'])
 
 
 class RequestFile(BaseModel):

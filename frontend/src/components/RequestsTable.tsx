@@ -104,8 +104,9 @@ const RequestsTable: React.FC = () => {
     setShowAnalysisModal(true);
   };
 
-  const handleShowContext = (requestText: string) => {
+  const handleShowContext = (requestText: string, requestId: number) => {
     setContextRequestText(requestText);
+    setSelectedRequestId(requestId);
     setShowContextPanel(true);
   };
 
@@ -255,7 +256,7 @@ const RequestsTable: React.FC = () => {
                             Создать проект
                           </button>
                           <button
-                            onClick={() => handleShowContext(request.text)}
+                            onClick={() => handleShowContext(request.text, request.id)}
                             className="btn btn-outline btn-sm"
                             title="Показать полный текст запроса"
                           >

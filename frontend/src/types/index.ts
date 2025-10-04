@@ -140,6 +140,7 @@ export interface RequestImage {
   id: number;
   request: number;
   image: string;
+  thumbnail?: string;
   telegram_file_id?: string;
   file_size?: number;
   caption?: string;
@@ -355,7 +356,7 @@ export interface CreateArtistRequest {
 }
 
 // Экспорт новых типов для LLM интеграции
-export * from './llm';
+// export * from './llm';
 export * from './projects';
 export * from './matching';
 export * from './media';

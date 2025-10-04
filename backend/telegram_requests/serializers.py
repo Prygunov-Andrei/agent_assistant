@@ -13,7 +13,7 @@ class RequestImageSerializer(BaseModelSerializer):
     class Meta(BaseModelSerializer.Meta):
         model = RequestImage
         fields = BaseModelSerializer.Meta.fields + [
-            'request', 'image', 'telegram_file_id', 'file_size', 
+            'request', 'image', 'thumbnail', 'telegram_file_id', 'file_size', 
             'caption', 'file_size_mb'
         ]
         read_only_fields = BaseModelSerializer.Meta.read_only_fields + ['file_size_mb']

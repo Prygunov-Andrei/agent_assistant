@@ -2,6 +2,7 @@ from rest_framework import viewsets, status, permissions, filters
 from rest_framework.decorators import action, parser_classes
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.http import Http404
 from rest_framework.pagination import PageNumberPagination
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -24,6 +25,7 @@ from .serializers import (
 )
 from .services import TelegramFileService
 from .duplicate_detection import duplicate_detector
+from .media_cache import media_cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +155,103 @@ class RequestViewSet(BaseModelViewSet):
         
         serializer = self.list_serializer_class(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='media')
+    def get_request_media(self, request, pk=None):
+        """Получить медиафайлы запроса с оптимизацией и кэшированием"""
+        try:
+            request_obj = self.get_object()
+        except Http404:
+            return Response({
+                'error': 'Запрос не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': f'Ошибка получения запроса: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        try:
+            
+            # Проверяем кэш
+            cached_data = media_cache_service.get_media_from_cache(request_obj.id)
+            if cached_data.get('cached'):
+                logger.info(f"Медиафайлы запроса {request_obj.id} получены из кэша")
+                return Response({
+                    'id': request_obj.id,
+                    'has_images': request_obj.has_images,
+                    'has_files': request_obj.has_files,
+                    'images': cached_data['images'],
+                    'files': cached_data['files'],
+                    'images_count': len(cached_data['images']),
+                    'files_count': len(cached_data['files']),
+                    'total_size': sum(img.get('file_size', 0) for img in cached_data['images']) + 
+                                 sum(f.get('file_size', 0) for f in cached_data['files']),
+                    'cached': True
+                })
+            
+            # Если нет в кэше, получаем из БД
+            logger.info(f"Получение медиафайлов запроса {request_obj.id} из БД")
+            
+            # Оптимизируем запросы с помощью select_related
+            images = request_obj.images.select_related('request').all()
+            image_serializer = RequestImageSerializer(images, many=True, context={'request': request})
+            
+            files = request_obj.files.select_related('request').all()
+            file_serializer = RequestFileSerializer(files, many=True, context={'request': request})
+            
+            # Сохраняем в кэш
+            media_cache_service.set_media_to_cache(
+                request_obj.id, 
+                image_serializer.data, 
+                file_serializer.data
+            )
+            
+            response_data = {
+                'id': request_obj.id,
+                'has_images': request_obj.has_images,
+                'has_files': request_obj.has_files,
+                'images': image_serializer.data,
+                'files': file_serializer.data,
+                'images_count': len(image_serializer.data),
+                'files_count': len(file_serializer.data),
+                'total_size': sum(img.get('file_size', 0) for img in image_serializer.data) + 
+                             sum(f.get('file_size', 0) for f in file_serializer.data),
+                'cached': False
+            }
+            
+            return Response(response_data)
+        except Exception as e:
+            logger.error(f"Ошибка получения медиафайлов запроса {pk}: {str(e)}")
+            return Response({
+                'error': f'Ошибка получения медиафайлов запроса: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'], url_path='media/clear-cache')
+    def clear_media_cache(self, request, pk=None):
+        """Очистить кэш медиафайлов запроса"""
+        try:
+            request_obj = self.get_object()
+        except Http404:
+            return Response({
+                'error': 'Запрос не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': f'Ошибка получения запроса: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        try:
+            media_cache_service.clear_media_cache(request_obj.id)
+            
+            return Response({
+                'message': f'Кэш медиафайлов запроса {request_obj.id} очищен',
+                'request_id': request_obj.id
+            })
+        except Exception as e:
+            logger.error(f"Ошибка очистки кэша медиафайлов запроса {pk}: {str(e)}")
+            return Response({
+                'error': f'Ошибка очистки кэша: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class RequestImageViewSet(BaseModelViewSet):
