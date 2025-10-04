@@ -399,7 +399,7 @@ export const ProjectRoleForm: React.FC<ProjectRoleFormProps> = ({
             <input
               id="skills-required"
               type="text"
-              value={formData.skills_required.join(', ')}
+              value={formData.skills_required?.join(', ') || ''}
               onChange={(e) => handleSkillsChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               placeholder="Навыки через запятую"

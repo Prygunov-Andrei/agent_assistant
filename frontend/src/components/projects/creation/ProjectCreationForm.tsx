@@ -5,6 +5,7 @@ import type { ProjectCreationForm as ProjectForm, ProjectType, Genre } from '../
 import type { LLMAnalysisResult } from '../../../types/llm';
 import { projectsService } from '../../../services/projects';
 import ArtistSelectionComponent from '../roles/ArtistSelectionComponent';
+import { CompanySelectionComponent, DuplicateProjectWarning } from '../../matching';
 
 interface ProjectCreationFormProps {
   initialData?: Partial<ProjectForm>;
@@ -47,7 +48,9 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
       shooting_dates: role.shooting_dates || '',
       shooting_location: role.shooting_location || '',
       notes: role.notes || '',
-      skills_required: role.skills_required || [],
+      skills_required: Array.isArray(role.skills_required) 
+        ? role.skills_required 
+        : role.skills_required?.acting_skills || [],
       suggested_artists: role.suggested_artists || [],
     })) || [],
   });
@@ -56,6 +59,11 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
   const [projectTypes, setProjectTypes] = useState<ProjectType[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Состояние для выбора компаний и проверки дубликатов
+  const [selectedProductionCompany, setSelectedProductionCompany] = useState<number | null>(null);
+  const [duplicateProjects, setDuplicateProjects] = useState<any[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   // Загрузка справочников при монтировании компонента
   useEffect(() => {
@@ -90,6 +98,27 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
         ...prev,
         [field]: '',
       }));
+    }
+
+    // Проверка дубликатов при изменении названия проекта
+    if (field === 'title' && value && value.trim().length > 3) {
+      checkForDuplicateProjects(value.trim());
+    }
+  };
+
+  // Функция для проверки дубликатов проектов
+  const checkForDuplicateProjects = async (title: string) => {
+    try {
+      const duplicates = await projectsService.searchProjectMatches({ title });
+      if (duplicates.length > 0) {
+        setDuplicateProjects(duplicates);
+        setShowDuplicateWarning(true);
+      } else {
+        setDuplicateProjects([]);
+        setShowDuplicateWarning(false);
+      }
+    } catch (error) {
+      console.error('Ошибка при проверке дубликатов:', error);
     }
   };
 
@@ -137,6 +166,17 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     }));
   };
 
+  // Обработчики для дубликатов проектов
+  const handleSelectExistingProject = (projectId: number) => {
+    // Здесь можно добавить логику для загрузки существующего проекта
+    console.log('Выбран существующий проект:', projectId);
+    setShowDuplicateWarning(false);
+  };
+
+  const handleIgnoreDuplicateWarning = () => {
+    setShowDuplicateWarning(false);
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -166,7 +206,7 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     e.preventDefault();
     
     if (validateForm()) {
-      // Отправляем все поля проекта, включая roles
+      // Отправляем все поля проекта, включая roles и продакшн-компанию
       const projectData = {
         title: formData.title,
         description: formData.description,
@@ -174,6 +214,7 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
         genre: formData.genre,
         premiere_date: formData.premiere_date,
         request_id: formData.request_id,
+        production_company: selectedProductionCompany,
         roles: formData.roles,
       };
       onSubmit(projectData);
@@ -277,6 +318,28 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
         />
       </div>
 
+      {/* Выбор продакшн-компании */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Продакшн-компания
+        </label>
+        <CompanySelectionComponent
+          selectedCompanyId={selectedProductionCompany}
+          onSelectionChange={setSelectedProductionCompany}
+          placeholder="Начните вводить название продакшн-компании..."
+          className="w-full"
+        />
+      </div>
+
+      {/* Предупреждение о дубликатах проектов */}
+      {showDuplicateWarning && duplicateProjects.length > 0 && (
+        <DuplicateProjectWarning
+          duplicates={duplicateProjects}
+          onIgnore={handleIgnoreDuplicateWarning}
+          onSelectExisting={handleSelectExistingProject}
+        />
+      )}
+
       {/* Роли */}
       <div>
         <div className="flex justify-between items-center mb-4">
@@ -358,7 +421,7 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={role.skills_required.join(', ')}
+                  value={role.skills_required?.join(', ') || ''}
                   onChange={(e) => handleRoleChange(index, 'skills_required', e.target.value.split(', ').filter(s => s.trim()))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   placeholder="Навыки через запятую"

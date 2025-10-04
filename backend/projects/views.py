@@ -446,3 +446,65 @@ class ProjectRoleViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        summary="Создание проекта с ролями",
+        description="Создать проект со всеми связанными ролями в одной транзакции",
+        tags=["Проекты"]
+    )
+    @action(detail=False, methods=['post'])
+    def create_with_roles(self, request):
+        """Создать проект со всеми связанными ролями в одной транзакции"""
+        from django.db import transaction
+        
+        try:
+            with transaction.atomic():
+                # Создаем проект
+                project_data = request.data.copy()
+                roles_data = project_data.pop('roles', [])
+                
+                # Обрабатываем request_id если он передан
+                request_id = project_data.get('request_id')
+                if request_id:
+                    try:
+                        from telegram_requests.models import Request
+                        request_obj = Request.objects.get(id=request_id)
+                        
+                        # Проверяем, не связан ли уже этот запрос с проектом
+                        if hasattr(request_obj, 'created_project'):
+                            # Создаем проект без связи с запросом
+                            project_data['project_type_raw'] = f"from_request_{request_id}"
+                        else:
+                            # Создаем проект с связью с запросом
+                            project_data['request'] = request_obj.id
+                    except Request.DoesNotExist:
+                        pass
+                
+                # Создаем проект
+                project_serializer = ProjectSerializer(data=project_data)
+                if not project_serializer.is_valid():
+                    return Response(project_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+                project = project_serializer.save(created_by=request.user)
+                
+                # Создаем роли
+                created_roles = []
+                for role_data in roles_data:
+                    role_data['project'] = project.id
+                    role_serializer = ProjectRoleSerializer(data=role_data)
+                    if not role_serializer.is_valid():
+                        return Response(role_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    role = role_serializer.save()
+                    created_roles.append(role)
+                
+                # Возвращаем созданный проект с ролями
+                project_response = ProjectSerializer(project).data
+                project_response['roles'] = ProjectRoleSerializer(created_roles, many=True).data
+                
+                return Response(project_response, status=status.HTTP_201_CREATED)
+                
+        except Exception as e:
+            return Response({
+                'error': f'Ошибка создания проекта: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

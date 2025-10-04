@@ -204,7 +204,7 @@ export const RoleTabs: React.FC<RoleTabsProps> = ({
                 </label>
                 <p className="text-sm text-gray-900">
                   {roles[activeTab]?.skills_required?.length > 0 
-                    ? roles[activeTab].skills_required.join(', ')
+                    ? roles[activeTab].skills_required?.join(', ') || ''
                     : 'Не указано'}
                 </p>
               </div>

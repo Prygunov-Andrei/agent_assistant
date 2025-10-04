@@ -14,4 +14,6 @@ webhook_router.register(r'telegram', TelegramWebhookViewSet, basename='telegram-
 urlpatterns = [
     path('', include(router.urls)),
     path('webhook/', include(webhook_router.urls)),
+    # Дополнительные endpoints для фронтенда
+    path('api/requests/<int:pk>/text/', RequestViewSet.as_view({'get': 'get_request_text'}), name='request-text'),
 ]

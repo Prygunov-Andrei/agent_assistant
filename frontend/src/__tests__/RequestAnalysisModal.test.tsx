@@ -1,226 +1,79 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { RequestAnalysisModal } from '../components/llm/analysis/RequestAnalysisModal';
-import type { LLMAnalysisResult } from '../types/llm';
-
-// Mock LLMService
-jest.mock('../services/llm', () => ({
-  LLMService: {
-    analyzeRequest: jest.fn(),
-  },
-}));
-
-const mockAnalysisResult: LLMAnalysisResult = {
-  project_analysis: {
-    project_title: 'Тестовый проект',
-    project_type: 'Фильм',
-    project_type_raw: 'Фильм',
-    genre: 'Драма',
-    description: 'Описание проекта',
-    premiere_date: '2024-12-31',
-    roles: [],
-    contacts: {
-      casting_director: {
-        name: '',
-        phone: '',
-        email: '',
-        telegram: ''
-      },
-      director: {
-        name: '',
-        phone: '',
-        email: '',
-        telegram: ''
-      },
-      producers: [],
-      production_company: {
-        name: '',
-        phone: '',
-        email: '',
-        website: ''
-      }
-    },
-    confidence: 0.8
-  }
-};
+import RequestAnalysisModal from '../components/analysis/RequestAnalysisModal';
 
 describe('RequestAnalysisModal', () => {
-  const mockOnClose = jest.fn();
-  const mockOnAnalysisComplete = jest.fn();
+  const defaultProps = {
+    isOpen: true,
+    onClose: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders when open', () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={true}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
-
-    expect(screen.getByText('Анализ запроса #1')).toBeInTheDocument();
-    expect(screen.getByText('Тестовый запрос')).toBeInTheDocument();
+    render(<RequestAnalysisModal {...defaultProps} />);
+    
+    expect(screen.getByText('Анализ запроса')).toBeInTheDocument();
   });
 
   it('does not render when closed', () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={false}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
+    render(<RequestAnalysisModal {...defaultProps} isOpen={false} />);
+    
+    expect(screen.queryByText('Анализ запроса')).not.toBeInTheDocument();
+  });
 
-    expect(screen.queryByText('Анализ запроса #1')).not.toBeInTheDocument();
+  it('displays request text when provided', () => {
+    const requestText = 'Тестовый текст запроса для анализа';
+    render(<RequestAnalysisModal {...defaultProps} requestText={requestText} />);
+    
+    expect(screen.getByText(requestText)).toBeInTheDocument();
+  });
+
+  it('displays request ID when provided', () => {
+    const requestId = 456;
+    render(<RequestAnalysisModal {...defaultProps} requestId={requestId} />);
+    
+    expect(screen.getByText(/Анализ запроса.*#456/)).toBeInTheDocument();
   });
 
   it('shows analyze button initially', () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={true}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
-
-    expect(screen.getByText('Анализировать')).toBeInTheDocument();
+    render(<RequestAnalysisModal {...defaultProps} />);
+    
+    expect(screen.getByText('Начать анализ')).toBeInTheDocument();
   });
 
-  it('closes modal when close button is clicked', () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={true}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
-
-    const closeButton = screen.getByText('✕');
-    fireEvent.click(closeButton);
-
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  it('calls onClose when close button is clicked', () => {
+    const onClose = jest.fn();
+    render(<RequestAnalysisModal {...defaultProps} onClose={onClose} />);
+    
+    const closeButton = screen.getByLabelText('Закрыть');
+    closeButton.click();
+    
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('shows loading state when analyzing', async () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={true}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
-
-    const analyzeButton = screen.getByText('Анализировать');
+    render(<RequestAnalysisModal {...defaultProps} requestId={1} />);
+    
+    const analyzeButton = screen.getByText('Начать анализ');
     fireEvent.click(analyzeButton);
-
+    
     await waitFor(() => {
-      expect(screen.getByText('Анализ запроса в процессе...')).toBeInTheDocument();
+      expect(screen.getByText('Анализируем запрос...')).toBeInTheDocument();
     });
   });
 
-  it('shows analysis results after completion', async () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={true}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
-
-    const analyzeButton = screen.getByText('Анализировать');
+  it('shows analysis result after completion', async () => {
+    render(<RequestAnalysisModal {...defaultProps} requestId={1} />);
+    
+    const analyzeButton = screen.getByText('Начать анализ');
     fireEvent.click(analyzeButton);
-
+    
     await waitFor(() => {
-      expect(screen.getByText('Результаты анализа:')).toBeInTheDocument();
-      expect(screen.getByText('Фильм')).toBeInTheDocument();
-      expect(screen.getByText('Драма')).toBeInTheDocument();
-      expect(screen.getByText('Описание проекта')).toBeInTheDocument();
+      expect(screen.getByText('Комедийный фильм про друзей')).toBeInTheDocument();
+      expect(screen.getByText('Главный герой')).toBeInTheDocument();
     }, { timeout: 3000 });
-  });
-
-  it('shows roles in analysis results', async () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={true}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
-
-    const analyzeButton = screen.getByText('Анализировать');
-    fireEvent.click(analyzeButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Результаты анализа:')).toBeInTheDocument();
-      expect(screen.getByText('Тип проекта:')).toBeInTheDocument();
-      expect(screen.getByText('Жанр:')).toBeInTheDocument();
-      expect(screen.getByText('Описание:')).toBeInTheDocument();
-    }, { timeout: 3000 });
-  });
-
-  it('applies analysis result when apply button is clicked', async () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={true}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
-
-    const analyzeButton = screen.getByText('Анализировать');
-    fireEvent.click(analyzeButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Применить анализ')).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    const applyButton = screen.getByText('Применить анализ');
-    fireEvent.click(applyButton);
-
-    expect(mockOnAnalysisComplete).toHaveBeenCalledWith(mockAnalysisResult);
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows cancel button in analysis results', async () => {
-    render(
-      <RequestAnalysisModal
-        isOpen={true}
-        onClose={mockOnClose}
-        requestId={1}
-        requestText="Тестовый запрос"
-        onAnalysisComplete={mockOnAnalysisComplete}
-      />
-    );
-
-    const analyzeButton = screen.getByText('Анализировать');
-    fireEvent.click(analyzeButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Отмена')).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    const cancelButton = screen.getByText('Отмена');
-    fireEvent.click(cancelButton);
-
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 });

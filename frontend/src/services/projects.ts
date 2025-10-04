@@ -1,6 +1,6 @@
 import apiClient from './api';
 import type { ApiResponse, Project, ProjectRole, Genre } from '../types';
-import type { ProjectType } from '../types/projects';
+import type { ProjectType, ProjectMatch, ProjectSearchRequest, ProjectStatus } from '../types/projects';
 
 export const projectsService = {
   // Получить список проектов
@@ -59,6 +59,30 @@ export const projectsService = {
   // Поиск проектов
   async searchProjects(query: string, page: number = 1): Promise<ApiResponse<Project>> {
     const response = await apiClient.get(`/projects/?search=${encodeURIComponent(query)}&page=${page}`);
+    return response.data;
+  },
+
+  // Поиск совпадений проектов
+  async searchProjectMatches(searchData: ProjectSearchRequest): Promise<ProjectMatch[]> {
+    const response = await apiClient.post('/api/projects/search-matches/', searchData);
+    return response.data;
+  },
+
+  // Поиск проектов по названию
+  async searchProjectsByTitle(title: string): Promise<ProjectMatch[]> {
+    const response = await apiClient.post('/api/projects/search-by-title/', { title });
+    return response.data;
+  },
+
+  // Получить проекты по статусу
+  async getProjectsByStatus(status: string): Promise<Project[]> {
+    const response = await apiClient.get(`/api/projects/by-status/?status=${status}`);
+    return response.data;
+  },
+
+  // Получить статусы проектов
+  async getProjectStatuses(): Promise<ProjectStatus[]> {
+    const response = await apiClient.get('/api/projects/project-statuses/');
     return response.data;
   }
 };

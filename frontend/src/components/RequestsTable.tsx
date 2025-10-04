@@ -4,8 +4,11 @@ import { requestsService } from '../services/requests';
 import { projectsService } from '../services/projects';
 import LoadingSpinner from './LoadingSpinner';
 import { ProjectCreationForm } from './projects/creation/ProjectCreationForm';
+import RequestAnalysisModal from './analysis/RequestAnalysisModal';
+import FixedContextPanel from './layout/FixedContextPanel';
 import type { RequestListItem } from '../types';
 import type { ProjectCreationForm as ProjectForm } from '../types/projects';
+import type { LLMAnalysisResult } from '../types/llm';
 
 const RequestsTable: React.FC = () => {
   const [requests, setRequests] = useState<RequestListItem[]>([]);
@@ -13,6 +16,10 @@ const RequestsTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [showContextPanel, setShowContextPanel] = useState(false);
+  const [contextRequestText, setContextRequestText] = useState<string>('');
+  const [analysisResult, setAnalysisResult] = useState<LLMAnalysisResult | null>(null);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -90,6 +97,22 @@ const RequestsTable: React.FC = () => {
   const handleProjectCancel = () => {
     setShowProjectForm(false);
     setSelectedRequestId(null);
+  };
+
+  const handleAnalyzeRequest = (requestId: number) => {
+    setSelectedRequestId(requestId);
+    setShowAnalysisModal(true);
+  };
+
+  const handleShowContext = (requestText: string) => {
+    setContextRequestText(requestText);
+    setShowContextPanel(true);
+  };
+
+  const handleAnalysisComplete = (result: LLMAnalysisResult) => {
+    setAnalysisResult(result);
+    setShowProjectForm(true);
+    setShowAnalysisModal(false);
   };
 
   // Убираем обрезку текста - показываем полный текст
@@ -215,14 +238,30 @@ const RequestsTable: React.FC = () => {
                       </div>
                     </td>
                     <td className="requests-table-cell">
-                      <div className="request-actions">
-                        <button
-                          onClick={() => handleCreateProject(request.id)}
-                          className="btn btn-primary btn-sm"
-                          title="Создать проект из этого запроса"
-                        >
-                          Создать проект
-                        </button>
+                      <div className="request-actions space-y-2">
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => handleAnalyzeRequest(request.id)}
+                            className="btn btn-secondary btn-sm"
+                            title="Анализировать запрос с помощью ИИ"
+                          >
+                            🤖 Анализировать
+                          </button>
+                          <button
+                            onClick={() => handleCreateProject(request.id)}
+                            className="btn btn-primary btn-sm"
+                            title="Создать проект из этого запроса"
+                          >
+                            Создать проект
+                          </button>
+                          <button
+                            onClick={() => handleShowContext(request.text)}
+                            className="btn btn-outline btn-sm"
+                            title="Показать полный текст запроса"
+                          >
+                            📄 Контекст
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -248,12 +287,30 @@ const RequestsTable: React.FC = () => {
             </div>
             <ProjectCreationForm
               requestId={selectedRequestId}
+              analysisResult={analysisResult}
               onSubmit={handleProjectSubmit}
               onCancel={handleProjectCancel}
             />
           </div>
         </div>
       )}
+
+      {/* Модальное окно анализа запроса */}
+      <RequestAnalysisModal
+        isOpen={showAnalysisModal}
+        onClose={() => setShowAnalysisModal(false)}
+        requestId={selectedRequestId || undefined}
+        requestText={requests.find(r => r.id === selectedRequestId)?.text}
+        onAnalysisComplete={handleAnalysisComplete}
+      />
+
+      {/* Контекстная панель */}
+      <FixedContextPanel
+        requestText={contextRequestText}
+        requestId={selectedRequestId || undefined}
+        isVisible={showContextPanel}
+        onClose={() => setShowContextPanel(false)}
+      />
     </>
   );
 };

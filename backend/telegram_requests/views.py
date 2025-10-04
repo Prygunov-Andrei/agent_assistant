@@ -355,3 +355,20 @@ class TelegramWebhookViewSet(viewsets.ViewSet):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Ошибка при обработке документов: {e}")
+
+    @action(detail=True, methods=['get'], url_path='text')
+    def get_request_text(self, request, pk=None):
+        """Получить текст запроса для анализа"""
+        try:
+            request_obj = self.get_object()
+            return Response({
+                'id': request_obj.id,
+                'text': request_obj.text,
+                'author_name': request_obj.author_name,
+                'created_at': request_obj.created_at,
+                'original_created_at': request_obj.original_created_at,
+            })
+        except Exception as e:
+            return Response({
+                'error': f'Ошибка получения текста запроса: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

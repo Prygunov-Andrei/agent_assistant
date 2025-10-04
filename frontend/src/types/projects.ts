@@ -99,3 +99,41 @@ export interface RoleType {
   description?: string;
   created_at: string;
 }
+
+// Совпадение проекта при поиске
+export interface ProjectMatch {
+  id: number;
+  title: string;
+  project_type?: string;
+  status: string;
+  status_display: string;
+  description?: string;
+  genre?: string;
+  premiere_date?: string;
+  director?: {
+    id: number;
+    full_name: string;
+  };
+  production_company?: {
+    id: number;
+    name: string;
+  };
+  created_at: string;
+  score: number;
+  confidence: 'high' | 'medium' | 'low';
+  matched_fields: string[];
+  field_scores: Record<string, number>;
+}
+
+// Запрос поиска совпадений проектов
+export interface ProjectSearchRequest {
+  title?: string;
+  description?: string;
+  status?: string;
+}
+
+// Статус проекта
+export interface ProjectStatus {
+  value: string;
+  label: string;
+}
