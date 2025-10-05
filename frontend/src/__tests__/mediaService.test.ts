@@ -1,5 +1,5 @@
 import { mediaService } from '../services/mediaService';
-import { RequestFile } from '../types';
+import type { RequestFile } from '../types';
 
 // Мокаем apiClient
 jest.mock('../services/api');

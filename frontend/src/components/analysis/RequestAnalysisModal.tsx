@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { LLMAnalysisResult } from '../../types/llm';
 import { requestsService } from '../../services/requests';
+import { ErrorHandler } from '../../utils/errorHandler';
 import LLMStatusIndicator from '../llm/LLMStatusIndicator';
 
 interface RequestAnalysisModalProps {
@@ -73,7 +74,7 @@ const RequestAnalysisModal: React.FC<RequestAnalysisModalProps> = ({
     } catch (err) {
       setError('Ошибка при анализе запроса');
       setLlmStatus('error');
-      console.error('Analysis error:', err);
+      ErrorHandler.logError(err, 'RequestAnalysisModal.analyzeRequest');
     } finally {
       setIsAnalyzing(false);
     }

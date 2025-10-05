@@ -104,6 +104,7 @@ def analyze_request(request, request_id):
             # Формируем ответ (LLM эмулятор уже возвращает правильную структуру)
             response_data = {
                 'project_analysis': analysis_result['project_analysis'],
+                'contacts': analysis_result.get('contacts', {}),
                 'confidence': analysis_result['project_analysis'].get('confidence', 0.85),
                 'processing_time': processing_time,
                 'used_emulator': serializer.validated_data['use_emulator'],

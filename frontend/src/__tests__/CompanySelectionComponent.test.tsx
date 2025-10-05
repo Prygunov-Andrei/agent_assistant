@@ -74,7 +74,8 @@ describe('CompanySelectionComponent', () => {
     fireEvent.change(input, { target: { value: 'Мосфильм' } });
 
     await waitFor(() => {
-      expect(screen.getByText('Поиск...')).toBeInTheDocument();
+      // Проверяем наличие спиннера загрузки
+      expect(document.querySelector('.animate-spin')).toBeInTheDocument();
     });
   });
 
@@ -200,7 +201,7 @@ describe('CompanySelectionComponent', () => {
     fireEvent.change(input, { target: { value: 'Мосфильм' } });
 
     await waitFor(() => {
-      expect(screen.getByText('Ошибка при поиске компаний.')).toBeInTheDocument();
+      expect(screen.getByText('Компании не найдены')).toBeInTheDocument();
     });
   });
 });

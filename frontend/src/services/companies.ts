@@ -68,4 +68,13 @@ export const companiesService = {
     const response = await apiClient.get('/api/companies/my-companies/');
     return response.data;
   },
+
+  // Поиск компаний по имени (для MatchingSuggestionsPanel)
+  async searchCompanies(params: { name: string; limit?: number }): Promise<CompanyMatch[]> {
+    const response = await apiClient.post('/api/companies/search-by-name/', {
+      name: params.name,
+      limit: params.limit || 3
+    });
+    return response.data;
+  },
 };

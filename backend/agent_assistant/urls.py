@@ -51,4 +51,7 @@ urlpatterns = [
 
 # Обслуживание медиафайлов в режиме разработки
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    from telegram_requests.media_views import serve_media_file
+    urlpatterns += [
+        path('media/<path:path>', serve_media_file, name='serve_media'),
+    ]

@@ -77,7 +77,9 @@ describe('ArtistsTable', () => {
 
     render(<ArtistsTable />);
     
-    expect(screen.getByText('Загрузка артистов...')).toBeInTheDocument();
+    expect(screen.getByText('Артисты')).toBeInTheDocument();
+    // Проверяем наличие скелетона загрузки
+    expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
   it('renders artists table when data is loaded', async () => {

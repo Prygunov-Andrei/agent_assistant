@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import apiClient from './api';
 import type { ProjectRoleForm } from '../types/projects';
 
 export interface ProjectRole {

@@ -5,6 +5,7 @@ import Artists from './pages/Artists';
 import Requests from './pages/Requests';
 import Login from './pages/Login';
 import TestPersonMatching from './pages/TestPersonMatching';
+import ProjectCreationPage from './pages/ProjectCreationPage';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -176,6 +177,16 @@ const App: React.FC = () => {
                      <Layout>
                        <TestPersonMatching />
                      </Layout>
+                   </ProtectedRoute>
+                 }
+               />
+
+               {/* Страница создания проекта в новом окне */}
+               <Route
+                 path="/project-creation"
+                 element={
+                   <ProtectedRoute>
+                     <ProjectCreationPage />
                    </ProtectedRoute>
                  }
                />

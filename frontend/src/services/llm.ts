@@ -1,6 +1,7 @@
 // Сервис для работы с LLM
 
 import api from './api';
+import { ErrorHandler } from '../utils/errorHandler';
 import type { 
   LLMAnalysisResponse, 
   LLMAnalysisResult,
@@ -32,7 +33,7 @@ export class LLMService {
       
       return response.data.data;
     } catch (error) {
-      console.error('Ошибка при анализе запроса:', error);
+      ErrorHandler.logError(error, 'LLMService.analyzeRequest');
       throw error;
     }
   }
@@ -45,7 +46,7 @@ export class LLMService {
       );
       return response.data.status;
     } catch (error) {
-      console.error('Ошибка при получении статуса анализа:', error);
+      ErrorHandler.logError(error, 'LLMService.getAnalysisStatus');
       throw error;
     }
   }
@@ -56,7 +57,7 @@ export class LLMService {
       const response = await api.get<LLMStatus>('/api/llm/status/');
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении статуса LLM:', error);
+      ErrorHandler.logError(error, 'LLMService.getLLMStatus');
       throw error;
     }
   }
@@ -67,7 +68,7 @@ export class LLMService {
       const response = await api.get<LLMConfig>('/api/llm/config/');
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении конфигурации LLM:', error);
+      ErrorHandler.logError(error, 'Ошибка при получении конфигурации LLM:');
       throw error;
     }
   }
@@ -78,7 +79,7 @@ export class LLMService {
       const response = await api.put<LLMConfig>('/api/llm/config/', config);
       return response.data;
     } catch (error) {
-      console.error('Ошибка при обновлении конфигурации LLM:', error);
+      ErrorHandler.logError(error, 'Ошибка при обновлении конфигурации LLM:');
       throw error;
     }
   }
@@ -93,7 +94,7 @@ export class LLMService {
         analysis_status: status
       });
     } catch (error) {
-      console.error('Ошибка при обновлении статуса запроса:', error);
+      ErrorHandler.logError(error, 'Ошибка при обновлении статуса запроса:');
       throw error;
     }
   }
@@ -104,7 +105,7 @@ export class LLMService {
       const response = await api.get<LLMMonitoringData>('/api/llm/monitoring/');
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении мониторинговых данных:', error);
+      ErrorHandler.logError(error, 'Ошибка при получении мониторинговых данных:');
       throw error;
     }
   }
@@ -118,7 +119,7 @@ export class LLMService {
       );
       return response.data;
     } catch (error) {
-      console.error('Ошибка при экспорте датасета:', error);
+      ErrorHandler.logError(error, 'Ошибка при экспорте датасета:');
       throw error;
     }
   }
@@ -129,7 +130,7 @@ export class LLMService {
       const response = await api.get<TrainingDataset[]>('/api/llm/datasets/');
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении списка датасетов:', error);
+      ErrorHandler.logError(error, 'Ошибка при получении списка датасетов:');
       throw error;
     }
   }
@@ -140,7 +141,7 @@ export class LLMService {
       const response = await api.get<TrainingDataset>(`/api/llm/datasets/${datasetId}/`);
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении информации о датасете:', error);
+      ErrorHandler.logError(error, 'Ошибка при получении информации о датасете:');
       throw error;
     }
   }
@@ -150,7 +151,7 @@ export class LLMService {
     try {
       await api.delete(`/api/llm/datasets/${datasetId}/`);
     } catch (error) {
-      console.error('Ошибка при удалении датасета:', error);
+      ErrorHandler.logError(error, 'Ошибка при удалении датасета:');
       throw error;
     }
   }
@@ -173,7 +174,7 @@ export class LLMService {
       
       return response.data.data;
     } catch (error) {
-      console.error('Ошибка при тестировании промпта:', error);
+      ErrorHandler.logError(error, 'Ошибка при тестировании промпта:');
       throw error;
     }
   }
@@ -187,7 +188,7 @@ export class LLMService {
       );
       return result.data.is_valid;
     } catch (error) {
-      console.error('Ошибка при валидации ответа:', error);
+      ErrorHandler.logError(error, 'Ошибка при валидации ответа:');
       return false;
     }
   }
@@ -198,7 +199,7 @@ export class LLMService {
       const response = await api.get<any[]>(`/api/llm/request-history/?limit=${limit}`);
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении истории запросов:', error);
+      ErrorHandler.logError(error, 'Ошибка при получении истории запросов:');
       throw error;
     }
   }
@@ -208,7 +209,7 @@ export class LLMService {
     try {
       await api.post('/api/llm/clear-cache/');
     } catch (error) {
-      console.error('Ошибка при очистке кэша:', error);
+      ErrorHandler.logError(error, 'Ошибка при очистке кэша:');
       throw error;
     }
   }
@@ -218,7 +219,7 @@ export class LLMService {
     try {
       await api.post('/api/llm/restart/');
     } catch (error) {
-      console.error('Ошибка при перезапуске сервиса:', error);
+      ErrorHandler.logError(error, 'Ошибка при перезапуске сервиса:');
       throw error;
     }
   }
@@ -359,7 +360,7 @@ export const LLMUtils = {
       
       return true;
     } catch (error) {
-      console.error('Ошибка при валидации ответа LLM:', error);
+      ErrorHandler.logError(error, 'Ошибка при валидации ответа LLM:');
       return false;
     }
   },

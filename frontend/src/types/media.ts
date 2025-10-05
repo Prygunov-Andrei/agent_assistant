@@ -47,6 +47,7 @@ export interface ImageGalleryProps {
   showCount?: boolean;
   onImageClick?: (image: MediaImage) => void;
   className?: string;
+  compact?: boolean;
 }
 
 // Пропсы для списка документов
@@ -56,6 +57,8 @@ export interface DocumentListProps {
   showType?: boolean;
   onDownload?: (document: MediaDocument) => void;
   className?: string;
+  compact?: boolean;
+  requestId?: number;
 }
 
 // Пропсы для медиа-просмотрщика
@@ -64,6 +67,7 @@ export interface MediaViewerProps {
   showImages?: boolean;
   showDocuments?: boolean;
   className?: string;
+  requestId?: number;
 }
 
 // Конфигурация медиа

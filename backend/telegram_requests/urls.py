@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import RequestViewSet, RequestImageViewSet, RequestFileViewSet, TelegramWebhookViewSet
+from .file_views import download_file
 
 router = DefaultRouter()
 router.register(r'requests', RequestViewSet, basename='request')
@@ -18,4 +19,6 @@ urlpatterns = [
     path('requests/<int:pk>/text/', RequestViewSet.as_view({'get': 'get_request_text'}), name='request-text'),
     path('requests/<int:pk>/media/', RequestViewSet.as_view({'get': 'get_request_media'}), name='request-media'),
     path('requests/<int:pk>/media/clear-cache/', RequestViewSet.as_view({'post': 'clear_media_cache'}), name='request-media-clear-cache'),
+    # Endpoint для скачивания файлов
+    path('requests/<int:request_id>/files/<int:file_id>/download/', download_file, name='download-file'),
 ]

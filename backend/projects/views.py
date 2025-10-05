@@ -13,6 +13,9 @@ from .serializers import (
     ProjectStatusSerializer
 )
 from .services import project_matching_service
+from core.optimizations import OptimizedQuerySets, QueryOptimizer
+from core.caching import QuerySetCache, UserDataCache, CacheInvalidationService
+from core.pagination import OptimizedPageNumberPagination
 
 
 class ProjectPermission(permissions.BasePermission):
@@ -137,6 +140,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     
     queryset = Project.objects.all()
     permission_classes = [permissions.IsAuthenticated, ProjectPermission]
+    pagination_class = OptimizedPageNumberPagination
     
     def perform_create(self, serializer):
         # Обрабатываем request_id если он передан
@@ -174,7 +178,21 @@ class ProjectViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         if self.action == 'list':
             queryset = queryset.filter(is_active=True)
-        return queryset
+        
+        # Применяем оптимизации
+        return QueryOptimizer.optimize_list_queryset(
+            queryset,
+            prefetch_fields=[
+                'roles__role_type',
+                'roles__suggested_artists'
+            ],
+            select_related_fields=[
+                'project_type',
+                'genre',
+                'created_by',
+                'request'
+            ]
+        )
     
     @extend_schema(
         summary="Мои проекты",
@@ -364,6 +382,7 @@ class ProjectRoleViewSet(viewsets.ModelViewSet):
     
     queryset = ProjectRole.objects.all()
     permission_classes = [permissions.IsAuthenticated, ProjectRolePermission]
+    pagination_class = OptimizedPageNumberPagination
     
     def get_serializer_class(self):
         """Выбор сериализатора в зависимости от действия"""
@@ -376,7 +395,20 @@ class ProjectRoleViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         if self.action == 'list':
             queryset = queryset.filter(is_active=True)
-        return queryset
+        
+        # Применяем оптимизации
+        return QueryOptimizer.optimize_list_queryset(
+            queryset,
+            prefetch_fields=[
+                'suggested_artists__skills__skill__skill_group'
+            ],
+            select_related_fields=[
+                'project__project_type',
+                'project__genre',
+                'project__created_by',
+                'role_type'
+            ]
+        )
     
     @extend_schema(
         summary="Роли проекта",

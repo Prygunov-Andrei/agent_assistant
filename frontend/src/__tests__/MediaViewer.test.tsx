@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MediaViewer } from '../components/MediaViewer';
 import { mediaService } from '../services/mediaService';
-import { RequestImage, RequestFile } from '../types';
+import type { RequestImage, RequestFile } from '../types';
 
 // Мокаем mediaService
 jest.mock('../services/mediaService', () => ({

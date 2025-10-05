@@ -74,7 +74,8 @@ const RequestAnalysisButton: React.FC<RequestAnalysisButtonProps> = ({
         </button>
 
         <LLMStatusIndicator 
-          requestId={requestId}
+          status={isAnalyzing ? 'analyzing' : analysisResult ? 'success' : error ? 'error' : 'idle'}
+          message={error || (analysisResult ? 'Анализ завершен' : undefined)}
           className="text-sm"
         />
       </div>
@@ -98,9 +99,8 @@ const RequestAnalysisButton: React.FC<RequestAnalysisButtonProps> = ({
           </div>
           
           <div className="text-xs text-green-600 space-y-1">
-            <div>Уверенность: {(analysisResult.confidence * 100).toFixed(1)}%</div>
-            <div>Время обработки: {analysisResult.processing_time.toFixed(2)}с</div>
-            <div>Эмулятор: {analysisResult.used_emulator ? 'Да' : 'Нет'}</div>
+            <div>Анализ завершен успешно</div>
+            <div>Время: {new Date().toLocaleTimeString()}</div>
           </div>
 
           {analysisResult.project_analysis && (

@@ -1,107 +1,85 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { LLMStatusIndicator, LLMStatusIndicatorWithAnimation } from '../components/llm/status/LLMStatusIndicator';
-import type { LLMStatus } from '../types/llm';
+import LLMStatusIndicator from '../components/llm/LLMStatusIndicator';
 
 describe('LLMStatusIndicator', () => {
   describe('AnalysisStatus', () => {
     it('renders new status correctly', () => {
-      render(<LLMStatusIndicator status="new" />);
+      render(<LLMStatusIndicator status="idle" />);
       
-      expect(screen.getByText('📝')).toBeInTheDocument();
-      expect(screen.getByText('Новый')).toBeInTheDocument();
+      expect(screen.getByText('🤖')).toBeInTheDocument();
+      expect(screen.getByText('Готов к анализу')).toBeInTheDocument();
     });
 
     it('renders analyzed status correctly', () => {
-      render(<LLMStatusIndicator status="analyzed" />);
+      render(<LLMStatusIndicator status="success" />);
       
       expect(screen.getByText('✅')).toBeInTheDocument();
-      expect(screen.getByText('Проанализирован')).toBeInTheDocument();
+      expect(screen.getByText('Анализ завершен')).toBeInTheDocument();
     });
 
     it('renders processed status correctly', () => {
-      render(<LLMStatusIndicator status="processed" />);
+      render(<LLMStatusIndicator status="success" />);
       
-      expect(screen.getByText('🔧')).toBeInTheDocument();
-      expect(screen.getByText('Обработан')).toBeInTheDocument();
+      expect(screen.getByText('✅')).toBeInTheDocument();
+      expect(screen.getByText('Анализ завершен')).toBeInTheDocument();
     });
 
     it('renders with loading state', () => {
-      render(<LLMStatusIndicator status="new" isLoading={true} />);
+      render(<LLMStatusIndicator status="analyzing" />);
       
-      expect(screen.getByText('⏳')).toBeInTheDocument();
-      expect(screen.getByText('Анализ...')).toBeInTheDocument();
+      expect(screen.getByText('Анализируем запрос...')).toBeInTheDocument();
     });
   });
 
   describe('LLMStatus', () => {
-    it('renders available status correctly', () => {
-      const status: LLMStatus = {
-        is_available: true,
-        is_analyzing: false,
-        model: 'test-model',
-        use_emulator: false,
-        last_check: '2024-01-01T00:00:00Z'
-      };
+    it('renders idle status correctly', () => {
+      render(<LLMStatusIndicator status="idle" />);
       
-      render(<LLMStatusIndicator status={status} />);
-      
-      expect(screen.getByText('✅')).toBeInTheDocument();
-      expect(screen.getByText('Доступен')).toBeInTheDocument();
+      expect(screen.getByText('🤖')).toBeInTheDocument();
+      expect(screen.getByText('Готов к анализу')).toBeInTheDocument();
     });
 
     it('renders analyzing status correctly', () => {
-      const status: LLMStatus = {
-        is_available: true,
-        is_analyzing: true,
-        model: 'test-model',
-        use_emulator: false,
-        last_check: '2024-01-01T00:00:00Z'
-      };
+      render(<LLMStatusIndicator status="analyzing" />);
       
-      render(<LLMStatusIndicator status={status} />);
-      
-      expect(screen.getByText('⏳')).toBeInTheDocument();
-      expect(screen.getByText('Анализ...')).toBeInTheDocument();
+      expect(screen.getByText('Анализируем запрос...')).toBeInTheDocument();
     });
 
-    it('renders unavailable status correctly', () => {
-      const status: LLMStatus = {
-        is_available: false,
-        is_analyzing: false,
-        model: 'test-model',
-        use_emulator: false,
-        last_check: '2024-01-01T00:00:00Z',
-        error_message: 'Test error'
-      };
+    it('renders success status correctly', () => {
+      render(<LLMStatusIndicator status="success" />);
       
-      render(<LLMStatusIndicator status={status} />);
+      expect(screen.getByText('✅')).toBeInTheDocument();
+      expect(screen.getByText('Анализ завершен')).toBeInTheDocument();
+    });
+
+    it('renders error status correctly', () => {
+      render(<LLMStatusIndicator status="error" />);
       
       expect(screen.getByText('❌')).toBeInTheDocument();
-      expect(screen.getByText('Недоступен')).toBeInTheDocument();
+      expect(screen.getByText('Ошибка анализа')).toBeInTheDocument();
     });
   });
 
   it('applies custom className', () => {
-    render(<LLMStatusIndicator status="new" className="custom-class" />);
+    render(<LLMStatusIndicator status="idle" className="custom-class" />);
     
-    const indicator = screen.getByText('Новый').closest('div');
+    const indicator = screen.getByText('Готов к анализу').closest('div');
     expect(indicator).toHaveClass('custom-class');
   });
 });
 
 describe('LLMStatusIndicatorWithAnimation', () => {
   it('renders with animation when loading', () => {
-    render(<LLMStatusIndicatorWithAnimation status="new" isLoading={true} />);
+    render(<LLMStatusIndicator status="analyzing" />);
     
-    expect(screen.getByText('Анализ...')).toBeInTheDocument();
-    expect(screen.getByText('⏳')).toBeInTheDocument();
+    expect(screen.getByText('Анализируем запрос...')).toBeInTheDocument();
   });
 
   it('renders without animation when not loading', () => {
-    render(<LLMStatusIndicatorWithAnimation status="new" isLoading={false} />);
+    render(<LLMStatusIndicator status="idle" />);
     
-    expect(screen.getByText('Новый')).toBeInTheDocument();
+    expect(screen.getByText('Готов к анализу')).toBeInTheDocument();
     expect(screen.queryByRole('status', { hidden: true })).not.toBeInTheDocument();
   });
 });

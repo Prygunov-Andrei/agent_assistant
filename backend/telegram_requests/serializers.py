@@ -9,6 +9,8 @@ class RequestImageSerializer(BaseModelSerializer):
     """Сериализатор для изображений запросов"""
     
     file_size_mb = serializers.ReadOnlyField(help_text="Размер файла в мегабайтах")
+    image = serializers.ImageField(read_only=True, help_text="Путь к изображению")
+    thumbnail = serializers.ImageField(read_only=True, help_text="Путь к миниатюре")
     
     class Meta(BaseModelSerializer.Meta):
         model = RequestImage
@@ -23,6 +25,7 @@ class RequestFileSerializer(BaseModelSerializer):
     """Сериализатор для файлов запросов"""
     
     file_size_mb = serializers.ReadOnlyField(help_text="Размер файла в мегабайтах")
+    file = serializers.FileField(read_only=True, help_text="Путь к файлу")
     
     class Meta(BaseModelSerializer.Meta):
         model = RequestFile

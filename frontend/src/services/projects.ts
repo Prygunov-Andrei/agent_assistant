@@ -84,5 +84,11 @@ export const projectsService = {
   async getProjectStatuses(): Promise<ProjectStatus[]> {
     const response = await apiClient.get('/api/projects/project-statuses/');
     return response.data;
+  },
+
+  // Анализ запроса для создания проекта
+  async analyzeRequest(requestId: number): Promise<any> {
+    const response = await apiClient.post(`/requests/${requestId}/analyze/`, { use_emulator: true });
+    return response.data;
   }
 };

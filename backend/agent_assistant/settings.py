@@ -241,3 +241,27 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Настройки кэширования
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 300,  # 5 минут по умолчанию
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    },
+    'redis': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': config('REDIS_URL', default='redis://127.0.0.1:6379/1'),
+        'TIMEOUT': 300,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+# Используем Redis для продакшена, локальный кэш для разработки
+if not DEBUG:
+    CACHES['default'] = CACHES['redis']

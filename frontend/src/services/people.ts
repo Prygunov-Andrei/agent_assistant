@@ -57,6 +57,17 @@ class PeopleService {
     const response = await apiClient.get(`${this.baseUrl}`);
     return response.data;
   }
+
+  /**
+   * Поиск персон по имени (для MatchingSuggestionsPanel)
+   */
+  async searchPeople(params: { name: string; limit?: number }): Promise<PersonMatch[]> {
+    const response = await apiClient.post(`${this.baseUrl}search_by_name/`, {
+      name: params.name,
+      limit: params.limit || 3
+    });
+    return response.data;
+  }
 }
 
 export const peopleService = new PeopleService();

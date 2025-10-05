@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Artist, ArtistSearchParams } from '../../../types/artists';
 import { artistsService } from '../../../services/artists';
+import VirtualizedList from '../../common/VirtualizedList';
+import { ListSkeleton } from '../../common/SkeletonLoader';
+import AnimatedContainer from '../../common/AnimatedContainer';
+import Tooltip from '../../common/Tooltip';
+import { useDebouncedSearch } from '../../../hooks/useLazyLoading';
 
 interface ArtistSelectionComponentProps {
   selectedArtists: number[];
@@ -125,36 +130,45 @@ const ArtistSelectionComponent: React.FC<ArtistSelectionComponentProps> = ({
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState<ArtistSearchParams>({
-    limit: 20
+    limit: 50
   });
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Загрузка артистов
-  const loadArtists = useCallback(async (params: ArtistSearchParams) => {
-    setLoading(true);
-    try {
-      const data = await artistsService.getArtistsForSelection(params);
-      setArtists(data);
-    } catch (error) {
-      console.error('Ошибка загрузки артистов:', error);
-    } finally {
-      setLoading(false);
-    }
+  // Debounced search hook
+  const searchFunction = useCallback(async (searchQuery: string) => {
+    const params = {
+      ...searchParams,
+      search: searchQuery || undefined
+    };
+    return await artistsService.getArtistsForSelection(params);
+  }, [searchParams]);
+
+  const { query, setQuery, results, loading: searchLoading } = useDebouncedSearch<Artist>(
+    searchFunction,
+    300
+  );
+
+  // Загрузка артистов при инициализации
+  useEffect(() => {
+    const loadInitialArtists = async () => {
+      setLoading(true);
+      try {
+        const data = await artistsService.getArtistsForSelection(searchParams);
+        setArtists(data);
+      } catch (error) {
+        console.error('Ошибка загрузки артистов:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialArtists();
   }, []);
 
-  // Загрузка при изменении параметров поиска
+  // Обновляем список артистов при изменении результатов поиска
   useEffect(() => {
-    loadArtists(searchParams);
-  }, [searchParams, loadArtists]);
-
-  // Обработка поиска
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    setSearchParams(prev => ({
-      ...prev,
-      search: query || undefined
-    }));
-  };
+    if (query.trim() && results.length > 0) {
+      setArtists(results);
+    }
+  }, [results, query]);
 
   // Обработка выбора артиста
   const handleToggleArtist = (artistId: number) => {
@@ -170,23 +184,43 @@ const ArtistSelectionComponent: React.FC<ArtistSelectionComponentProps> = ({
   };
 
   // Фильтрация по полу
-  const handleGenderFilter = (gender: 'male' | 'female' | '') => {
-    setSearchParams(prev => ({
-      ...prev,
+  const handleGenderFilter = async (gender: 'male' | 'female' | '') => {
+    const newParams = {
+      ...searchParams,
       gender: gender || undefined
-    }));
+    };
+    setSearchParams(newParams);
+    setLoading(true);
+    try {
+      const data = await artistsService.getArtistsForSelection(newParams);
+      setArtists(data);
+    } catch (error) {
+      console.error('Ошибка фильтрации по полу:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Фильтрация по статусу доступности
-  const handleAvailabilityFilter = (status: boolean | null) => {
-    setSearchParams(prev => ({
-      ...prev,
+  const handleAvailabilityFilter = async (status: boolean | null) => {
+    const newParams = {
+      ...searchParams,
       availability_status: status === null ? undefined : status
-    }));
+    };
+    setSearchParams(newParams);
+    setLoading(true);
+    try {
+      const data = await artistsService.getArtistsForSelection(newParams);
+      setArtists(data);
+    } catch (error) {
+      console.error('Ошибка фильтрации по статусу:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <AnimatedContainer animation="fadeIn" className={`space-y-4 ${className}`}>
       {/* Поиск и фильтры */}
       <div className="space-y-3">
         {/* Поисковая строка */}
@@ -194,11 +228,11 @@ const ArtistSelectionComponent: React.FC<ArtistSelectionComponentProps> = ({
           <input
             type="text"
             placeholder={placeholder}
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          {loading && (
+          {(loading || searchLoading) && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
             </div>
@@ -207,28 +241,32 @@ const ArtistSelectionComponent: React.FC<ArtistSelectionComponentProps> = ({
 
         {/* Фильтры */}
         <div className="flex flex-wrap gap-2">
-          <select
-            value={searchParams.gender || ''}
-            onChange={(e) => handleGenderFilter(e.target.value as 'male' | 'female' | '')}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Все полы</option>
-            <option value="male">Мужской</option>
-            <option value="female">Женский</option>
-          </select>
+          <Tooltip content="Фильтровать артистов по полу">
+            <select
+              value={searchParams.gender || ''}
+              onChange={(e) => handleGenderFilter(e.target.value as 'male' | 'female' | '')}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Все полы</option>
+              <option value="male">Мужской</option>
+              <option value="female">Женский</option>
+            </select>
+          </Tooltip>
 
-          <select
-            value={searchParams.availability_status === undefined ? '' : searchParams.availability_status.toString()}
-            onChange={(e) => {
-              const value = e.target.value;
-              handleAvailabilityFilter(value === '' ? null : value === 'true');
-            }}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Все статусы</option>
-            <option value="true">Доступен</option>
-            <option value="false">Не доступен</option>
-          </select>
+          <Tooltip content="Фильтровать артистов по статусу доступности">
+            <select
+              value={searchParams.availability_status === undefined ? '' : searchParams.availability_status.toString()}
+              onChange={(e) => {
+                const value = e.target.value;
+                handleAvailabilityFilter(value === '' ? null : value === 'true');
+              }}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Все статусы</option>
+              <option value="true">Доступен</option>
+              <option value="false">Не доступен</option>
+            </select>
+          </Tooltip>
         </div>
       </div>
 
@@ -244,20 +282,37 @@ const ArtistSelectionComponent: React.FC<ArtistSelectionComponentProps> = ({
       </div>
 
       {/* Список артистов */}
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+      <div className="max-h-96 overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          </div>
+          <ListSkeleton count={5} showAvatar={true} />
         ) : artists.length > 0 ? (
-          artists.map((artist) => (
-            <ArtistCard
-              key={artist.id}
-              artist={artist}
-              isSelected={selectedArtists.includes(artist.id)}
-              onToggle={handleToggleArtist}
+          artists.length > 20 ? (
+            <VirtualizedList
+              items={artists}
+              itemHeight={140}
+              containerHeight={384}
+              renderItem={(artist: Artist) => (
+                <div className="mb-2">
+                  <ArtistCard
+                    artist={artist}
+                    isSelected={selectedArtists.includes(artist.id)}
+                    onToggle={handleToggleArtist}
+                  />
+                </div>
+              )}
             />
-          ))
+          ) : (
+            <div className="space-y-2">
+              {artists.map((artist) => (
+                <ArtistCard
+                  key={artist.id}
+                  artist={artist}
+                  isSelected={selectedArtists.includes(artist.id)}
+                  onToggle={handleToggleArtist}
+                />
+              ))}
+            </div>
+          )
         ) : (
           <div className="text-center py-8 text-gray-500">
             <p>Артисты не найдены</p>
@@ -291,7 +346,7 @@ const ArtistSelectionComponent: React.FC<ArtistSelectionComponentProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </AnimatedContainer>
   );
 };
 

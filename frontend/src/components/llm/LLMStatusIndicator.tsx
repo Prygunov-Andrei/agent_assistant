@@ -1,9 +1,9 @@
 import React from 'react';
 
-export type LLMStatus = 'idle' | 'analyzing' | 'success' | 'error';
+export type LLMStatusType = 'idle' | 'analyzing' | 'success' | 'error';
 
 interface LLMStatusIndicatorProps {
-  status: LLMStatus;
+  status: LLMStatusType;
   message?: string;
   className?: string;
 }

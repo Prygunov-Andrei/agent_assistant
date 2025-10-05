@@ -4,7 +4,8 @@
 
 import json
 import logging
-from typing import Dict, List, Any, Optional
+import re
+from typing import Dict, List, Any, Optional, Union
 from django.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,20 @@ class LLMResponseValidator:
         ])
         self.strict_validation = self.config.get('validation', {}).get('json_schema_strict', True)
         self.max_retry_attempts = self.config.get('validation', {}).get('max_retry_attempts', 3)
+        
+        # Строгие правила валидации
+        self.email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        self.phone_pattern = re.compile(r'^[\+]?[1-9][\d]{0,15}$')
+        self.telegram_pattern = re.compile(r'^@?[a-zA-Z0-9_]{5,32}$')
+        self.url_pattern = re.compile(r'^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$')
+        
+        # Минимальные и максимальные длины
+        self.min_title_length = 3
+        self.max_title_length = 200
+        self.min_description_length = 10
+        self.max_description_length = 2000
+        self.min_name_length = 2
+        self.max_name_length = 100
     
     def validate_analysis_result(self, result: Dict[str, Any]) -> bool:
         """
@@ -53,9 +68,19 @@ class LLMResponseValidator:
             if 'project_analysis' in result and 'roles' in result['project_analysis']:
                 self._validate_roles(result['project_analysis']['roles'])
             
-            # Проверяем контакты
-            if 'project_analysis' in result and 'contacts' in result['project_analysis']:
-                self._validate_contacts(result['project_analysis']['contacts'])
+            # Проверяем контакты в project_analysis
+            if 'project_analysis' in result:
+                project_analysis = result['project_analysis']
+                if 'casting_director' in project_analysis:
+                    self._validate_contact_person(project_analysis['casting_director'], 'casting_director')
+                if 'director' in project_analysis:
+                    self._validate_contact_person(project_analysis['director'], 'director')
+                if 'producers' in project_analysis:
+                    if isinstance(project_analysis['producers'], list):
+                        for i, producer in enumerate(project_analysis['producers']):
+                            self._validate_contact_person(producer, f'producer_{i}')
+                if 'production_company' in project_analysis:
+                    self._validate_contact_company(project_analysis['production_company'])
             
             logger.info("LLM response validation passed successfully")
             return True
@@ -126,6 +151,25 @@ class LLMResponseValidator:
         
         if not isinstance(project_analysis.get('description', ''), str):
             raise ValidationError("description must be a string")
+        
+        # Строгая валидация длины полей
+        title = project_analysis.get('project_title', '')
+        if len(title) < self.min_title_length:
+            raise ValidationError(f"project_title must be at least {self.min_title_length} characters long")
+        if len(title) > self.max_title_length:
+            raise ValidationError(f"project_title must be no more than {self.max_title_length} characters long")
+        
+        description = project_analysis.get('description', '')
+        if len(description) < self.min_description_length:
+            raise ValidationError(f"description must be at least {self.min_description_length} characters long")
+        if len(description) > self.max_description_length:
+            raise ValidationError(f"description must be no more than {self.max_description_length} characters long")
+        
+        # Валидация допустимых типов проектов
+        valid_project_types = ['фильм', 'сериал', 'реклама', 'клип', 'театр', 'другое']
+        project_type = project_analysis.get('project_type', '').lower()
+        if project_type not in valid_project_types:
+            raise ValidationError(f"project_type must be one of: {', '.join(valid_project_types)}")
         
         # Проверяем confidence если есть
         if 'confidence' in project_analysis:
@@ -216,6 +260,31 @@ class LLMResponseValidator:
             if not isinstance(contact[field], str):
                 raise ValidationError(f"{contact_type}: Field '{field}' must be a string")
         
+        # Строгая валидация имени
+        name = contact.get('name', '')
+        if len(name) < self.min_name_length:
+            raise ValidationError(f"{contact_type}: name must be at least {self.min_name_length} characters long")
+        if len(name) > self.max_name_length:
+            raise ValidationError(f"{contact_type}: name must be no more than {self.max_name_length} characters long")
+        
+        # Валидация email если не пустой
+        email = contact.get('email', '')
+        if email and email != 'Не определен' and not self.email_pattern.match(email):
+            raise ValidationError(f"{contact_type}: Invalid email format")
+        
+        # Валидация телефона если не пустой
+        phone = contact.get('phone', '')
+        if phone and phone != 'Не определен':
+            # Очищаем номер от всех символов кроме цифр и +
+            clean_phone = re.sub(r'[^\d+]', '', phone)
+            if not self.phone_pattern.match(clean_phone):
+                raise ValidationError(f"{contact_type}: Invalid phone format")
+        
+        # Валидация telegram если не пустой
+        telegram = contact.get('telegram', '')
+        if telegram and telegram != 'Не определен' and not self.telegram_pattern.match(telegram):
+            raise ValidationError(f"{contact_type}: Invalid telegram format")
+        
         # Проверяем confidence если есть
         if 'confidence' in contact:
             confidence = contact['confidence']
@@ -232,6 +301,31 @@ class LLMResponseValidator:
             
             if not isinstance(contact[field], str):
                 raise ValidationError(f"production_company: Field '{field}' must be a string")
+        
+        # Строгая валидация названия компании
+        name = contact.get('name', '')
+        if len(name) < self.min_name_length:
+            raise ValidationError(f"production_company: name must be at least {self.min_name_length} characters long")
+        if len(name) > self.max_name_length:
+            raise ValidationError(f"production_company: name must be no more than {self.max_name_length} characters long")
+        
+        # Валидация email если не пустой
+        email = contact.get('email', '')
+        if email and email != 'Не определен' and not self.email_pattern.match(email):
+            raise ValidationError("production_company: Invalid email format")
+        
+        # Валидация телефона если не пустой
+        phone = contact.get('phone', '')
+        if phone and phone != 'Не определен':
+            # Очищаем номер от всех символов кроме цифр и +
+            clean_phone = re.sub(r'[^\d+]', '', phone)
+            if not self.phone_pattern.match(clean_phone):
+                raise ValidationError("production_company: Invalid phone format")
+        
+        # Валидация website если не пустой
+        website = contact.get('website', '')
+        if website and website != 'Не определен' and not self.url_pattern.match(website):
+            raise ValidationError("production_company: Invalid website format")
         
         # Проверяем confidence если есть
         if 'confidence' in contact:

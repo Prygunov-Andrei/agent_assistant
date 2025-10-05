@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { ErrorHandler } from '../utils/errorHandler';
 
 /**
  * Хук для работы с localStorage
@@ -9,12 +10,12 @@ export function useLocalStorage<T>(
   initialValue: T
 ): [T, (value: T | ((val: T) => T)) => void] {
   // Получаем значение из localStorage или используем начальное значение
-  const [storedValue, setStoredValue] = useState<T>(() => {
+  const [storedValue, setStoredValue] = useState<T | null>(() => {
     try {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
+      ErrorHandler.logError(`Error reading localStorage key "${key}": ${error}`);
       return initialValue;
     }
   });
@@ -23,19 +24,19 @@ export function useLocalStorage<T>(
   const setValue = (value: T | ((val: T) => T)) => {
     try {
       // Позволяем value быть функцией, чтобы обновлять состояние на основе предыдущего значения
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      const valueToStore = value instanceof Function ? value(storedValue || initialValue) : value;
       
       // Сохраняем состояние
-      setStoredValue(valueToStore);
+      setStoredValue(valueToStore as T);
       
       // Сохраняем в localStorage
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
     } catch (error) {
-      console.warn(`Error setting localStorage key "${key}":`, error);
+      ErrorHandler.logError(`Error setting localStorage key "${key}": ${error}`);
     }
   };
 
-  return [storedValue, setValue];
+  return [storedValue || initialValue, setValue];
 }
 
 /**

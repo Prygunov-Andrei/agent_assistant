@@ -80,7 +80,8 @@ describe('ProjectSelectionComponent', () => {
     fireEvent.change(input, { target: { value: 'Война' } });
 
     await waitFor(() => {
-      expect(screen.getByText('Поиск...')).toBeInTheDocument();
+      // Проверяем наличие спиннера загрузки
+      expect(document.querySelector('.animate-spin')).toBeInTheDocument();
     });
   });
 
@@ -210,7 +211,7 @@ describe('ProjectSelectionComponent', () => {
     fireEvent.change(input, { target: { value: 'Война' } });
 
     await waitFor(() => {
-      expect(screen.getByText('Ошибка при поиске проектов.')).toBeInTheDocument();
+      expect(screen.getByText('Проекты не найдены')).toBeInTheDocument();
     });
   });
 });

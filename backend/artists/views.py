@@ -15,6 +15,9 @@ from .serializers import (
 )
 from core.views import BaseReferenceViewSet, BaseModelViewSet
 from core.permissions import OwnerPermission
+from core.optimizations import OptimizedQuerySets, QueryOptimizer
+from core.caching import QuerySetCache, UserDataCache, CacheInvalidationService
+from core.pagination import OptimizedPageNumberPagination
 
 
 class SkillGroupViewSet(BaseReferenceViewSet):
@@ -292,17 +295,25 @@ class ArtistViewSet(BaseModelViewSet):
     serializer_class = ArtistSerializer
     list_serializer_class = ArtistListSerializer
     permission_classes = [permissions.IsAuthenticated, OwnerPermission]
+    pagination_class = OptimizedPageNumberPagination
     
     def get_queryset(self):
         """Возвращает только артистов, созданных текущим пользователем."""
         queryset = super().get_queryset()
         # Фильтруем только по артистам, созданным текущим пользователем
         queryset = queryset.filter(created_by=self.request.user)
-        return queryset.prefetch_related(
-            'skills__skill__skill_group',
-            'education__education',
-            'links',
-            'photos'
+        
+        # Применяем оптимизации
+        return QueryOptimizer.optimize_list_queryset(
+            queryset,
+            prefetch_fields=[
+                'skills__skill__skill_group',
+                'education__education',
+                'links',
+                'photos',
+                'suggested_roles__project'
+            ],
+            select_related_fields=['created_by']
         )
     
     def get_serializer_class(self):
@@ -468,11 +479,18 @@ class ArtistViewSet(BaseModelViewSet):
     def for_selection(self, request):
         """Получить список артистов для выбора в ролях с расширенной фильтрацией."""
         # Используем все активные артисты, а не только созданные текущим пользователем
-        queryset = Artist.objects.filter(is_active=True).prefetch_related(
-            'skills__skill__skill_group',
-            'education__education',
-            'links',
-            'photos'
+        queryset = Artist.objects.filter(is_active=True)
+        
+        # Применяем оптимизации
+        queryset = QueryOptimizer.optimize_list_queryset(
+            queryset,
+            prefetch_fields=[
+                'skills__skill__skill_group',
+                'education__education',
+                'links',
+                'photos'
+            ],
+            select_related_fields=['created_by']
         )
         
         # Применяем фильтры

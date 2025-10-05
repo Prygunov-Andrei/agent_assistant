@@ -2,21 +2,26 @@ from rest_framework import viewsets, status, permissions, filters
 from rest_framework.decorators import action, parser_classes
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.http import Http404
+from django.http import Http404, HttpResponse, FileResponse
 from rest_framework.pagination import PageNumberPagination
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.db import models
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.conf import settings
 from datetime import datetime
 import pytz
 import json
 import os
 import logging
+import mimetypes
 
 from core.views import BaseModelViewSet
 from core.permissions import OwnerPermission
+from core.optimizations import OptimizedQuerySets, QueryOptimizer
+from core.caching import QuerySetCache, UserDataCache, CacheInvalidationService
+from core.pagination import OptimizedPageNumberPagination
 from .models import Request, RequestImage, RequestFile
 from .serializers import (
     RequestSerializer, RequestListSerializer, RequestCreateSerializer,
@@ -41,6 +46,7 @@ class RequestViewSet(BaseModelViewSet):
     search_fields = ['text', 'author_name']
     ordering_fields = ['created_at', 'original_created_at', 'processed_at']
     ordering = ['-created_at']
+    pagination_class = OptimizedPageNumberPagination
     
     def get_queryset(self):
         """Все агенты видят все запросы с поддержкой фильтрации"""
@@ -63,8 +69,12 @@ class RequestViewSet(BaseModelViewSet):
         if has_files is not None:
             queryset = queryset.filter(has_files=has_files.lower() == 'true')
             
-        # Оптимизируем запросы с помощью prefetch_related
-        return queryset.prefetch_related('images', 'files')
+        # Применяем оптимизации
+        return QueryOptimizer.optimize_list_queryset(
+            queryset,
+            prefetch_fields=['images', 'files'],
+            select_related_fields=['agent', 'created_project']
+        )
     
     def get_serializer_class(self):
         """Выбор сериализатора в зависимости от действия"""
@@ -184,8 +194,8 @@ class RequestViewSet(BaseModelViewSet):
                     'files': cached_data['files'],
                     'images_count': len(cached_data['images']),
                     'files_count': len(cached_data['files']),
-                    'total_size': sum(img.get('file_size', 0) for img in cached_data['images']) + 
-                                 sum(f.get('file_size', 0) for f in cached_data['files']),
+                    'total_size': sum(img.get('file_size', 0) or 0 for img in cached_data['images']) + 
+                                 sum(f.get('file_size', 0) or 0 for f in cached_data['files']),
                     'cached': True
                 })
             
@@ -214,8 +224,8 @@ class RequestViewSet(BaseModelViewSet):
                 'files': file_serializer.data,
                 'images_count': len(image_serializer.data),
                 'files_count': len(file_serializer.data),
-                'total_size': sum(img.get('file_size', 0) for img in image_serializer.data) + 
-                             sum(f.get('file_size', 0) for f in file_serializer.data),
+                'total_size': sum(img.get('file_size', 0) or 0 for img in image_serializer.data) + 
+                             sum(f.get('file_size', 0) or 0 for f in file_serializer.data),
                 'cached': False
             }
             
@@ -470,4 +480,53 @@ class TelegramWebhookViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({
                 'error': f'Ошибка получения текста запроса: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'], url_path='files/(?P<file_id>[0-9]+)/download')
+    def download_file(self, request, pk=None, file_id=None):
+        """Скачать файл с правильными заголовками"""
+        try:
+            request_obj = self.get_object()
+            
+            # Получаем файл
+            try:
+                file_obj = RequestFile.objects.get(id=file_id, request=request_obj)
+            except RequestFile.DoesNotExist:
+                return Response({
+                    'error': 'Файл не найден'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Проверяем, что файл существует
+            file_path = os.path.join(settings.MEDIA_ROOT, file_obj.file.name)
+            if not os.path.exists(file_path):
+                return Response({
+                    'error': 'Файл не найден на сервере'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Определяем MIME тип
+            mime_type, _ = mimetypes.guess_type(file_path)
+            if not mime_type:
+                mime_type = 'application/octet-stream'
+            
+            # Для текстовых файлов принудительно устанавливаем правильную кодировку
+            if mime_type.startswith('text/'):
+                mime_type = 'text/plain; charset=utf-8'
+            
+            # Создаем ответ с правильными заголовками для скачивания
+            response = FileResponse(
+                open(file_path, 'rb'),
+                content_type=mime_type
+            )
+            
+            # Устанавливаем заголовки для принудительного скачивания
+            filename = file_obj.original_filename or os.path.basename(file_path)
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Length'] = os.path.getsize(file_path)
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Ошибка скачивания файла {file_id}: {str(e)}")
+            return Response({
+                'error': f'Ошибка скачивания файла: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

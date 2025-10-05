@@ -1,7 +1,11 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { artistsService } from '../services/artists';
-import LoadingSpinner from './LoadingSpinner';
+// import LoadingSpinner from './LoadingSpinner'; // Не используется
+import VirtualizedList from './common/VirtualizedList';
+import { TableSkeleton } from './common/SkeletonLoader';
+import AnimatedContainer from './common/AnimatedContainer';
+import Tooltip from './common/Tooltip';
 import type { Artist, ArtistSkill } from '../types/artists';
 
 // Определяем тип для обработки ошибок изображений
@@ -66,8 +70,54 @@ const ArtistsTable: React.FC = () => {
     );
   };
 
+  // Компонент для рендеринга строки артиста
+  const renderArtistRow = (artist: Artist, _index: number) => (
+    <tr key={artist.id} className="artists-table-row">
+      <td className="artists-table-cell">
+        <div className="artist-photo">
+          {artist.main_photo ? (
+            <img
+              src={artist.main_photo}
+              alt={`${artist.last_name} ${artist.first_name}`}
+              className="artist-photo-img"
+              onError={handleImageError}
+            />
+          ) : (
+            <div className="artist-photo-placeholder">
+              {getInitials(artist.first_name, artist.last_name)}
+            </div>
+          )}
+        </div>
+      </td>
+      <td className="artists-table-cell">
+        <div className="artist-name">
+          <div className="artist-name-main">
+            {`${artist.last_name} ${artist.first_name}`}
+          </div>
+        </div>
+      </td>
+      <td className="artists-table-cell">
+        {artist.age ? `${artist.age} лет` : 'Не указан'}
+      </td>
+      <td className="artists-table-cell">
+        <div className="artist-skills">
+          {formatSkills(artist.skills)}
+        </div>
+      </td>
+    </tr>
+  );
+
   if (loading) {
-    return <LoadingSpinner text="Загрузка артистов..." />;
+    return (
+      <AnimatedContainer animation="fadeIn" className="fade-in">
+        <div className="card overflow-hidden">
+          <div className="p-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Артисты</h2>
+            <TableSkeleton rows={8} columns={4} />
+          </div>
+        </div>
+      </AnimatedContainer>
+    );
   }
 
   if (error) {
@@ -102,57 +152,45 @@ const ArtistsTable: React.FC = () => {
   }
 
   return (
-    <div className="fade-in">
+    <AnimatedContainer animation="fadeIn" className="fade-in">
       <div className="mb-6 flex justify-end">
-        <button className="btn btn-primary">
-          Добавить артиста
-        </button>
+        <Tooltip content="Добавить нового артиста в базу данных">
+          <button className="btn btn-primary">
+            Добавить артиста
+          </button>
+        </Tooltip>
       </div>
 
-        <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="artists-table">
-              <tbody>
-              {artists.map((artist) => (
-                <tr key={artist.id} className="artists-table-row">
-                  <td className="artists-table-cell">
-                    <div className="artist-photo">
-                      {artist.main_photo ? (
-                        <img
-                          src={artist.main_photo}
-                          alt={`${artist.last_name} ${artist.first_name}`}
-                          className="artist-photo-img"
-                          onError={handleImageError}
-                        />
-                      ) : (
-                        <div className="artist-photo-placeholder">
-                          {getInitials(artist.first_name, artist.last_name)}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="artists-table-cell">
-                    <div className="artist-name">
-                      <div className="artist-name-main">
-                        {`${artist.last_name} ${artist.first_name}`}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="artists-table-cell">
-                    {artist.age ? `${artist.age} лет` : 'Не указан'}
-                  </td>
-                        <td className="artists-table-cell">
-                          <div className="artist-skills">
-                            {formatSkills(artist.skills)}
-                          </div>
-                        </td>
-                </tr>
-              ))}
+      <div className="card overflow-hidden">
+        <div className="p-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Артисты</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="artists-table">
+            <thead>
+              <tr>
+                <th className="artists-table-header">Фото</th>
+                <th className="artists-table-header">Имя</th>
+                <th className="artists-table-header">Возраст</th>
+                <th className="artists-table-header">Навыки</th>
+              </tr>
+            </thead>
+            <tbody>
+              {artists.length > 30 ? (
+                <VirtualizedList
+                  items={artists}
+                  itemHeight={80}
+                  containerHeight={500}
+                  renderItem={renderArtistRow}
+                />
+              ) : (
+                artists.map((artist) => renderArtistRow(artist, artists.indexOf(artist)))
+              )}
             </tbody>
           </table>
         </div>
       </div>
-    </div>
+    </AnimatedContainer>
   );
 };
 
