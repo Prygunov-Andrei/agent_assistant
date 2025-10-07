@@ -40,8 +40,8 @@ urlpatterns = [
     path('api/', include('people.urls')),
     path('api/', include('projects.urls')),
     path('api/', include('artists.urls')),
+    path('api/', include('llm.urls')),  # LLM должен быть ПЕРЕД telegram_requests для приоритета /requests/<id>/analyze/
     path('api/', include('telegram_requests.urls')),
-    path('api/', include('llm.urls')),
     
     # Документация API
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

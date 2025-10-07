@@ -18,21 +18,25 @@ export class LLMService {
   // Анализ запроса через LLM
   static async analyzeRequest(requestId: number, useEmulator: boolean = true): Promise<LLMAnalysisResult> {
     try {
-      const response = await api.post<LLMAnalysisResponse>(
-        `/api/requests/${requestId}/analyze/`,
+      const response = await api.post<any>(
+        `/requests/${requestId}/analyze/`,
         { use_emulator: useEmulator }
       );
       
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Ошибка анализа LLM');
+      console.log('LLM Response:', response.data);
+      
+      // Backend возвращает данные напрямую, без обертки { success, data }
+      // Проверяем наличие обязательных полей
+      if (!response.data || !response.data.project_analysis) {
+        console.error('Invalid LLM Response:', response.data);
+        throw new Error('Неверный формат ответа LLM');
       }
       
-      if (!response.data.data) {
-        throw new Error('Пустой ответ от LLM');
-      }
-      
-      return response.data.data;
-    } catch (error) {
+      return response.data as LLMAnalysisResult;
+    } catch (error: any) {
+      console.error('LLM Service Error Details:', error);
+      console.error('Response data:', error.response?.data);
+      console.error('Response status:', error.response?.status);
       ErrorHandler.logError(error, 'LLMService.analyzeRequest');
       throw error;
     }
@@ -42,7 +46,7 @@ export class LLMService {
   static async getAnalysisStatus(requestId: number): Promise<AnalysisStatus> {
     try {
       const response = await api.get<{ status: AnalysisStatus }>(
-        `/api/requests/${requestId}/analysis-status/`
+        `/requests/${requestId}/analysis-status/`
       );
       return response.data.status;
     } catch (error) {
@@ -54,7 +58,7 @@ export class LLMService {
   // Получение статуса LLM сервиса
   static async getLLMStatus(): Promise<LLMStatus> {
     try {
-      const response = await api.get<LLMStatus>('/api/llm/status/');
+      const response = await api.get<LLMStatus>('/status/');
       return response.data;
     } catch (error) {
       ErrorHandler.logError(error, 'LLMService.getLLMStatus');
@@ -65,7 +69,7 @@ export class LLMService {
   // Получение конфигурации LLM
   static async getLLMConfig(): Promise<LLMConfig> {
     try {
-      const response = await api.get<LLMConfig>('/api/llm/config/');
+      const response = await api.get<LLMConfig>('/llm/config/');
       return response.data;
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при получении конфигурации LLM:');
@@ -76,7 +80,7 @@ export class LLMService {
   // Обновление конфигурации LLM
   static async updateLLMConfig(config: Partial<LLMConfig>): Promise<LLMConfig> {
     try {
-      const response = await api.put<LLMConfig>('/api/llm/config/', config);
+      const response = await api.put<LLMConfig>('/llm/config/', config);
       return response.data;
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при обновлении конфигурации LLM:');
@@ -90,7 +94,7 @@ export class LLMService {
     status: AnalysisStatus
   ): Promise<void> {
     try {
-      await api.patch(`/api/requests/${requestId}/`, {
+      await api.patch(`/telegram-requests/${requestId}/`, {
         analysis_status: status
       });
     } catch (error) {
@@ -102,7 +106,7 @@ export class LLMService {
   // Получение мониторинговых данных LLM
   static async getMonitoringData(): Promise<LLMMonitoringData> {
     try {
-      const response = await api.get<LLMMonitoringData>('/api/llm/monitoring/');
+      const response = await api.get<LLMMonitoringData>('/llm/monitoring/');
       return response.data;
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при получении мониторинговых данных:');
@@ -114,7 +118,7 @@ export class LLMService {
   static async exportTrainingDataset(request: DatasetExportRequest): Promise<DatasetExportResponse> {
     try {
       const response = await api.post<DatasetExportResponse>(
-        '/api/llm/export-dataset/',
+        '/llm/export-dataset/',
         request
       );
       return response.data;
@@ -127,7 +131,7 @@ export class LLMService {
   // Получение списка датасетов
   static async getTrainingDatasets(): Promise<TrainingDataset[]> {
     try {
-      const response = await api.get<TrainingDataset[]>('/api/llm/datasets/');
+      const response = await api.get<TrainingDataset[]>('/llm/datasets/');
       return response.data;
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при получении списка датасетов:');
@@ -138,7 +142,7 @@ export class LLMService {
   // Получение информации о датасете
   static async getTrainingDataset(datasetId: string): Promise<TrainingDataset> {
     try {
-      const response = await api.get<TrainingDataset>(`/api/llm/datasets/${datasetId}/`);
+      const response = await api.get<TrainingDataset>(`/llm/datasets/${datasetId}/`);
       return response.data;
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при получении информации о датасете:');
@@ -149,7 +153,7 @@ export class LLMService {
   // Удаление датасета
   static async deleteTrainingDataset(datasetId: string): Promise<void> {
     try {
-      await api.delete(`/api/llm/datasets/${datasetId}/`);
+      await api.delete(`/llm/datasets/${datasetId}/`);
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при удалении датасета:');
       throw error;
@@ -160,7 +164,7 @@ export class LLMService {
   static async testPrompt(prompt: string, testData: any): Promise<LLMAnalysisResult> {
     try {
       const response = await api.post<LLMAnalysisResponse>(
-        '/api/llm/test-prompt/',
+        '/llm/test-prompt/',
         { prompt, test_data: testData }
       );
       
@@ -183,7 +187,7 @@ export class LLMService {
   static async validateResponse(response: LLMAnalysisResult): Promise<boolean> {
     try {
       const result = await api.post<{ is_valid: boolean; errors: any[] }>(
-        '/api/llm/validate-response/',
+        '/llm/validate-response/',
         response
       );
       return result.data.is_valid;
@@ -196,7 +200,7 @@ export class LLMService {
   // Получение истории запросов к LLM
   static async getRequestHistory(limit: number = 50): Promise<any[]> {
     try {
-      const response = await api.get<any[]>(`/api/llm/request-history/?limit=${limit}`);
+      const response = await api.get<any[]>(`/llm/request-history/?limit=${limit}`);
       return response.data;
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при получении истории запросов:');
@@ -207,7 +211,7 @@ export class LLMService {
   // Очистка кэша LLM
   static async clearCache(): Promise<void> {
     try {
-      await api.post('/api/llm/clear-cache/');
+      await api.post('/llm/clear-cache/');
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при очистке кэша:');
       throw error;
@@ -217,7 +221,7 @@ export class LLMService {
   // Перезапуск LLM сервиса
   static async restartService(): Promise<void> {
     try {
-      await api.post('/api/llm/restart/');
+      await api.post('/llm/restart/');
     } catch (error) {
       ErrorHandler.logError(error, 'Ошибка при перезапуске сервиса:');
       throw error;
