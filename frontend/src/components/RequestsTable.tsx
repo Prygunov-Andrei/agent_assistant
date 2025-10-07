@@ -31,28 +31,10 @@ const RequestsTable: React.FC = () => {
   }, []);
 
   const handleRowClick = (request: RequestListItem) => {
-    // Создаем URL с параметрами для нового окна
-    const params = new URLSearchParams({
-      requestId: request.id.toString(),
-      mode: 'project-creation'
-    });
-    
-    // Открываем в том же окне для сохранения авторизации
-    window.location.href = `/project-creation?${params.toString()}`;
+    // TODO: Открыть модальное окно создания проекта
+    console.log('Clicked on request:', request.id);
+    alert(`Функция создания проекта из запроса #${request.id} будет восстановлена`);
   };
-
-  const handleProjectCreated = async (_projectData: ProjectForm) => {
-    setShowProjectModal(false);
-    setSelectedRequest(null);
-    
-    // Обновляем список запросов
-    await fetchRequests();
-    
-    // Можно добавить уведомление об успешном создании
-    alert('Проект успешно создан!');
-  };
-
-  // Удалены неиспользуемые функции handleAnalyzeRequest и handleShowContext
 
 
   // Убираем обрезку текста - показываем полный текст
