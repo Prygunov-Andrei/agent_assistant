@@ -577,6 +577,9 @@ const RequestsTable: React.FC = () => {
               <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'auto', padding: '20px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>Контекст запроса</h3>
                 <div style={{ marginBottom: '12px' }}><strong>Автор:</strong> {selectedRequest.author_name}</div>
+                {selectedRequest.author_username && (
+                  <div style={{ marginBottom: '12px' }}><strong>Telegram:</strong> {selectedRequest.author_username}</div>
+                )}
                 <div style={{ marginBottom: '12px' }}><strong>Дата:</strong> {selectedRequest.original_created_at ? new Date(selectedRequest.original_created_at).toLocaleDateString('ru-RU') : 'Не указано'}</div>
                 <div style={{ marginBottom: '12px' }}><strong>Текст:</strong></div>
                 <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>{selectedRequest.text}</div>

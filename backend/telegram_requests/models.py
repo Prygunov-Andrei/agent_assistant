@@ -34,6 +34,13 @@ class Request(BaseModel):
         verbose_name="Telegram ID автора",
         help_text="ID автора в Telegram (если доступен)"
     )
+    author_username = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="Telegram username автора",
+        help_text="Username автора в Telegram (например, @username)"
+    )
     sender_telegram_id = models.BigIntegerField(
         verbose_name="Telegram ID отправителя",
         help_text="ID пользователя, который переслал сообщение в бот"

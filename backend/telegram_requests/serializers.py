@@ -48,7 +48,7 @@ class RequestListSerializer(BaseListSerializer):
     class Meta(BaseListSerializer.Meta):
         model = Request
         fields = BaseListSerializer.Meta.fields + [
-            'text', 'author_name', 'sender_telegram_id', 'telegram_message_id',
+            'text', 'author_name', 'author_username', 'author_telegram_id', 'sender_telegram_id', 'telegram_message_id',
             'telegram_chat_id', 'has_images', 'has_files', 'has_media',
             'original_created_at', 'status', 'agent', 'agent_name', 'processed_at',
             'is_forwarded', 'images_count', 'files_count', 'images', 'files'
@@ -200,6 +200,7 @@ class TelegramWebhookDataSerializer(serializers.Serializer):
         return {
             'author_name': author_name,
             'author_telegram_id': author_id,
+            'author_username': author_username if author_username else None,
             'sender_telegram_id': from_user.get('id'),  # ID того, кто отправил сообщение (переслал или написал)
             'telegram_message_id': message.get('message_id'),
             'telegram_chat_id': message.get('chat', {}).get('id'),

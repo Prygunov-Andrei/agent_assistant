@@ -109,6 +109,7 @@ export interface RequestListItem {
   text: string;
   author_name: string;
   author_telegram_id?: number;
+  author_username?: string;
   sender_telegram_id: number;
   telegram_message_id: number;
   telegram_chat_id: number;
