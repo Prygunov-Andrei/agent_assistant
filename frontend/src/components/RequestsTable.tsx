@@ -31,7 +31,6 @@ const RequestsTable: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [roles, setRoles] = useState<any[]>([]);
   
   // Состояния для персон команды проекта
@@ -149,7 +148,6 @@ const RequestsTable: React.FC = () => {
     setDirector(null);
     setProducer(null);
     setProductionCompany(null);
-    setAnalysisResult(null);
     setHasUnsavedChanges(false);
     
     // Очищаем результаты поиска персон
@@ -179,8 +177,6 @@ const RequestsTable: React.FC = () => {
       const analysisData = await LLMService.analyzeRequest(request.id);
       
       console.log('Analysis Data Full:', JSON.stringify(analysisData, null, 2));
-      
-      setAnalysisResult(analysisData);
       
       // Предзаполняем форму данными из анализа
       if (analysisData.project_analysis) {
@@ -236,6 +232,7 @@ const RequestsTable: React.FC = () => {
               description: role.description || '',
               role_type: foundRoleType || (role.role_type ? { id: null, name: role.role_type } : null),
               role_type_id: foundRoleType?.id || null,
+              gender: role.gender || 'doesnt_matter',
               media_presence: 'doesnt_matter',
             clothing_size: 'неопределено',
             hairstyle: 'неопределено',
@@ -314,7 +311,6 @@ const RequestsTable: React.FC = () => {
     setProductionCompany(null);
     setProjectType(null);
     setGenre(null);
-    setAnalysisResult(null);
   };
 
   const handleFormChange = (field: string, value: any) => {
@@ -332,6 +328,7 @@ const RequestsTable: React.FC = () => {
       name: '', description: '', 
       role_type: null, // Будет объект { id, name } после выбора
       role_type_id: null, // ID для сохранения в БД
+      gender: 'doesnt_matter',
       media_presence: 'doesnt_matter',
       clothing_size: '', hairstyle: '', hair_color: '', eye_color: '', height: '',
       body_type: '', reference_text: '', special_conditions: '', audition_requirements: '',
@@ -950,7 +947,7 @@ const RequestsTable: React.FC = () => {
                           </div>
                           {!collapsedRoles.has(index) && (
                             <>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                                 <div>
                                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Название роли *</label>
                                   <input type="text" value={role.name} onChange={(e) => handleRoleChange(index, 'name', e.target.value)} style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите название роли" />
@@ -968,10 +965,20 @@ const RequestsTable: React.FC = () => {
                                     }}
                                     style={{ width: '100%', padding: '6px 8px', border: role.role_type?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }}
                                   >
-                                    <option value="">Выберите тип роли</option>
+                                    <option value="">Выберите тип</option>
                                     {roleTypesList.map((rt: any) => (
                                       <option key={rt.id} value={rt.id}>{rt.name}</option>
                                     ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Пол *</label>
+                                  <select value={role.gender || 'doesnt_matter'} onChange={(e) => handleRoleChange(index, 'gender', e.target.value)} style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px' }}>
+                                    <option value="doesnt_matter">Не важно</option>
+                                    <option value="male">Мужчина</option>
+                                    <option value="female">Женщина</option>
+                                    <option value="boy">Мальчик</option>
+                                    <option value="girl">Девочка</option>
                                   </select>
                                 </div>
                                 <div>

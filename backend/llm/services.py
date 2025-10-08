@@ -143,6 +143,7 @@ class LLMEmulatorService:
                             'description': 'Максим, мужчина 25-30 лет, харизматичный, умеет играть комедию',
                             'age_range': '25-30',
                             'gender': 'male',
+                            'gender_display': 'Мужчина',
                             'suggested_artists': [],
                             'skills_required': {
                                 'acting_skills': ['Актерское мастерство', 'Комедия'],
@@ -157,6 +158,7 @@ class LLMEmulatorService:
                             'description': 'Анна, женщина 23-28 лет, красивая, умеет петь и танцевать',
                             'age_range': '23-28',
                             'gender': 'female',
+                            'gender_display': 'Женщина',
                             'suggested_artists': [],
                             'skills_required': {
                                 'acting_skills': ['Актерское мастерство', 'Пение', 'Танцы'],

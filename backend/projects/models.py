@@ -183,6 +183,14 @@ class ProjectRole(BaseModel):
         ('doesnt_matter', 'Неважно'),
     )
     
+    GENDER_CHOICES = (
+        ('male', 'Мужчина'),
+        ('female', 'Женщина'),
+        ('boy', 'Мальчик'),
+        ('girl', 'Девочка'),
+        ('doesnt_matter', 'Не важно'),
+    )
+    
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
@@ -221,6 +229,15 @@ class ProjectRole(BaseModel):
         null=True,
         verbose_name="Медийность",
         help_text="Требуется ли медийность для роли"
+    )
+    
+    gender = models.CharField(
+        max_length=20,
+        choices=GENDER_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name="Пол",
+        help_text="Требуемый пол для роли"
     )
     
     clothing_size = models.CharField(
