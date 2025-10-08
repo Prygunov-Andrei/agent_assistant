@@ -250,8 +250,8 @@ const RequestsTable: React.FC = () => {
       }
       
       // Предзаполняем контакты (используем объекты с name/email/phone)
-      if (analysisData.contacts) {
-        const contacts = analysisData.contacts;
+      if ((analysisData as any).contacts) {
+        const contacts = (analysisData as any).contacts;
         if (contacts.casting_director && contacts.casting_director.name && contacts.casting_director.name !== 'Не определен') {
           setCastingDirector({ id: null, name: contacts.casting_director.name, match: 0 });
         }
@@ -354,7 +354,7 @@ const RequestsTable: React.FC = () => {
         console.log('Companies response:', response);
         
         // API возвращает объект { matches: [...], total: N }
-        const companies = response.matches || [];
+        const companies = (response as any).matches || [];
         console.log('Companies array:', companies);
         
         results = companies.map((company: any) => ({
@@ -684,8 +684,8 @@ const RequestsTable: React.FC = () => {
                 <div style={{ marginBottom: '12px' }}><strong>Текст:</strong></div>
                 <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>{selectedRequest.text}</div>
                 
-                {/* Media Section - Will be added */}
-                {(selectedRequest.images?.length > 0 || selectedRequest.files?.length > 0) && (
+                {/* Media Section */}
+                {((selectedRequest.images && selectedRequest.images.length > 0) || (selectedRequest.files && selectedRequest.files.length > 0)) && (
                   <div style={{ marginTop: '16px' }}>
                     <strong>Медиа:</strong>
                     <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', marginTop: '8px' }}>
@@ -853,7 +853,7 @@ const RequestsTable: React.FC = () => {
                         placeholder="Введите тип проекта" />
                       {showProjectTypeDropdown && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                          {(showAllProjectTypes ? projectTypesList : projectTypesList.filter((type: any) => type.name.toLowerCase().includes((projectType?.name || '').toLowerCase()))).map((type, index, arr) => (
+                          {(showAllProjectTypes ? projectTypesList : projectTypesList.filter((type: any) => type.name.toLowerCase().includes((projectType?.name || '').toLowerCase()))).map((type) => (
                             <div key={type.id} onClick={() => selectProjectType(type)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}
                               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
                               <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{type.name}</div>
@@ -884,7 +884,7 @@ const RequestsTable: React.FC = () => {
                         placeholder="Введите жанр" />
                       {showGenreDropdown && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                          {(showAllGenres ? genresList : genresList.filter((g: any) => g.name.toLowerCase().includes((genre?.name || '').toLowerCase()))).map((g, index, arr) => (
+                          {(showAllGenres ? genresList : genresList.filter((g: any) => g.name.toLowerCase().includes((genre?.name || '').toLowerCase()))).map((g) => (
                             <div key={g.id} onClick={() => selectGenre(g)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}
                               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
                               <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{g.name}</div>
@@ -897,6 +897,10 @@ const RequestsTable: React.FC = () => {
                               📋 Показать все варианты ({genresList.length})
                             </div>
                           )}
+                          <div onClick={(e) => { e.stopPropagation(); alert('Создание нового жанра'); setShowGenreDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
+                            + Создать новый жанр
+                          </div>
                         </div>
                       )}
                     </div>
