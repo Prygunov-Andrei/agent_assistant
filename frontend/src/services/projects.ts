@@ -62,6 +62,18 @@ export const projectsService = {
     return response.data.results || response.data;
   },
 
+  // Получить список размеров обуви
+  async getShoeSizes(): Promise<any[]> {
+    const response = await apiClient.get('/shoe-sizes/');
+    return response.data.results || response.data;
+  },
+
+  // Получить список национальностей
+  async getNationalities(): Promise<any[]> {
+    const response = await apiClient.get('/nationalities/');
+    return response.data.results || response.data;
+  },
+
   // Поиск проектов
   async searchProjects(query: string, page: number = 1): Promise<ApiResponse<Project>> {
     const response = await apiClient.get(`/projects/?search=${encodeURIComponent(query)}&page=${page}`);

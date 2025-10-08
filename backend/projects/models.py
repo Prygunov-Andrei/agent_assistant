@@ -42,6 +42,32 @@ class RoleType(BaseReferenceModel):
         verbose_name_plural = "Типы ролей"
 
 
+class ShoeSize(BaseReferenceModel):
+    """
+    Модель размера обуви.
+    
+    Наследует от BaseReferenceModel все стандартные поля справочника.
+    Используется для указания размера обуви (российские, европейские размеры).
+    """
+    
+    class Meta(BaseReferenceModel.Meta):
+        verbose_name = "Размер обуви"
+        verbose_name_plural = "Размеры обуви"
+
+
+class Nationality(BaseReferenceModel):
+    """
+    Модель национальности.
+    
+    Наследует от BaseReferenceModel все стандартные поля справочника.
+    Используется для указания национальности артиста или требований роли.
+    """
+    
+    class Meta(BaseReferenceModel.Meta):
+        verbose_name = "Национальность"
+        verbose_name_plural = "Национальности"
+
+
 class Project(BaseModel):
     """
     Модель проекта.
@@ -260,6 +286,24 @@ class ProjectRole(BaseModel):
         null=True,
         verbose_name="Размер одежды",
         help_text="Требуемый размер одежды"
+    )
+    
+    shoe_size = models.ForeignKey(
+        ShoeSize,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Размер обуви",
+        help_text="Требуемый размер обуви"
+    )
+    
+    nationality = models.ForeignKey(
+        Nationality,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Национальность",
+        help_text="Требуемая национальность для роли"
     )
     
     hairstyle = models.CharField(

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ProjectType, Genre, RoleType, Project, ProjectRole
+from .models import ProjectType, Genre, RoleType, ShoeSize, Nationality, Project, ProjectRole
 from core.serializers import BaseReferenceSerializer, BaseModelSerializer, BaseListSerializer
 from artists.models import Artist
 
@@ -35,6 +35,28 @@ class RoleTypeSerializer(BaseReferenceSerializer):
     
     class Meta(BaseReferenceSerializer.Meta):
         model = RoleType
+
+
+class ShoeSizeSerializer(BaseReferenceSerializer):
+    """
+    Сериализатор для размера обуви.
+    
+    Наследует от BaseReferenceSerializer все стандартные поля справочника.
+    """
+    
+    class Meta(BaseReferenceSerializer.Meta):
+        model = ShoeSize
+
+
+class NationalitySerializer(BaseReferenceSerializer):
+    """
+    Сериализатор для национальности.
+    
+    Наследует от BaseReferenceSerializer все стандартные поля справочника.
+    """
+    
+    class Meta(BaseReferenceSerializer.Meta):
+        model = Nationality
 
 
 class ProjectRoleSerializer(BaseModelSerializer):

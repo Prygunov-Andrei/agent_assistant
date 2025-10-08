@@ -3,9 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
-from .models import ProjectType, Genre, RoleType, Project, ProjectRole
+from .models import ProjectType, Genre, RoleType, ShoeSize, Nationality, Project, ProjectRole
 from .serializers import (
-    ProjectTypeSerializer, GenreSerializer, RoleTypeSerializer,
+    ProjectTypeSerializer, GenreSerializer, RoleTypeSerializer, ShoeSizeSerializer, NationalitySerializer,
     ProjectSerializer, ProjectListSerializer, ProjectRoleSerializer, ProjectRoleListSerializer,
     ProjectMatchSerializer,
     ProjectSearchRequestSerializer,
@@ -99,6 +99,20 @@ class RoleTypeViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet для типов ролей (только чтение)"""
     queryset = RoleType.objects.filter(is_active=True)
     serializer_class = RoleTypeSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class ShoeSizeViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet для размеров обуви (только чтение)"""
+    queryset = ShoeSize.objects.filter(is_active=True)
+    serializer_class = ShoeSizeSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class NationalityViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet для национальностей (только чтение)"""
+    queryset = Nationality.objects.filter(is_active=True)
+    serializer_class = NationalitySerializer
     permission_classes = [permissions.AllowAny]
 
 
