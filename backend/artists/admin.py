@@ -1,38 +1,18 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    SkillGroup, Skill, Education, Artist, ArtistSkill, 
+    Skill, Education, Artist, ArtistSkill, 
     ArtistEducation, ArtistLink, ArtistPhoto
 )
 from core.admin import BaseReferenceAdmin, BaseModelAdmin
 
 
-class SkillGroupAdmin(BaseReferenceAdmin):
-    """Admin класс для модели SkillGroup."""
-    
-    list_display = BaseReferenceAdmin.list_display + ('skills_count',)
-    search_fields = BaseReferenceAdmin.search_fields + ('name', 'description')
-    
-    def skills_count(self, obj):
-        """Количество навыков в группе."""
-        return obj.skills.filter(is_active=True).count()
-    skills_count.short_description = "Количество навыков"
-
-
 class SkillAdmin(BaseReferenceAdmin):
     """Admin класс для модели Skill."""
     
-    list_display = ('name', 'skill_group', 'is_active', 'created_at', 'updated_at')
-    list_filter = ('skill_group', 'is_active', 'created_at')
-    search_fields = ('name', 'description', 'skill_group__name')
-    ordering = ('skill_group__name', 'name')
-    
-    # Поля для формы редактирования
-    fieldsets = (
-        ('Основная информация', {
-            'fields': ('skill_group', 'name', 'description', 'is_active')
-        }),
-    )
+    list_display = BaseReferenceAdmin.list_display + ('name', 'description')
+    search_fields = BaseReferenceAdmin.search_fields + ('name', 'description')
+    ordering = ('name',)
 
 
 class EducationAdmin(BaseReferenceAdmin):
@@ -150,14 +130,14 @@ class ArtistSkillAdmin(admin.ModelAdmin):
     """Admin класс для модели ArtistSkill."""
     
     list_display = ('artist', 'skill', 'proficiency_level', 'created_at')
-    list_filter = ('proficiency_level', 'skill__skill_group', 'created_at')
+    list_filter = ('proficiency_level', 'created_at')
     search_fields = ('artist__first_name', 'artist__last_name', 'skill__name')
-    ordering = ('artist__last_name', 'skill__skill_group__name', 'skill__name')
+    ordering = ('artist__last_name', 'skill__name')
     
     def get_queryset(self, request):
         """Оптимизация запросов с предзагрузкой связанных объектов."""
         return super().get_queryset(request).select_related(
-            'artist', 'skill', 'skill__skill_group'
+            'artist', 'skill'
         )
 
 
@@ -214,7 +194,6 @@ class ArtistPhotoAdmin(admin.ModelAdmin):
 
 
 # Регистрация моделей в админ-панели
-admin.site.register(SkillGroup, SkillGroupAdmin)
 admin.site.register(Skill, SkillAdmin)
 admin.site.register(Education, EducationAdmin)
 admin.site.register(Artist, ArtistAdmin)

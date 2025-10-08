@@ -4,6 +4,7 @@ import { requestsService } from '../services/requests';
 import { peopleService } from '../services/people';
 import { companiesService } from '../services/companies';
 import { projectsService } from '../services/projects';
+import { artistsService } from '../services/artists';
 import { LLMService } from '../services/llm';
 import { ErrorHandler } from '../utils/errorHandler';
 import VirtualizedList from './common/VirtualizedList';
@@ -61,6 +62,7 @@ const RequestsTable: React.FC = () => {
   const [roleTypesList, setRoleTypesList] = useState<any[]>([]);
   const [shoeSizesList, setShoeSizesList] = useState<any[]>([]);
   const [nationalitiesList, setNationalitiesList] = useState<any[]>([]);
+  const [skillsList, setSkillsList] = useState<any[]>([]);
   
   // Состояния для свернутых ролей
   const [collapsedRoles, setCollapsedRoles] = useState<Set<number>>(new Set());
@@ -86,18 +88,20 @@ const RequestsTable: React.FC = () => {
 
   const loadReferences = async () => {
     try {
-      const [types, genres, roleTypes, shoeSizes, nationalities] = await Promise.all([
+      const [types, genres, roleTypes, shoeSizes, nationalities, skills] = await Promise.all([
         projectsService.getProjectTypes(),
         projectsService.getGenres(),
         projectsService.getRoleTypes(),
         projectsService.getShoeSizes(),
-        projectsService.getNationalities()
+        projectsService.getNationalities(),
+        artistsService.getSkills()
       ]);
       setProjectTypesList(types);
       setGenresList(genres);
       setRoleTypesList(roleTypes);
       setShoeSizesList(shoeSizes);
       setNationalitiesList(nationalities);
+      setSkillsList(skills);
     } catch (error) {
       console.error('Ошибка загрузки справочников:', error);
     }
@@ -120,6 +124,17 @@ const RequestsTable: React.FC = () => {
         setShowCompanyDropdown(false);
         setShowProjectTypeDropdown(false);
         setShowGenreDropdown(false);
+        
+        // Закрываем все dropdown навыков
+        setRoles(prev => prev.map(role => {
+          const updated = { ...role };
+          Object.keys(updated).forEach(key => {
+            if (key.startsWith('showSkillDropdown_')) {
+              updated[key] = false;
+            }
+          });
+          return updated;
+        }));
       }
     };
 
@@ -269,7 +284,13 @@ const RequestsTable: React.FC = () => {
             shooting_dates: 'неопределено',
             shooting_location: 'неопределено',
               notes: 'неопределено',
-              skills_required: role.skills_required?.acting_skills || [],
+              // Конвертируем skills_required из массива строк в массив объектов
+              skills_required: (role.skills_required?.acting_skills || []).map((skillName: string) => {
+                const foundSkill = skillsList.find((s: any) => 
+                  s.name.toLowerCase() === skillName.toLowerCase()
+                );
+                return foundSkill || { id: null, name: skillName };
+              }),
               suggested_artists: role.suggested_artists || []
             };
           });
@@ -489,6 +510,45 @@ const RequestsTable: React.FC = () => {
     setGenre(g);
     setFormData(prev => ({ ...prev, genre: g.id }));
     setShowGenreDropdown(false);
+    setHasUnsavedChanges(true);
+  };
+
+  // Функции для управления навыками роли
+  const addSkillToRole = (roleIndex: number) => {
+    setRoles(prev => prev.map((role, i) => {
+      if (i === roleIndex) {
+        return {
+          ...role,
+          skills_required: [...(role.skills_required || []), { id: null, name: '' }]
+        };
+      }
+      return role;
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const removeSkillFromRole = (roleIndex: number, skillIndex: number) => {
+    setRoles(prev => prev.map((role, i) => {
+      if (i === roleIndex) {
+        return {
+          ...role,
+          skills_required: role.skills_required.filter((_: any, si: number) => si !== skillIndex)
+        };
+      }
+      return role;
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const updateRoleSkill = (roleIndex: number, skillIndex: number, skill: any) => {
+    setRoles(prev => prev.map((role, i) => {
+      if (i === roleIndex) {
+        const newSkills = [...role.skills_required];
+        newSkills[skillIndex] = skill;
+        return { ...role, skills_required: newSkills };
+      }
+      return role;
+    }));
     setHasUnsavedChanges(true);
   };
 
@@ -1076,6 +1136,83 @@ const RequestsTable: React.FC = () => {
                                   <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Условия по ставке</label><input type="text" value={role.rate_conditions} onChange={(e) => handleRoleChange(index, 'rate_conditions', e.target.value)} style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px' }} placeholder="неопределено" /></div>
                                 </div>
                               </div>
+                              
+                              {/* Блок навыков */}
+                              <div style={{ marginBottom: '16px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                  <h6 style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>Требуемые навыки</h6>
+                                  <button type="button" onClick={() => addSkillToRole(index)} style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>+ Добавить навык</button>
+                                </div>
+                                {role.skills_required && role.skills_required.length > 0 ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {role.skills_required.map((skill: any, skillIndex: number) => {
+                                      const filteredSkills = skill?.name 
+                                        ? skillsList.filter((s: any) => s.name.toLowerCase().includes(skill.name.toLowerCase()))
+                                        : skillsList;
+                                      const showAllSkills = (role as any)[`showAllSkills_${skillIndex}`] || false;
+                                      const showDropdown = (role as any)[`showSkillDropdown_${skillIndex}`] || false;
+                                      
+                                      return (
+                                        <div key={skillIndex} style={{ display: 'flex', gap: '8px', alignItems: 'center', position: 'relative' }} className="dropdown-container">
+                                          <div style={{ flex: 1, position: 'relative' }}>
+                                            <input 
+                                              type="text"
+                                              value={skill?.name || ''} 
+                                              onChange={(e) => {
+                                                const value = e.target.value;
+                                                updateRoleSkill(index, skillIndex, { id: null, name: value });
+                                                handleRoleChange(index, `showSkillDropdown_${skillIndex}`, true);
+                                                handleRoleChange(index, `showAllSkills_${skillIndex}`, false);
+                                              }}
+                                              onFocus={() => {
+                                                if (skill?.name) {
+                                                  handleRoleChange(index, `showSkillDropdown_${skillIndex}`, true);
+                                                }
+                                              }}
+                                              style={{ width: '100%', padding: '6px 8px', border: skill?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '13px' }}
+                                              placeholder="Введите навык"
+                                            />
+                                            {showDropdown && (
+                                              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '150px', overflowY: 'auto' }}>
+                                                {(showAllSkills ? skillsList : filteredSkills).map((s: any) => (
+                                                  <div key={s.id} onClick={() => {
+                                                    updateRoleSkill(index, skillIndex, s);
+                                                    handleRoleChange(index, `showSkillDropdown_${skillIndex}`, false);
+                                                  }} style={{ padding: '6px 10px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb', fontSize: '13px' }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} 
+                                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                                                    {s.name}
+                                                  </div>
+                                                ))}
+                                                {!showAllSkills && filteredSkills.length < skillsList.length && (
+                                                  <div onClick={(e) => { e.stopPropagation(); handleRoleChange(index, `showAllSkills_${skillIndex}`, true); }} 
+                                                    style={{ padding: '6px 10px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} 
+                                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                                                    📋 Показать все варианты ({skillsList.length})
+                                                  </div>
+                                                )}
+                                                <div onClick={(e) => { e.stopPropagation(); alert('Создание нового навыка в справочнике'); handleRoleChange(index, `showSkillDropdown_${skillIndex}`, false); }} 
+                                                  style={{ padding: '6px 10px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}
+                                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} 
+                                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
+                                                  + Создать новый навык
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <button type="button" onClick={() => removeSkillFromRole(index, skillIndex)} style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>×</button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div style={{ padding: '12px', backgroundColor: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '4px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
+                                    Навыки не указаны
+                                  </div>
+                                )}
+                              </div>
+                              
                               <div style={{ marginBottom: '16px' }}>
                                 <div style={{ marginBottom: '12px' }}><label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Описание роли</label><textarea value={role.description} onChange={(e) => handleRoleChange(index, 'description', e.target.value)} rows={2} style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical' }} placeholder="Описание персонажа" /></div>
                                 <div style={{ marginBottom: '12px' }}><label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Референс</label><textarea value={role.reference_text} onChange={(e) => handleRoleChange(index, 'reference_text', e.target.value)} rows={2} style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical' }} placeholder="неопределено" /></div>

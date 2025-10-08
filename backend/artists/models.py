@@ -3,47 +3,14 @@ from django.utils import timezone
 from core.models import BaseModel
 
 
-class SkillGroup(BaseModel):
-    """Модель группы навыков."""
+class Skill(BaseModel):
+    """Модель навыка."""
     
     name = models.CharField(
         max_length=100,
         unique=True,
-        verbose_name="Название группы",
-        help_text="Уникальное название группы навыков"
-    )
-    
-    description = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name="Описание группы",
-        help_text="Подробное описание группы навыков"
-    )
-    
-    class Meta(BaseModel.Meta):
-        verbose_name = "Группа навыков"
-        verbose_name_plural = "Группы навыков"
-        ordering = ['name']
-    
-    def __str__(self):
-        return self.name
-
-
-class Skill(BaseModel):
-    """Модель навыка."""
-    
-    skill_group = models.ForeignKey(
-        SkillGroup,
-        on_delete=models.CASCADE,
-        related_name='skills',
-        verbose_name="Группа навыков",
-        help_text="Группа, к которой относится навык"
-    )
-    
-    name = models.CharField(
-        max_length=100,
         verbose_name="Название навыка",
-        help_text="Название конкретного навыка"
+        help_text="Название навыка"
     )
     
     description = models.TextField(
@@ -56,11 +23,10 @@ class Skill(BaseModel):
     class Meta(BaseModel.Meta):
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"
-        ordering = ['skill_group__name', 'name']
-        unique_together = ['skill_group', 'name']
+        ordering = ['name']
     
     def __str__(self):
-        return f"{self.skill_group.name} - {self.name}"
+        return self.name
 
 
 class Education(BaseModel):
@@ -394,7 +360,7 @@ class ArtistSkill(models.Model):
         verbose_name = "Навык артиста"
         verbose_name_plural = "Навыки артистов"
         unique_together = ['artist', 'skill']
-        ordering = ['skill__skill_group__name', 'skill__name']
+        ordering = ['skill__name']
     
     def __str__(self):
         return f"{self.artist.short_name} - {self.skill.name} ({self.get_proficiency_level_display()})"

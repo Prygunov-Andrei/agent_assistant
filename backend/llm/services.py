@@ -169,7 +169,7 @@ class LLMEmulatorService:
                             'nationality': 'Европеец/Европейка',
                             'suggested_artists': [],
                             'skills_required': {
-                                'acting_skills': ['Актерское мастерство', 'Пение', 'Танцы'],
+                                'acting_skills': ['Актерское мастерство', 'Пение', 'Танец'],
                                 'special_skills': []
                             },
                             'special_requirements': [],

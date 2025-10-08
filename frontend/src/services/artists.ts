@@ -49,16 +49,16 @@ class ArtistsService {
    * Получить список всех навыков
    */
   async getSkills() {
-    const response = await apiClient.get('/api/skills/');
-    return response.data;
+    const response = await apiClient.get('skills/');
+    return response.data.results || response.data;
   }
 
   /**
    * Получить список групп навыков
    */
   async getSkillGroups() {
-    const response = await apiClient.get('/api/skill-groups/');
-    return response.data;
+    const response = await apiClient.get('skill-groups/');
+    return response.data.results || response.data;
   }
 
   /**

@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    SkillGroupViewSet, SkillViewSet, EducationViewSet, ArtistViewSet,
+    SkillViewSet, EducationViewSet, ArtistViewSet,
     ArtistSkillViewSet, ArtistEducationViewSet, ArtistLinkViewSet, ArtistPhotoViewSet
 )
 
@@ -10,7 +10,6 @@ from .views import (
 router = DefaultRouter()
 
 # Регистрируем ViewSets
-router.register(r'skill-groups', SkillGroupViewSet, basename='skillgroup')
 router.register(r'skills', SkillViewSet, basename='skill')
 router.register(r'education', EducationViewSet, basename='education')
 router.register(r'artists', ArtistViewSet, basename='artist')

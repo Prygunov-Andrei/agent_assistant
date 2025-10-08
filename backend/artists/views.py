@@ -5,11 +5,11 @@ from django.db.models import Q
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
 
 from .models import (
-    SkillGroup, Skill, Education, Artist, ArtistSkill, 
+    Skill, Education, Artist, ArtistSkill, 
     ArtistEducation, ArtistLink, ArtistPhoto
 )
 from .serializers import (
-    SkillGroupSerializer, SkillSerializer, EducationSerializer,
+    SkillSerializer, EducationSerializer,
     ArtistSerializer, ArtistListSerializer, ArtistSkillSerializer,
     ArtistEducationSerializer, ArtistLinkSerializer, ArtistPhotoSerializer
 )
@@ -20,38 +20,11 @@ from core.caching import QuerySetCache, UserDataCache, CacheInvalidationService
 from core.pagination import OptimizedPageNumberPagination
 
 
-class SkillGroupViewSet(BaseReferenceViewSet):
-    """ViewSet для модели SkillGroup."""
-    
-    queryset = SkillGroup.objects.all()
-    serializer_class = SkillGroupSerializer
-
-
 class SkillViewSet(BaseReferenceViewSet):
     """ViewSet для модели Skill."""
     
     queryset = Skill.objects.all()
     serializer_class = SkillSerializer
-    
-    @action(detail=False, methods=['get'], url_path='by-group/(?P<skill_group_id>[^/.]+)')
-    @extend_schema(
-        summary="Навыки по группе",
-        description="Получить список навыков для конкретной группы навыков.",
-        parameters=[
-            OpenApiParameter(
-                name='skill_group_id',
-                type=OpenApiTypes.INT,
-                location=OpenApiParameter.PATH,
-                description='ID группы навыков'
-            ),
-        ],
-        tags=["Навыки"]
-    )
-    def by_group(self, request, skill_group_id=None):
-        """Возвращает список навыков для указанной группы навыков."""
-        skills = self.get_queryset().filter(skill_group__id=skill_group_id)
-        serializer = self.get_serializer(skills, many=True)
-        return Response(serializer.data)
 
 
 class EducationViewSet(BaseReferenceViewSet):

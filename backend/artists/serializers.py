@@ -1,43 +1,16 @@
 from rest_framework import serializers
 from .models import (
-    SkillGroup, Skill, Education, Artist, ArtistSkill, 
+    Skill, Education, Artist, ArtistSkill, 
     ArtistEducation, ArtistLink, ArtistPhoto
 )
 from core.serializers import BaseReferenceSerializer, BaseModelSerializer, BaseListSerializer
 
 
-class SkillGroupSerializer(BaseReferenceSerializer):
-    """Сериализатор для модели SkillGroup."""
-    
-    skills_count = serializers.SerializerMethodField(
-        help_text="Количество навыков в группе"
-    )
-    
-    class Meta(BaseReferenceSerializer.Meta):
-        model = SkillGroup
-        fields = BaseReferenceSerializer.Meta.fields + ['skills_count']
-    
-    def get_skills_count(self, obj):
-        """Возвращает количество активных навыков в группе."""
-        return obj.skills.filter(is_active=True).count()
-
-
 class SkillSerializer(BaseReferenceSerializer):
     """Сериализатор для модели Skill."""
     
-    skill_group_name = serializers.ReadOnlyField(
-        source='skill_group.name',
-        help_text="Название группы навыков"
-    )
-    
     class Meta(BaseReferenceSerializer.Meta):
         model = Skill
-        fields = BaseReferenceSerializer.Meta.fields + [
-            'skill_group', 'skill_group_name'
-        ]
-        extra_kwargs = {
-            'skill_group': {'help_text': 'ID группы навыков'},
-        }
 
 
 class EducationSerializer(BaseReferenceSerializer):
