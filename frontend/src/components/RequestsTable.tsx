@@ -59,6 +59,8 @@ const RequestsTable: React.FC = () => {
   const [projectTypesList, setProjectTypesList] = useState<any[]>([]);
   const [genresList, setGenresList] = useState<any[]>([]);
   const [roleTypesList, setRoleTypesList] = useState<any[]>([]);
+  const [shoeSizesList, setShoeSizesList] = useState<any[]>([]);
+  const [nationalitiesList, setNationalitiesList] = useState<any[]>([]);
   
   // Состояния для свернутых ролей
   const [collapsedRoles, setCollapsedRoles] = useState<Set<number>>(new Set());
@@ -84,14 +86,18 @@ const RequestsTable: React.FC = () => {
 
   const loadReferences = async () => {
     try {
-      const [types, genres, roleTypes] = await Promise.all([
+      const [types, genres, roleTypes, shoeSizes, nationalities] = await Promise.all([
         projectsService.getProjectTypes(),
         projectsService.getGenres(),
-        projectsService.getRoleTypes()
+        projectsService.getRoleTypes(),
+        projectsService.getShoeSizes(),
+        projectsService.getNationalities()
       ]);
       setProjectTypesList(types);
       setGenresList(genres);
       setRoleTypesList(roleTypes);
+      setShoeSizesList(shoeSizes);
+      setNationalitiesList(nationalities);
     } catch (error) {
       console.error('Ошибка загрузки справочников:', error);
     }
@@ -227,6 +233,16 @@ const RequestsTable: React.FC = () => {
               rt.name.toLowerCase() === (role.role_type || '').toLowerCase()
             );
             
+            // Ищем размер обуви в справочнике
+            const foundShoeSize = shoeSizesList.find((s: any) => 
+              s.name === (role.shoe_size || '')
+            );
+            
+            // Ищем национальность в справочнике
+            const foundNationality = nationalitiesList.find((n: any) => 
+              n.name.toLowerCase() === (role.nationality || '').toLowerCase()
+            );
+            
             return {
               name: role.character_name || '',
               description: role.description || '',
@@ -236,6 +252,8 @@ const RequestsTable: React.FC = () => {
               age_min: role.age_min || '',
               age_max: role.age_max || '',
               media_presence: 'doesnt_matter',
+              shoe_size: foundShoeSize || null,
+              nationality: foundNationality || null,
             clothing_size: 'неопределено',
             hairstyle: 'неопределено',
             hair_color: 'неопределено',
@@ -334,6 +352,8 @@ const RequestsTable: React.FC = () => {
       age_min: '',
       age_max: '',
       media_presence: 'doesnt_matter',
+      shoe_size: null, // { id, name }
+      nationality: null, // { id, name }
       clothing_size: '', hairstyle: '', hair_color: '', eye_color: '', height: '',
       body_type: '', reference_text: '', special_conditions: '', audition_requirements: '',
       audition_text: '', rate_per_shift: '', rate_conditions: '', shooting_dates: '',
@@ -1013,6 +1033,38 @@ const RequestsTable: React.FC = () => {
                                   <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Цвет глаз</label><input type="text" value={role.eye_color} onChange={(e) => handleRoleChange(index, 'eye_color', e.target.value)} style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px' }} placeholder="неопределено" /></div>
                                   <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Прическа</label><input type="text" value={role.hairstyle} onChange={(e) => handleRoleChange(index, 'hairstyle', e.target.value)} style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px' }} placeholder="неопределено" /></div>
                                   <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Размер одежды</label><input type="text" value={role.clothing_size} onChange={(e) => handleRoleChange(index, 'clothing_size', e.target.value)} style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px' }} placeholder="неопределено" /></div>
+                                  <div>
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Размер обуви</label>
+                                    <select 
+                                      value={role.shoe_size?.id || ''} 
+                                      onChange={(e) => { 
+                                        const selected = shoeSizesList.find((s: any) => s.id === parseInt(e.target.value));
+                                        handleRoleChange(index, 'shoe_size', selected || null);
+                                      }}
+                                      style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px' }}
+                                    >
+                                      <option value="">Не указан</option>
+                                      {shoeSizesList.map((s: any) => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Национальность</label>
+                                    <select 
+                                      value={role.nationality?.id || ''} 
+                                      onChange={(e) => { 
+                                        const selected = nationalitiesList.find((n: any) => n.id === parseInt(e.target.value));
+                                        handleRoleChange(index, 'nationality', selected || null);
+                                      }}
+                                      style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px' }}
+                                    >
+                                      <option value="">Не указана</option>
+                                      {nationalitiesList.map((n: any) => (
+                                        <option key={n.id} value={n.id}>{n.name}</option>
+                                      ))}
+                                    </select>
+                                  </div>
                                 </div>
                               </div>
                               <div style={{ marginBottom: '16px' }}>

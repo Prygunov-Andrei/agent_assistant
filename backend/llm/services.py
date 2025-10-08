@@ -146,6 +146,8 @@ class LLMEmulatorService:
                             'age_max': 30,
                             'gender': 'male',
                             'gender_display': 'Мужчина',
+                            'shoe_size': '42',
+                            'nationality': 'Русский/Русская',
                             'suggested_artists': [],
                             'skills_required': {
                                 'acting_skills': ['Актерское мастерство', 'Комедия'],
@@ -163,6 +165,8 @@ class LLMEmulatorService:
                             'age_max': 28,
                             'gender': 'female',
                             'gender_display': 'Женщина',
+                            'shoe_size': '37',
+                            'nationality': 'Европеец/Европейка',
                             'suggested_artists': [],
                             'skills_required': {
                                 'acting_skills': ['Актерское мастерство', 'Пение', 'Танцы'],
