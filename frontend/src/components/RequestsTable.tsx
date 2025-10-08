@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { requestsService } from '../services/requests';
 import { peopleService } from '../services/people';
 import { companiesService } from '../services/companies';
+import { projectsService } from '../services/projects';
 import { LLMService } from '../services/llm';
 import { ErrorHandler } from '../utils/errorHandler';
 import VirtualizedList from './common/VirtualizedList';
@@ -50,6 +51,14 @@ const RequestsTable: React.FC = () => {
   const [showDirectorDropdown, setShowDirectorDropdown] = useState(false);
   const [showProducerDropdown, setShowProducerDropdown] = useState(false);
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [showProjectTypeDropdown, setShowProjectTypeDropdown] = useState(false);
+  const [showGenreDropdown, setShowGenreDropdown] = useState(false);
+  
+  // Состояния для типа проекта и жанра
+  const [projectType, setProjectType] = useState<any>(null);
+  const [genre, setGenre] = useState<any>(null);
+  const [projectTypesList, setProjectTypesList] = useState<any[]>([]);
+  const [genresList, setGenresList] = useState<any[]>([]);
   
   // Состояния для свернутых ролей
   const [collapsedRoles, setCollapsedRoles] = useState<Set<number>>(new Set());
@@ -70,7 +79,21 @@ const RequestsTable: React.FC = () => {
 
   React.useEffect(() => {
     fetchRequests();
+    loadReferences();
   }, []);
+
+  const loadReferences = async () => {
+    try {
+      const [types, genres] = await Promise.all([
+        projectsService.getProjectTypes(),
+        projectsService.getGenres()
+      ]);
+      setProjectTypesList(types);
+      setGenresList(genres);
+    } catch (error) {
+      console.error('Ошибка загрузки справочников:', error);
+    }
+  };
 
   // Обработчик клавиши Escape и кликов вне выпадающих списков
   React.useEffect(() => {
@@ -87,6 +110,8 @@ const RequestsTable: React.FC = () => {
         setShowDirectorDropdown(false);
         setShowProducerDropdown(false);
         setShowCompanyDropdown(false);
+        setShowProjectTypeDropdown(false);
+        setShowGenreDropdown(false);
       }
     };
 
@@ -133,6 +158,12 @@ const RequestsTable: React.FC = () => {
     setShowDirectorDropdown(false);
     setShowProducerDropdown(false);
     setShowCompanyDropdown(false);
+    setShowProjectTypeDropdown(false);
+    setShowGenreDropdown(false);
+    
+    // Очищаем типы и жанр
+    setProjectType(null);
+    setGenre(null);
     
     // Автоматически запускаем LLM анализ
     await handleAutoAnalysis(request);
@@ -151,12 +182,40 @@ const RequestsTable: React.FC = () => {
       // Предзаполняем форму данными из анализа
       if (analysisData.project_analysis) {
         const pa = analysisData.project_analysis;
+        
+        // Сохраняем сырой тип проекта для поиска
+        const rawProjectType = pa.project_type_raw || pa.project_type || '';
+        
+        // Пытаемся найти тип проекта в справочнике
+        const foundProjectType = projectTypesList.find((type: any) => 
+          type.name.toLowerCase() === rawProjectType.toLowerCase()
+        );
+        
+        // Пытаемся найти жанр в справочнике  
+        const foundGenre = genresList.find((g: any) => 
+          g.name.toLowerCase() === (pa.genre || '').toLowerCase()
+        );
+        
+        // Устанавливаем найденные значения
+        if (foundProjectType) {
+          setProjectType(foundProjectType);
+        } else if (rawProjectType) {
+          // Если не нашли точное совпадение, сохраняем для поиска
+          setProjectType({ id: null, name: rawProjectType });
+        }
+        
+        if (foundGenre) {
+          setGenre(foundGenre);
+        } else if (pa.genre) {
+          setGenre({ id: null, name: pa.genre });
+        }
+        
         setFormData({
           title: pa.project_title || '',
           description: pa.description || '',
-          project_type: 1, // TODO: конвертировать строку в ID
-          project_type_raw: pa.project_type_raw || pa.project_type || '',
-          genre: undefined, // TODO: конвертировать строку в ID
+          project_type: foundProjectType?.id || 1,
+          project_type_raw: rawProjectType,
+          genre: foundGenre?.id,
           premiere_date: pa.premiere_date || '',
           status: 'draft'
         });
@@ -242,6 +301,8 @@ const RequestsTable: React.FC = () => {
     setDirector(null);
     setProducer(null);
     setProductionCompany(null);
+    setProjectType(null);
+    setGenre(null);
     setAnalysisResult(null);
   };
 
@@ -359,9 +420,48 @@ const RequestsTable: React.FC = () => {
     else setShowCompanyDropdown(false);
   };
 
+  const [showAllProjectTypes, setShowAllProjectTypes] = useState(false);
+  const [showAllGenres, setShowAllGenres] = useState(false);
+
+  const searchProjectType = (query: string) => {
+    if (!query.trim()) {
+      setShowProjectTypeDropdown(false);
+      setShowAllProjectTypes(false);
+      return;
+    }
+    setShowProjectTypeDropdown(true);
+    setShowAllProjectTypes(false); // Сбрасываем при новом поиске
+  };
+
+  const selectProjectType = (type: any) => {
+    setProjectType(type);
+    setFormData(prev => ({ ...prev, project_type: type.id }));
+    setShowProjectTypeDropdown(false);
+    setHasUnsavedChanges(true);
+  };
+
+  const searchGenre = (query: string) => {
+    if (!query.trim()) {
+      setShowGenreDropdown(false);
+      setShowAllGenres(false);
+      return;
+    }
+    setShowGenreDropdown(true);
+    setShowAllGenres(false); // Сбрасываем при новом поиске
+  };
+
+  const selectGenre = (g: any) => {
+    setGenre(g);
+    setFormData(prev => ({ ...prev, genre: g.id }));
+    setShowGenreDropdown(false);
+    setHasUnsavedChanges(true);
+  };
+
   const handleProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) { alert('Пожалуйста, введите название проекта'); return; }
+    if (!projectType?.id) { alert('Пожалуйста, выберите тип проекта из справочника'); return; }
+    if (!genre?.id) { alert('Пожалуйста, выберите жанр из справочника'); return; }
     if (!castingDirector?.id) { alert('Пожалуйста, выберите кастинг-директора'); return; }
     if (!director?.id) { alert('Пожалуйста, выберите режиссера'); return; }
     if (!producer?.id) { alert('Пожалуйста, выберите продюсера'); return; }
@@ -743,14 +843,70 @@ const RequestsTable: React.FC = () => {
                       style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical' }} placeholder="Описание проекта" />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    {/* Тип проекта - с подбором из справочника */}
+                    <div style={{ position: 'relative' }} className="dropdown-container">
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Тип проекта *</label>
+                      <input type="text" value={projectType?.name || ''} 
+                        onChange={(e) => { setProjectType({ id: null, name: e.target.value }); searchProjectType(e.target.value); setHasUnsavedChanges(true); }}
+                        onFocus={() => { if (projectType?.name) searchProjectType(projectType.name); }}
+                        style={{ width: '100%', padding: '8px 12px', border: projectType?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} 
+                        placeholder="Введите тип проекта" />
+                      {showProjectTypeDropdown && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                          {(showAllProjectTypes ? projectTypesList : projectTypesList.filter((type: any) => type.name.toLowerCase().includes((projectType?.name || '').toLowerCase()))).map((type, index, arr) => (
+                            <div key={type.id} onClick={() => selectProjectType(type)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{type.name}</div>
+                              {type.description && <div style={{ fontSize: '12px', color: '#6b7280' }}>{type.description}</div>}
+                            </div>
+                          ))}
+                          {!showAllProjectTypes && (
+                            <div onClick={(e) => { e.stopPropagation(); setShowAllProjectTypes(true); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                              📋 Показать все варианты ({projectTypesList.length})
+                            </div>
+                          )}
+                          <div onClick={(e) => { e.stopPropagation(); alert('Создание нового типа проекта'); setShowProjectTypeDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
+                            + Создать новый тип проекта
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Жанр - с подбором из справочника */}
+                    <div style={{ position: 'relative' }} className="dropdown-container">
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Жанр *</label>
+                      <input type="text" value={genre?.name || ''} 
+                        onChange={(e) => { setGenre({ id: null, name: e.target.value }); searchGenre(e.target.value); setHasUnsavedChanges(true); }}
+                        onFocus={() => { if (genre?.name) searchGenre(genre.name); }}
+                        style={{ width: '100%', padding: '8px 12px', border: genre?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} 
+                        placeholder="Введите жанр" />
+                      {showGenreDropdown && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                          {(showAllGenres ? genresList : genresList.filter((g: any) => g.name.toLowerCase().includes((genre?.name || '').toLowerCase()))).map((g, index, arr) => (
+                            <div key={g.id} onClick={() => selectGenre(g)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{g.name}</div>
+                              {g.description && <div style={{ fontSize: '12px', color: '#6b7280' }}>{g.description}</div>}
+                            </div>
+                          ))}
+                          {!showAllGenres && (
+                            <div onClick={(e) => { e.stopPropagation(); setShowAllGenres(true); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                              📋 Показать все варианты ({genresList.length})
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                    {/* Дата премьеры */}
                     <div>
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Дата премьеры</label>
                       <input type="text" value={formData.premiere_date} onChange={(e) => handleFormChange('premiere_date', e.target.value)}
-                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px' }} placeholder="неопределено" />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Сырой тип проекта (LLM)</label>
-                      <input type="text" value={formData.project_type_raw} onChange={(e) => handleFormChange('project_type_raw', e.target.value)}
                         style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px' }} placeholder="неопределено" />
                     </div>
                   </div>
