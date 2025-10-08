@@ -59,6 +59,7 @@ const RequestsTable: React.FC = () => {
   const [genre, setGenre] = useState<any>(null);
   const [projectTypesList, setProjectTypesList] = useState<any[]>([]);
   const [genresList, setGenresList] = useState<any[]>([]);
+  const [roleTypesList, setRoleTypesList] = useState<any[]>([]);
   
   // Состояния для свернутых ролей
   const [collapsedRoles, setCollapsedRoles] = useState<Set<number>>(new Set());
@@ -84,12 +85,14 @@ const RequestsTable: React.FC = () => {
 
   const loadReferences = async () => {
     try {
-      const [types, genres] = await Promise.all([
+      const [types, genres, roleTypes] = await Promise.all([
         projectsService.getProjectTypes(),
-        projectsService.getGenres()
+        projectsService.getGenres(),
+        projectsService.getRoleTypes()
       ]);
       setProjectTypesList(types);
       setGenresList(genres);
+      setRoleTypesList(roleTypes);
     } catch (error) {
       console.error('Ошибка загрузки справочников:', error);
     }
@@ -222,11 +225,18 @@ const RequestsTable: React.FC = () => {
         
         // Предзаполняем роли - конвертируем формат backend в формат frontend
         if (pa.roles && pa.roles.length > 0) {
-          const mappedRoles = pa.roles.map((role: any) => ({
-            name: role.character_name || '',
-            description: role.description || '',
-            role_type: 1, // TODO: конвертировать строку в ID
-            media_presence: 'doesnt_matter',
+          const mappedRoles = pa.roles.map((role: any) => {
+            // Ищем тип роли в справочнике
+            const foundRoleType = roleTypesList.find((rt: any) => 
+              rt.name.toLowerCase() === (role.role_type || '').toLowerCase()
+            );
+            
+            return {
+              name: role.character_name || '',
+              description: role.description || '',
+              role_type: foundRoleType || (role.role_type ? { id: null, name: role.role_type } : null),
+              role_type_id: foundRoleType?.id || null,
+              media_presence: 'doesnt_matter',
             clothing_size: 'неопределено',
             hairstyle: 'неопределено',
             hair_color: 'неопределено',
@@ -241,10 +251,11 @@ const RequestsTable: React.FC = () => {
             rate_conditions: 'неопределено',
             shooting_dates: 'неопределено',
             shooting_location: 'неопределено',
-            notes: 'неопределено',
-            skills_required: role.skills_required?.acting_skills || [],
-            suggested_artists: role.suggested_artists || []
-          }));
+              notes: 'неопределено',
+              skills_required: role.skills_required?.acting_skills || [],
+              suggested_artists: role.suggested_artists || []
+            };
+          });
           setRoles(mappedRoles);
         }
       }
@@ -318,7 +329,10 @@ const RequestsTable: React.FC = () => {
 
   const addRole = () => {
     setRoles(prev => [...prev, {
-      name: '', description: '', role_type: 1, media_presence: 'doesnt_matter',
+      name: '', description: '', 
+      role_type: null, // Будет объект { id, name } после выбора
+      role_type_id: null, // ID для сохранения в БД
+      media_presence: 'doesnt_matter',
       clothing_size: '', hairstyle: '', hair_color: '', eye_color: '', height: '',
       body_type: '', reference_text: '', special_conditions: '', audition_requirements: '',
       audition_text: '', rate_per_shift: '', rate_conditions: '', shooting_dates: '',
@@ -936,10 +950,29 @@ const RequestsTable: React.FC = () => {
                           </div>
                           {!collapsedRoles.has(index) && (
                             <>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                                 <div>
                                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Название роли *</label>
                                   <input type="text" value={role.name} onChange={(e) => handleRoleChange(index, 'name', e.target.value)} style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите название роли" />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Тип роли *</label>
+                                  <select 
+                                    value={role.role_type?.id || ''} 
+                                    onChange={(e) => { 
+                                      const selectedType = roleTypesList.find((rt: any) => rt.id === parseInt(e.target.value));
+                                      if (selectedType) {
+                                        handleRoleChange(index, 'role_type', selectedType);
+                                        handleRoleChange(index, 'role_type_id', selectedType.id);
+                                      }
+                                    }}
+                                    style={{ width: '100%', padding: '6px 8px', border: role.role_type?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }}
+                                  >
+                                    <option value="">Выберите тип роли</option>
+                                    {roleTypesList.map((rt: any) => (
+                                      <option key={rt.id} value={rt.id}>{rt.name}</option>
+                                    ))}
+                                  </select>
                                 </div>
                                 <div>
                                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Медийность</label>

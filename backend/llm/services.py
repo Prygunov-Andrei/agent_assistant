@@ -152,7 +152,7 @@ class LLMEmulatorService:
                             'confidence': 0.9
                         },
                         {
-                            'role_type': 'Актер',
+                            'role_type': 'Актриса',
                             'character_name': 'Подруга главного героя',
                             'description': 'Анна, женщина 23-28 лет, красивая, умеет петь и танцевать',
                             'age_range': '23-28',

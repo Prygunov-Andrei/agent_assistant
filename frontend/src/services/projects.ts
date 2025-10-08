@@ -56,6 +56,12 @@ export const projectsService = {
     return response.data.results || response.data;
   },
 
+  // Получить список типов ролей
+  async getRoleTypes(): Promise<any[]> {
+    const response = await apiClient.get('/role-types/');
+    return response.data.results || response.data;
+  },
+
   // Поиск проектов
   async searchProjects(query: string, page: number = 1): Promise<ApiResponse<Project>> {
     const response = await apiClient.get(`/projects/?search=${encodeURIComponent(query)}&page=${page}`);
