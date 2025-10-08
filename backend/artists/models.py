@@ -93,8 +93,11 @@ class Artist(BaseModel):
     """Модель артиста."""
     
     GENDER_CHOICES = (
-        ('male', 'Мужской'),
-        ('female', 'Женский'),
+        ('male', 'Мужчина'),
+        ('female', 'Женщина'),
+        ('boy', 'Мальчик'),
+        ('girl', 'Девочка'),
+        ('doesnt_matter', 'Не важно'),
     )
     
     # Основная информация
@@ -127,7 +130,7 @@ class Artist(BaseModel):
     )
     
     gender = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=GENDER_CHOICES,
         verbose_name="Пол",
         help_text="Пол артиста"
@@ -287,18 +290,25 @@ class Artist(BaseModel):
         help_text="Доступен ли артист для работы"
     )
     
-    rate_per_day = models.CharField(
+    rate_per_shift = models.CharField(
         max_length=100,
         blank=True,
         null=True,
-        verbose_name="Ставка за день",
-        help_text="Ставка оплаты за рабочий день"
+        verbose_name="Ставка за смену",
+        help_text="Ставка оплаты за смену"
     )
     
     travel_availability = models.BooleanField(
         default=False,
         verbose_name="Готовность к переездам",
         help_text="Готов ли артист к работе в других городах"
+    )
+    
+    busy_dates = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Занятые даты",
+        help_text="Массив занятых дат артиста в формате ['YYYY-MM-DD', ...]"
     )
     
     class Meta(BaseModel.Meta):

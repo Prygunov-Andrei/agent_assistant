@@ -233,6 +233,8 @@ const RequestsTable: React.FC = () => {
               role_type: foundRoleType || (role.role_type ? { id: null, name: role.role_type } : null),
               role_type_id: foundRoleType?.id || null,
               gender: role.gender || 'doesnt_matter',
+              age_min: role.age_min || '',
+              age_max: role.age_max || '',
               media_presence: 'doesnt_matter',
             clothing_size: 'неопределено',
             hairstyle: 'неопределено',
@@ -329,6 +331,8 @@ const RequestsTable: React.FC = () => {
       role_type: null, // Будет объект { id, name } после выбора
       role_type_id: null, // ID для сохранения в БД
       gender: 'doesnt_matter',
+      age_min: '',
+      age_max: '',
       media_presence: 'doesnt_matter',
       clothing_size: '', hairstyle: '', hair_color: '', eye_color: '', height: '',
       body_type: '', reference_text: '', special_conditions: '', audition_requirements: '',
@@ -988,6 +992,16 @@ const RequestsTable: React.FC = () => {
                                     <option value="yes">Да</option>
                                     <option value="no">Нет</option>
                                   </select>
+                                </div>
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Мин. возраст</label>
+                                  <input type="number" value={role.age_min} onChange={(e) => handleRoleChange(index, 'age_min', e.target.value)} style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px' }} placeholder="от" min="0" max="99" />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Макс. возраст</label>
+                                  <input type="number" value={role.age_max} onChange={(e) => handleRoleChange(index, 'age_max', e.target.value)} style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px' }} placeholder="до" min="0" max="99" />
                                 </div>
                               </div>
                               <div style={{ marginBottom: '16px' }}>

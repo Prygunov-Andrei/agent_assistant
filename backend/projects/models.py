@@ -240,6 +240,20 @@ class ProjectRole(BaseModel):
         help_text="Требуемый пол для роли"
     )
     
+    age_min = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name="Минимальный возраст",
+        help_text="Минимальный требуемый возраст для роли"
+    )
+    
+    age_max = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name="Максимальный возраст",
+        help_text="Максимальный требуемый возраст для роли"
+    )
+    
     clothing_size = models.CharField(
         max_length=50,
         blank=True,
