@@ -202,8 +202,13 @@ const RequestsTable: React.FC = () => {
         if (contacts.producers && contacts.producers.length > 0 && contacts.producers[0].name !== 'Не определен') {
           setProducer({ id: null, name: contacts.producers[0].name, match: 0 });
         }
-        if (contacts.production_company && contacts.production_company.name && contacts.production_company.name !== 'Не определен') {
-          setProductionCompany({ id: null, name: contacts.production_company.name, match: 0 });
+        if (contacts.production_company && contacts.production_company.name) {
+          // Предзаполняем даже если "Не определен" - пользователь сможет ввести вручную
+          setProductionCompany({ 
+            id: null, 
+            name: contacts.production_company.name === 'Не определен' ? '' : contacts.production_company.name, 
+            match: 0 
+          });
         }
       }
       
@@ -283,7 +288,14 @@ const RequestsTable: React.FC = () => {
       
       if (type === 'company') {
         // Поиск компаний через API
-        const companies = await companiesService.searchCompanies({ name: query, limit: 10 });
+        console.log('Searching companies with query:', query);
+        const response = await companiesService.searchCompanies({ name: query, limit: 10 });
+        console.log('Companies response:', response);
+        
+        // API возвращает объект { matches: [...], total: N }
+        const companies = response.matches || [];
+        console.log('Companies array:', companies);
+        
         results = companies.map((company: any) => ({
           id: company.id,
           name: company.name,
@@ -292,6 +304,7 @@ const RequestsTable: React.FC = () => {
           website: company.website,
           match: company.score || 0.5 // Используем score из API или дефолтное значение
         }));
+        console.log('Mapped results:', results);
         setCompanySearch(results);
         setShowCompanyDropdown(true);
       } else {

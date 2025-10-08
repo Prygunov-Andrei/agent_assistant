@@ -192,11 +192,11 @@ class LLMEmulatorService:
                         'confidence': 0.9
                     }],
                     'production_company': {
-                        'name': 'Не определен',
-                        'phone': 'Не определен',
-                        'email': 'Не определен',
-                        'website': 'Не определен',
-                        'confidence': 0.0
+                        'name': 'Студия Звезда',
+                        'phone': '+7-495-123-45-67',
+                        'email': 'info@zvezda.ru',
+                        'website': 'https://zvezda.ru',
+                        'confidence': 0.85
                     }
                 },
                 'confidence': 0.85,
@@ -399,6 +399,17 @@ class LLMEmulatorService:
                 'telegram': 'Не определен',
                 'confidence': 0.9
             }]
+        
+        # Извлекаем продюсерскую компанию
+        company_match = re.search(r'(?:Продюсерская компания|Кинокомпания|Компания):\s*([^\n]+)', text, re.IGNORECASE)
+        if company_match:
+            contacts['production_company'] = {
+                'name': company_match.group(1).strip(),
+                'phone': 'Не определен',
+                'email': 'Не определен',
+                'website': 'Не определен',
+                'confidence': 0.9
+            }
         
         return contacts
         
