@@ -34,6 +34,10 @@ const RequestsTable: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
   
+  // Состояния для модального окна удаления
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [requestToDelete, setRequestToDelete] = useState<number | null>(null);
+  
   // Состояния для персон команды проекта
   const [castingDirector, setCastingDirector] = useState<any>(null);
   const [director, setDirector] = useState<any>(null);
@@ -565,16 +569,80 @@ const RequestsTable: React.FC = () => {
     const incompleteRoles = roles.filter(role => !role.name?.trim() || !role.description?.trim());
     if (incompleteRoles.length > 0) { alert('Пожалуйста, заполните название и описание для всех ролей'); return; }
     
-    console.log('Создание проекта:', { ...formData, casting_director: castingDirector, director, producer, production_company: productionCompany, roles });
-    setShowProjectModal(false);
-    setSelectedRequest(null);
-    alert('Проект успешно создан!');
-    await fetchRequests();
+    try {
+      console.log('Создание проекта:', { ...formData, casting_director: castingDirector, director, producer, production_company: productionCompany, roles });
+      
+      // Обновляем статус запроса на 'completed'
+      if (selectedRequest) {
+        await requestsService.updateRequestStatus(selectedRequest.id, 'completed');
+      }
+      
+      setShowProjectModal(false);
+      setSelectedRequest(null);
+      alert('Проект успешно создан!');
+      await fetchRequests(); // Обновляем список запросов
+    } catch (err) {
+      ErrorHandler.logError(err, 'RequestsTable.handleProjectSubmit');
+      alert('Ошибка при создании проекта');
+    }
   };
 
   // Убираем обрезку текста - показываем полный текст
   const displayText = (text: string) => {
     return text;
+  };
+
+  // Функция для открытия модального окна удаления
+  const handleDeleteClick = (e: React.MouseEvent, requestId: number) => {
+    e.stopPropagation(); // Предотвращаем открытие модального окна создания проекта
+    setRequestToDelete(requestId);
+    setShowDeleteModal(true);
+  };
+
+  // Функция для подтверждения удаления запроса
+  const handleConfirmDelete = async () => {
+    if (!requestToDelete) return;
+    
+    try {
+      await requestsService.deleteRequest(requestToDelete);
+      // Обновляем список запросов
+      setRequests(requests.filter(r => r.id !== requestToDelete));
+      setShowDeleteModal(false);
+      setRequestToDelete(null);
+    } catch (err) {
+      ErrorHandler.logError(err, 'RequestsTable.handleConfirmDelete');
+      alert('Ошибка при удалении запроса');
+    }
+  };
+
+  // Функция для отмены удаления
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setRequestToDelete(null);
+  };
+
+  // Функция для получения текста статуса
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Новый';
+      case 'completed':
+        return 'Обработан';
+      default:
+        return status;
+    }
+  };
+
+  // Функция для получения цвета статуса
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return '#3b82f6'; // blue
+      case 'completed':
+        return '#10b981'; // green
+      default:
+        return '#6b7280'; // gray
+    }
   };
 
   // Компонент для рендеринга строки запроса
@@ -663,8 +731,39 @@ const RequestsTable: React.FC = () => {
         </div>
       </td>
       <td className="requests-table-cell">
-        <div className="text-center text-gray-500 text-sm">
-          Кликните для создания проекта
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+          <div style={{ 
+            display: 'inline-block',
+            padding: '4px 12px',
+            borderRadius: '12px',
+            fontSize: '13px',
+            fontWeight: '600',
+            backgroundColor: getStatusColor(request.status) + '20',
+            color: getStatusColor(request.status),
+            border: `1px solid ${getStatusColor(request.status)}40`
+          }}>
+            {getStatusText(request.status)}
+          </div>
+          <button
+            onClick={(e) => handleDeleteClick(e, request.id)}
+            style={{
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: '500',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+            title="Удалить запрос"
+          >
+            Удалить
+          </button>
         </div>
       </td>
     </tr>
@@ -675,7 +774,6 @@ const RequestsTable: React.FC = () => {
       <AnimatedContainer animation="fadeIn" className="fade-in">
         <div className="card overflow-hidden">
           <div className="p-4">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Запросы КД</h2>
             <TableSkeleton rows={8} columns={5} />
           </div>
         </div>
@@ -700,9 +798,6 @@ const RequestsTable: React.FC = () => {
   if (requests.length === 0) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          Запросы КД
-        </h2>
         <p className="text-gray-600 mb-6">
           Пока нет запросов для обработки.
         </p>
@@ -714,20 +809,8 @@ const RequestsTable: React.FC = () => {
     <>
       <AnimatedContainer animation="fadeIn" className="fade-in">
         <div className="card overflow-hidden">
-          <div className="p-4">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Запросы КД</h2>
-          </div>
           <div className="overflow-x-auto">
             <table className="requests-table">
-              <thead>
-                <tr>
-                  <th className="requests-table-header">Дата</th>
-                  <th className="requests-table-header">Автор</th>
-                  <th className="requests-table-header">Текст запроса</th>
-                  <th className="requests-table-header">Медиа</th>
-                  <th className="requests-table-header">Статус</th>
-                </tr>
-              </thead>
               <tbody>
                 {requests.length > 50 ? (
                   <VirtualizedList
@@ -1248,6 +1331,113 @@ const RequestsTable: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button onClick={() => setShowUnsavedWarning(false)} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>Отмена</button>
               <button onClick={handleConfirmClose} style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#dc2626', color: 'white' }}>Закрыть без сохранения</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteModal && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+            zIndex: 1000000, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            animation: 'fadeIn 0.2s ease-in-out'
+          }}
+          onClick={handleCancelDelete}
+        >
+          <div 
+            style={{ 
+              backgroundColor: 'white', 
+              borderRadius: '12px', 
+              padding: '28px', 
+              maxWidth: '440px', 
+              width: '90%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              animation: 'slideIn 0.2s ease-out'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+              <div style={{ 
+                width: '48px', 
+                height: '48px', 
+                borderRadius: '50%', 
+                backgroundColor: '#fee2e2', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
+                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+                </svg>
+              </div>
+              <div>
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '4px', color: '#111827' }}>
+                  Удалить запрос?
+                </h3>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  Это действие нельзя отменить
+                </p>
+              </div>
+            </div>
+            
+            <p style={{ color: '#4b5563', marginBottom: '24px', fontSize: '15px', lineHeight: '1.5' }}>
+              Вы уверены, что хотите удалить этот запрос? Все связанные данные будут безвозвратно удалены из системы.
+            </p>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button 
+                onClick={handleCancelDelete} 
+                style={{ 
+                  padding: '10px 20px', 
+                  border: '1px solid #d1d5db', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer', 
+                  backgroundColor: 'white', 
+                  color: '#374151',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                  e.currentTarget.style.borderColor = '#9ca3af';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              >
+                Отмена
+              </button>
+              <button 
+                onClick={handleConfirmDelete} 
+                style={{ 
+                  padding: '10px 20px', 
+                  border: 'none', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer', 
+                  backgroundColor: '#dc2626', 
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+              >
+                Удалить запрос
+              </button>
             </div>
           </div>
         </div>

@@ -7,10 +7,8 @@ class Request(BaseModel):
     """Модель запроса от пользователей Telegram"""
     
     STATUS_CHOICES = [
-        ('pending', 'Ожидает обработки'),
-        ('in_progress', 'В обработке'),
-        ('completed', 'Выполнен'),
-        ('cancelled', 'Отменен'),
+        ('pending', 'Новый'),
+        ('completed', 'Обработан'),
     ]
     
     ANALYSIS_STATUS_CHOICES = [

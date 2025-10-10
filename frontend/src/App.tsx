@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from './components/Layout';
 import Artists from './pages/Artists';
 import Requests from './pages/Requests';
+import Projects from './pages/Projects';
 import Login from './pages/Login';
 import TestPersonMatching from './pages/TestPersonMatching';
 import ProjectCreationPage from './pages/ProjectCreationPage';
@@ -64,10 +65,7 @@ const App: React.FC = () => {
                  element={
                    <ProtectedRoute>
                      <Layout>
-                       <div className="text-center py-12">
-                         <h1 className="text-2xl font-bold text-gray-900">Проекты</h1>
-                         <p className="text-gray-600 mt-2">Страница в разработке</p>
-                       </div>
+                       <Projects />
                      </Layout>
                    </ProtectedRoute>
                  }

@@ -62,6 +62,13 @@ class RequestsService {
     const response = await api.get<RequestAnalysisStatus>(`/requests/${id}/analysis-status/`);
     return response.data;
   }
+
+  /**
+   * Удалить запрос
+   */
+  async deleteRequest(id: number): Promise<void> {
+    await api.delete(`/requests/${id}/`);
+  }
 }
 
 export const requestsService = new RequestsService();
