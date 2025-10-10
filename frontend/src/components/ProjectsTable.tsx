@@ -5,6 +5,7 @@ import { ErrorHandler } from '../utils/errorHandler';
 import VirtualizedList from './common/VirtualizedList';
 import { TableSkeleton } from './common/SkeletonLoader';
 import AnimatedContainer from './common/AnimatedContainer';
+import ProjectFormModal from './projects/ProjectFormModal';
 
 interface Project {
   id: number;
@@ -90,9 +91,6 @@ const ProjectsTable: React.FC = () => {
   // Состояние для модального окна удаления
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
-  
-  // Состояние для сворачивания ролей
-  const [collapsedRoles, setCollapsedRoles] = useState<Set<number>>(new Set());
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -115,29 +113,23 @@ const ProjectsTable: React.FC = () => {
   }, []);
 
   // Обработчик клика по строке проекта
-  const handleRowClick = (project: Project) => {
-    setSelectedProject(project);
-    setShowViewModal(true);
+  const handleRowClick = async (project: Project) => {
+    try {
+      // Загружаем ПОЛНЫЕ данные проекта с API (включая все роли с деталями)
+      const fullProject = await projectsService.getProject(project.id);
+      console.log('Полный проект:', fullProject);
+      setSelectedProject(fullProject);
+      setShowViewModal(true);
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectsTable.handleRowClick');
+      alert('Ошибка при загрузке проекта');
+    }
   };
 
   // Закрытие модального окна просмотра
   const handleCloseViewModal = () => {
     setShowViewModal(false);
     setSelectedProject(null);
-    setCollapsedRoles(new Set()); // Сбрасываем состояние сворачивания
-  };
-  
-  // Переключение сворачивания роли
-  const toggleRoleCollapse = (roleId: number) => {
-    setCollapsedRoles(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(roleId)) {
-        newSet.delete(roleId);
-      } else {
-        newSet.add(roleId);
-      }
-      return newSet;
-    });
   };
 
   // Открытие модального окна удаления
@@ -301,152 +293,13 @@ const ProjectsTable: React.FC = () => {
         </div>
       </AnimatedContainer>
 
-      {/* Модальное окно просмотра проекта - будет реализовано далее */}
-      {showViewModal && selectedProject && (
-        <div 
-          style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-            zIndex: 999999, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center' 
-          }}
-          onClick={handleCloseViewModal}
-        >
-          <div 
-            style={{ 
-              backgroundColor: 'white', 
-              borderRadius: '12px', 
-              maxWidth: '1200px', 
-              width: '95%', 
-              maxHeight: '90vh', 
-              display: 'flex', 
-              flexDirection: 'column',
-              overflow: 'hidden'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* HEADER */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              padding: '20px', 
-              borderBottom: '1px solid #e5e7eb', 
-              backgroundColor: '#f9fafb' 
-            }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'black', margin: 0 }}>
-                Проект: {selectedProject.title}
-              </h2>
-              <button 
-                onClick={handleCloseViewModal} 
-                style={{ 
-                  fontSize: '24px', 
-                  fontWeight: 'bold', 
-                  color: '#6b7280', 
-                  cursor: 'pointer', 
-                  border: 'none', 
-                  background: 'none', 
-                  padding: '5px' 
-                }}
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* BODY - Временно показываем базовую информацию */}
-            <div style={{ 
-              flex: 1, 
-              overflow: 'auto', 
-              padding: '20px' 
-            }}>
-              <p style={{ color: '#6b7280', marginBottom: '20px' }}>
-                Детальный просмотр проекта будет реализован далее...
-              </p>
-              
-              <div style={{ marginBottom: '16px' }}>
-                <strong>Тип проекта:</strong> {selectedProject.project_type?.name}
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <strong>Жанр:</strong> {selectedProject.genre?.name}
-              </div>
-              {selectedProject.description && (
-                <div style={{ marginBottom: '16px' }}>
-                  <strong>Описание:</strong> {selectedProject.description}
-                </div>
-              )}
-              <div style={{ marginBottom: '16px' }}>
-                <strong>Кастинг-директор:</strong> {selectedProject.casting_director?.name || 'Не указан'}
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <strong>Количество ролей:</strong> {selectedProject.roles?.length || 0}
-              </div>
-            </div>
-
-            {/* FOOTER */}
-            <div style={{ 
-              padding: '20px', 
-              borderTop: '1px solid #e5e7eb', 
-              backgroundColor: '#f9fafb',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px'
-            }}>
-              <button
-                onClick={handleCloseViewModal}
-                style={{
-                  padding: '10px 20px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  backgroundColor: 'white',
-                  color: '#374151',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Закрыть
-              </button>
-              <button
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Редактировать
-              </button>
-              <button
-                onClick={(e) => {
-                  handleDeleteClick(e, selectedProject.id);
-                }}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Модальное окно просмотра/редактирования проекта */}
+      <ProjectFormModal
+        mode="view"
+        isOpen={showViewModal}
+        onClose={handleCloseViewModal}
+        projectData={selectedProject}
+      />
 
       {/* Delete Confirmation Dialog */}
       {showDeleteModal && (

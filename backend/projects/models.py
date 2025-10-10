@@ -125,13 +125,24 @@ class Project(BaseModel):
         help_text="Планируемая или состоявшаяся дата премьеры"
     )
     
-    director = models.OneToOneField(
+    casting_director = models.ForeignKey(
+        'people.Person',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={'person_type': 'casting_director'},
+        related_name='casting_projects',
+        verbose_name="Кастинг-директор",
+        help_text="Кастинг-директор проекта"
+    )
+    
+    director = models.ForeignKey(
         'people.Person',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         limit_choices_to={'person_type': 'director'},
-        related_name='directed_project',
+        related_name='directed_projects',
         verbose_name="Режиссер",
         help_text="Режиссер проекта"
     )

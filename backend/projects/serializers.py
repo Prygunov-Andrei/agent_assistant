@@ -98,6 +98,9 @@ class ProjectRoleSerializer(BaseModelSerializer):
             'name',
             'role_type',
             'description',
+            'gender',
+            'age_min',
+            'age_max',
             'media_presence',
             'clothing_size',
             'hairstyle',
@@ -105,6 +108,8 @@ class ProjectRoleSerializer(BaseModelSerializer):
             'eye_color',
             'height',
             'body_type',
+            'shoe_size',
+            'nationality',
             'reference_photo',
             'reference_text',
             'special_conditions',
@@ -191,6 +196,11 @@ class ProjectSerializer(BaseModelSerializer):
     Наследует от BaseModelSerializer базовые поля и добавляет специфичные для проекта.
     """
     
+    casting_director_name = serializers.ReadOnlyField(
+        source='casting_director.full_name',
+        help_text="Полное имя кастинг-директора"
+    )
+    
     director_name = serializers.ReadOnlyField(
         source='director.full_name',
         help_text="Полное имя режиссера"
@@ -218,7 +228,24 @@ class ProjectSerializer(BaseModelSerializer):
         help_text="Список имен продюсеров"
     )
     
-    roles = ProjectRoleListSerializer(many=True, read_only=True)
+    request_text = serializers.ReadOnlyField(
+        source='request.text',
+        help_text="Текст запроса"
+    )
+    
+    request_author = serializers.ReadOnlyField(
+        source='request.author_username',
+        help_text="Автор запроса"
+    )
+    
+    request_created_at = serializers.ReadOnlyField(
+        source='request.created_at',
+        help_text="Дата создания запроса"
+    )
+    
+    # Используем ProjectRoleSerializer для полных данных ролей
+    # (Не ProjectRoleListSerializer чтобы получить ВСЕ поля роли)
+    roles = serializers.SerializerMethodField()
     
     # Поле для создания проекта из запроса
     request_id = serializers.IntegerField(
@@ -237,6 +264,11 @@ class ProjectSerializer(BaseModelSerializer):
                 raise serializers.ValidationError(f"Запрос с ID {value} не найден")
         return value
     
+    def get_roles(self, obj):
+        """Возвращает полные данные ролей через ProjectRoleSerializer"""
+        roles = obj.roles.filter(is_active=True)
+        return ProjectRoleSerializer(roles, many=True).data
+    
     class Meta(BaseModelSerializer.Meta):
         model = Project
         fields = BaseModelSerializer.Meta.fields + [
@@ -248,6 +280,8 @@ class ProjectSerializer(BaseModelSerializer):
             'genre',
             'genre_name',
             'premiere_date',
+            'casting_director',
+            'casting_director_name',
             'director',
             'director_name',
             'producers',
@@ -255,6 +289,9 @@ class ProjectSerializer(BaseModelSerializer):
             'production_company',
             'production_company_name',
             'request',
+            'request_text',
+            'request_author',
+            'request_created_at',
             'request_id',
             'project_type_raw',
             'roles'
@@ -267,6 +304,7 @@ class ProjectSerializer(BaseModelSerializer):
             'description': {'help_text': 'Описание проекта'},
             'genre': {'help_text': 'ID жанра проекта'},
             'premiere_date': {'help_text': 'Дата премьеры'},
+            'casting_director': {'help_text': 'ID кастинг-директора проекта'},
             'director': {'help_text': 'ID режиссера проекта'},
             'producers': {'help_text': 'Список ID продюсеров проекта'},
             'production_company': {'help_text': 'ID кинокомпании проекта'},
@@ -281,6 +319,11 @@ class ProjectListSerializer(BaseListSerializer):
     
     Наследует от BaseListSerializer и добавляет специфичные поля для проектов.
     """
+    
+    casting_director_name = serializers.ReadOnlyField(
+        source='casting_director.full_name',
+        help_text="Полное имя кастинг-директора"
+    )
     
     director_name = serializers.ReadOnlyField(
         source='director.full_name',
@@ -315,6 +358,8 @@ class ProjectListSerializer(BaseListSerializer):
             'status',
             'genre',
             'genre_name',
+            'casting_director',
+            'casting_director_name',
             'director',
             'director_name',
             'production_company',

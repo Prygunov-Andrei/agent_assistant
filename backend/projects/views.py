@@ -198,11 +198,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
             queryset,
             prefetch_fields=[
                 'roles__role_type',
-                'roles__suggested_artists'
+                'roles__suggested_artists',
+                'roles__shoe_size',
+                'roles__nationality',
+                'producers'
             ],
             select_related_fields=[
                 'project_type',
                 'genre',
+                'casting_director',
+                'director',
+                'production_company',
                 'created_by',
                 'request'
             ]

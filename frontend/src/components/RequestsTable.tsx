@@ -270,24 +270,27 @@ const RequestsTable: React.FC = () => {
               gender: role.gender || 'doesnt_matter',
               age_min: role.age_min || '',
               age_max: role.age_max || '',
-              media_presence: 'doesnt_matter',
+              media_presence: role.media_presence || 'doesnt_matter',
               shoe_size: foundShoeSize || null,
               nationality: foundNationality || null,
-            clothing_size: 'неопределено',
-            hairstyle: 'неопределено',
-            hair_color: 'неопределено',
-            eye_color: 'неопределено',
-            height: 'неопределено',
-            body_type: 'неопределено',
-            reference_text: 'неопределено',
-            special_conditions: role.special_requirements?.join(', ') || 'неопределено',
-            audition_requirements: 'неопределено',
-            audition_text: 'неопределено',
-            rate_per_shift: 'неопределено',
-            rate_conditions: 'неопределено',
-            shooting_dates: 'неопределено',
-            shooting_location: 'неопределено',
-              notes: 'неопределено',
+              // Внешность - из LLM
+              clothing_size: role.clothing_size || 'неопределено',
+              hairstyle: role.hairstyle || 'неопределено',
+              hair_color: role.hair_color || 'неопределено',
+              eye_color: role.eye_color || 'неопределено',
+              height: role.height || 'неопределено',
+              body_type: role.body_type || 'неопределено',
+              // Дополнительные поля - из LLM
+              reference_text: role.reference_text || 'неопределено',
+              special_conditions: role.special_conditions || role.special_requirements?.join(', ') || 'неопределено',
+              audition_requirements: role.audition_requirements || 'неопределено',
+              audition_text: role.audition_text || 'неопределено',
+              // Рабочие условия - из LLM
+              rate_per_shift: role.rate_per_shift || 'неопределено',
+              rate_conditions: role.rate_conditions || 'неопределено',
+              shooting_dates: role.shooting_dates || 'неопределено',
+              shooting_location: role.shooting_location || 'неопределено',
+              notes: role.notes || 'неопределено',
               // Конвертируем skills_required из массива строк в массив объектов
               skills_required: (role.skills_required?.acting_skills || []).map((skillName: string) => {
                 const foundSkill = skillsList.find((s: any) => 
@@ -570,7 +573,70 @@ const RequestsTable: React.FC = () => {
     if (incompleteRoles.length > 0) { alert('Пожалуйста, заполните название и описание для всех ролей'); return; }
     
     try {
-      console.log('Создание проекта:', { ...formData, casting_director: castingDirector, director, producer, production_company: productionCompany, roles });
+      // Подготовка данных для API
+      const projectPayload = {
+        title: formData.title,
+        description: formData.description,
+        project_type: projectType.id,
+        genre: genre.id,
+        premiere_date: formData.premiere_date,
+        status: 'in_production',
+        casting_director: castingDirector.id,
+        director: director.id,
+        producers: [producer.id], // ManyToMany - передаем массив
+        production_company: productionCompany.id,
+        request: selectedRequest?.id
+      };
+      
+      console.log('Создание проекта:', projectPayload);
+      console.log('Типы полей:', {
+        casting_director: typeof projectPayload.casting_director,
+        director: typeof projectPayload.director,
+        producers: Array.isArray(projectPayload.producers),
+        production_company: typeof projectPayload.production_company
+      });
+      
+      // Создаем проект через API
+      const createdProject = await projectsService.createProject(projectPayload);
+      console.log('Проект создан:', createdProject);
+      
+      // Создаем роли проекта
+      for (const role of roles) {
+        console.log('Создание роли - исходные данные:', role);
+        
+        const rolePayload = {
+          project: createdProject.id,
+          name: role.name,
+          description: role.description,
+          role_type: role.role_type?.id,
+          gender: role.gender,
+          age_min: role.age_min,
+          age_max: role.age_max,
+          media_presence: role.media_presence,
+          height: role.height,
+          body_type: role.body_type,
+          hair_color: role.hair_color,
+          eye_color: role.eye_color,
+          hairstyle: role.hairstyle,
+          clothing_size: role.clothing_size,
+          shoe_size: role.shoe_size?.id,
+          nationality: role.nationality?.id,
+          rate_per_shift: role.rate_per_shift,
+          shooting_dates: role.shooting_dates,
+          shooting_location: role.shooting_location,
+          rate_conditions: role.rate_conditions,
+          reference_text: role.reference_text,
+          special_conditions: role.special_conditions,
+          audition_requirements: role.audition_requirements,
+          audition_text: role.audition_text,
+          notes: role.notes,
+          skills_required: role.skills_required
+        };
+        
+        console.log('Создание роли - payload для API:', rolePayload);
+        
+        await projectsService.createProjectRole(rolePayload);
+      }
       
       // Обновляем статус запроса на 'completed'
       if (selectedRequest) {
@@ -580,10 +646,12 @@ const RequestsTable: React.FC = () => {
       setShowProjectModal(false);
       setSelectedRequest(null);
       alert('Проект успешно создан!');
-      await fetchRequests(); // Обновляем список запросов
-    } catch (err) {
+      await fetchRequests();
+    } catch (err: any) {
       ErrorHandler.logError(err, 'RequestsTable.handleProjectSubmit');
-      alert('Ошибка при создании проекта');
+      console.error('Детали ошибки:', err);
+      console.error('Ответ сервера:', err.response?.data);
+      alert(`Ошибка при создании проекта: ${JSON.stringify(err.response?.data || err.message)}`);
     }
   };
 

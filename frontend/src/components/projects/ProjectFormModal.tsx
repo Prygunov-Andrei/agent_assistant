@@ -112,15 +112,40 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   // Инициализация при открытии
   useEffect(() => {
     if (isOpen) {
-      loadReferences();
+      // Сначала загружаем справочники, ПОТОМ предзаполняем данные
+      const initializeModal = async () => {
+        try {
+          const [types, genres, roleTypes, shoeSizes, nationalities, skills] = await Promise.all([
+            projectsService.getProjectTypes(),
+            projectsService.getGenres(),
+            projectsService.getRoleTypes(),
+            projectsService.getShoeSizes(),
+            projectsService.getNationalities(),
+            artistsService.getSkills()
+          ]);
+          
+          // Устанавливаем в стейт
+          setProjectTypesList(types);
+          setGenresList(genres);
+          setRoleTypesList(roleTypes);
+          setShoeSizesList(shoeSizes);
+          setNationalitiesList(nationalities);
+          setSkillsList(skills);
+          
+          if (mode === 'create' && requestData) {
+            // Автоматический LLM анализ для создания из запроса
+            handleAutoAnalysis();
+          } else if ((mode === 'edit' || mode === 'view') && projectData) {
+            // Предзаполнение данных для редактирования/просмотра
+            // Передаем загруженные списки напрямую
+            prefillProjectData(roleTypes, shoeSizes, nationalities);
+          }
+        } catch (err) {
+          ErrorHandler.logError(err, 'ProjectFormModal.initializeModal');
+        }
+      };
       
-      if (mode === 'create' && requestData) {
-        // Автоматический LLM анализ для создания из запроса
-        handleAutoAnalysis();
-      } else if ((mode === 'edit' || mode === 'view') && projectData) {
-        // Предзаполнение данных для редактирования/просмотра
-        prefillProjectData();
-      }
+      initializeModal();
     }
   }, [isOpen, mode, requestData, projectData]);
 
@@ -241,26 +266,113 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   };
 
   // Предзаполнение данных проекта для редактирования/просмотра
-  const prefillProjectData = () => {
+  const prefillProjectData = (loadedRoleTypes?: any[], loadedShoeSizes?: any[], loadedNationalities?: any[]) => {
     if (!projectData) return;
+    
+    // Используем переданные списки или списки из стейта
+    const roleTypesToUse = loadedRoleTypes || roleTypesList;
+    const shoeSizesToUse = loadedShoeSizes || shoeSizesList;
+    const nationalitiesToUse = loadedNationalities || nationalitiesList;
+    
+    console.log('prefillProjectData - Входные данные:', projectData);
+    console.log('projectData.project_type:', projectData.project_type);
+    console.log('projectData.genre:', projectData.genre);
+    console.log('projectData.roles:', projectData.roles);
+    console.log('Справочники для маппинга:', {
+      roleTypes: roleTypesToUse.length,
+      shoeSizes: shoeSizesToUse.length,
+      nationalities: nationalitiesToUse.length
+    });
     
     setFormData({
       title: projectData.title || '',
       description: projectData.description || '',
-      project_type: projectData.project_type?.id || 1,
-      genre: projectData.genre?.id,
+      project_type: projectData.project_type?.id || projectData.project_type || 1,
+      genre: projectData.genre?.id || projectData.genre,
       premiere_date: projectData.premiere_date || '',
       status: projectData.status || 'draft',
       project_type_raw: projectData.project_type_raw || ''
     });
     
-    setProjectType(projectData.project_type || null);
-    setGenre(projectData.genre || null);
-    setCastingDirector(projectData.casting_director || null);
-    setDirector(projectData.director || null);
-    setProducer(projectData.producer || null);
-    setProductionCompany(projectData.production_company || null);
-    setRoles(projectData.roles || []);
+    // Мапим тип проекта и жанр в формат {id, name}
+    const mappedProjectType = typeof projectData.project_type === 'object' ? projectData.project_type : {
+      id: projectData.project_type,
+      name: projectData.project_type_name || 'Загрузка...'
+    };
+    
+    const mappedGenre = typeof projectData.genre === 'object' ? projectData.genre : {
+      id: projectData.genre,
+      name: projectData.genre_name || 'Загрузка...'
+    };
+    
+    // Мапим данные команды с бэкенда на формат фронтенда
+    const mappedCastingDirector = projectData.casting_director ? {
+      id: projectData.casting_director,
+      name: projectData.casting_director_name || 'Загрузка...',
+      match: 1
+    } : null;
+    
+    const mappedDirector = projectData.director ? {
+      id: projectData.director,
+      name: projectData.director_name || 'Загрузка...',
+      match: 1
+    } : null;
+    
+    const mappedProducer = projectData.producers && projectData.producers.length > 0 ? {
+      id: projectData.producers[0],
+      name: projectData.producers_names?.[0] || 'Загрузка...',
+      match: 1
+    } : null;
+    
+    const mappedCompany = projectData.production_company ? {
+      id: projectData.production_company,
+      name: projectData.production_company_name || 'Загрузка...',
+      match: 1
+    } : null;
+    
+    console.log('Маппинг:', { 
+      mappedProjectType, 
+      mappedGenre, 
+      mappedCastingDirector, 
+      mappedDirector, 
+      mappedProducer, 
+      mappedCompany 
+    });
+    
+    setProjectType(mappedProjectType);
+    setGenre(mappedGenre);
+    setCastingDirector(mappedCastingDirector);
+    setDirector(mappedDirector);
+    setProducer(mappedProducer);
+    setProductionCompany(mappedCompany);
+    
+    // Мапим роли - преобразуем role_type из ID в объект
+    const mappedRoles = (projectData.roles || []).map((role: any) => {
+      console.log('Маппинг роли:', role);
+      
+      // Преобразуем role_type если это ID
+      const mappedRoleType = typeof role.role_type === 'object' ? role.role_type : 
+        roleTypesToUse.find((rt: any) => rt.id === role.role_type) || { id: role.role_type, name: role.role_type_name || 'Загрузка...' };
+      
+      // Преобразуем shoe_size если это ID
+      const mappedShoeSize = typeof role.shoe_size === 'object' ? role.shoe_size :
+        shoeSizesToUse.find((s: any) => s.id === role.shoe_size) || null;
+      
+      // Преобразуем nationality если это ID
+      const mappedNationality = typeof role.nationality === 'object' ? role.nationality :
+        nationalitiesToUse.find((n: any) => n.id === role.nationality) || null;
+      
+      return {
+        ...role,
+        role_type: mappedRoleType,
+        shoe_size: mappedShoeSize,
+        nationality: mappedNationality
+      };
+    });
+    
+    setRoles(mappedRoles);
+    
+    console.log('Роли после маппинга:', mappedRoles);
   };
 
   // Поиск персон с отображением dropdown
@@ -693,8 +805,15 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
             {(mode === 'edit' || mode === 'view') && projectData?.request && (
               <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'auto', padding: '20px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>Контекст запроса</h3>
-                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', lineHeight: '1.4' }}>
-                  {projectData.request.text}
+                {projectData.request_author && (
+                  <div style={{ marginBottom: '12px' }}><strong>Автор:</strong> {projectData.request_author}</div>
+                )}
+                {projectData.request_created_at && (
+                  <div style={{ marginBottom: '12px' }}><strong>Дата:</strong> {new Date(projectData.request_created_at).toLocaleString('ru-RU')}</div>
+                )}
+                <div style={{ marginBottom: '12px' }}><strong>Текст:</strong></div>
+                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>
+                  {projectData.request_text || `Запрос #${projectData.request} (текст не загружен)`}
                 </div>
               </div>
             )}
@@ -1439,15 +1558,29 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                   </div>
                 </div>
                 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
-                  <button type="button" onClick={handleModalClose} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>
-                    {isReadOnly ? 'Закрыть' : 'Отмена'}
-                  </button>
-                  {!isReadOnly && (
-                    <button type="submit" style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#2563eb', color: 'white' }}>
-                      {mode === 'create' ? 'Создать проект' : 'Сохранить изменения'}
+                <div style={{ display: 'flex', justifyContent: isReadOnly ? 'space-between' : 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+                  {isReadOnly && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        // TODO: переключить в режим редактирования
+                        alert('Редактирование проекта будет реализовано в следующем шаге');
+                      }} 
+                      style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#3b82f6', color: 'white' }}
+                    >
+                      Редактировать
                     </button>
                   )}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button type="button" onClick={handleModalClose} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>
+                      {isReadOnly ? 'Закрыть' : 'Отмена'}
+                    </button>
+                    {!isReadOnly && (
+                      <button type="submit" style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#2563eb', color: 'white' }}>
+                        {mode === 'create' ? 'Создать проект' : 'Сохранить изменения'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </form>
             </div>
