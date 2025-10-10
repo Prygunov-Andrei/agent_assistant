@@ -908,9 +908,12 @@ const RequestsTable: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'black', margin: 0 }}>Создание проекта из запроса #{selectedRequest.id}</h2>
                 {isAnalyzing && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#dbeafe', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: '#1e40af' }}>
-                    <div style={{ width: '12px', height: '12px', border: '2px solid #1e40af', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                    Анализируем запрос...
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#d1fae5', padding: '8px 16px', borderRadius: '8px', fontSize: '14px', color: '#065f46', border: '2px solid #10b981', boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)' }}>
+                    <div style={{ width: '16px', height: '16px', border: '3px solid #10b981', borderTop: '3px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>🤖 Анализ GPT-4o...</div>
+                      <div style={{ fontSize: '11px', color: '#047857', marginTop: '2px' }}>Списываются токены • Обработка ~2 сек</div>
+                    </div>
                   </div>
                 )}
               </div>

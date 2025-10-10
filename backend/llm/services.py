@@ -582,20 +582,37 @@ class LLMService:
     """
     
     def __init__(self):
+        print("=" * 80)
+        print("🚀 LLMService.__init__ ВЫЗВАН!")
         self.config = self._load_config()
+        print(f"📋 Конфиг загружен: use_emulator = {self.config.get('llm', {}).get('use_emulator')}")
         self.emulator = LLMEmulatorService()
         self.openai_service = None
         
         # Попытка инициализации OpenAI сервиса
-        if self._should_use_openai():
+        should_use = self._should_use_openai()
+        print(f"🔍 Должен использовать OpenAI: {should_use}")
+        
+        if should_use:
             try:
+                print("⏳ Попытка инициализации OpenAI...")
+                logger.info("Attempting to initialize OpenAI service...")
                 from .openai_service import OpenAIService
                 self.openai_service = OpenAIService()
-                logger.info("OpenAI service initialized successfully")
+                print("✅ OpenAI service initialized successfully")
+                logger.info("✅ OpenAI service initialized successfully")
             except Exception as e:
-                logger.warning(f"Failed to initialize OpenAI service: {e}")
-                logger.warning("Falling back to emulator mode")
+                print(f"❌ Failed to initialize OpenAI: {e}")
+                logger.error(f"❌ Failed to initialize OpenAI service: {e}")
+                logger.exception("Full error traceback:")
+                logger.warning("⚠️  Falling back to emulator mode")
                 self.openai_service = None
+        else:
+            print("ℹ️  OpenAI disabled, using emulator")
+            logger.info("ℹ️  OpenAI disabled, using emulator")
+        
+        print(f"🎯 ИТОГ: OpenAI сервис = {self.openai_service is not None}")
+        print("=" * 80)
     
     def _load_config(self) -> Dict[str, Any]:
         """Загрузка конфигурации LLM"""
@@ -638,16 +655,21 @@ class LLMService:
             Структурированный JSON ответ
         """
         # Выбираем сервис для анализа
+        logger.info(f"🔍 analyze_request called. OpenAI service available: {self.openai_service is not None}")
+        
         if self.openai_service:
             try:
-                logger.info("Using OpenAI GPT-4o for request analysis")
-                return self.openai_service.analyze_request(request_data, artists_data)
+                logger.info("🤖 Using OpenAI GPT-4o for request analysis")
+                result = self.openai_service.analyze_request(request_data, artists_data)
+                logger.info(f"✅ OpenAI analysis completed. Model: {result.get('model')}")
+                return result
             except Exception as e:
-                logger.error(f"OpenAI analysis failed: {e}")
-                logger.warning("Falling back to emulator")
+                logger.error(f"❌ OpenAI analysis failed: {e}")
+                logger.exception("Full error traceback:")
+                logger.warning("⚠️  Falling back to emulator")
                 return self.emulator.analyze_request(request_data, artists_data)
         else:
-            logger.info("Using LLM Emulator for request analysis")
+            logger.info("🧪 Using LLM Emulator for request analysis")
             return self.emulator.analyze_request(request_data, artists_data)
     
     def test_connection(self) -> Dict[str, Any]:

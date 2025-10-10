@@ -90,6 +90,8 @@ def analyze_request(request, request_id):
         
         # Инициализируем LLM сервис
         llm_service = LLMService()
+        logger.info(f"🔧 LLMService created. OpenAI available: {llm_service.openai_service is not None}")
+        logger.info(f"🔧 Current service: {llm_service.get_service_info()['service']}")
         
         # Логируем начало анализа
         logger.info(f"Начало анализа запроса {request_id} пользователем {request.user.username}")

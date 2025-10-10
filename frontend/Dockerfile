@@ -1,18 +1,39 @@
-FROM node:20-alpine
+# Multi-stage build для production
+
+# Stage 1: Build
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Копируем package.json и package-lock.json
+# Копируем package files
 COPY package*.json ./
 
 # Устанавливаем зависимости
-RUN npm install
+RUN npm ci --silent
 
-# Копируем исходный код
+# Копируем исходники
 COPY . .
 
-# Открываем порт
-EXPOSE 5173
+# Собираем production build
+RUN npm run build
 
-# Команда по умолчанию
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Stage 2: Production
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Устанавливаем serve для раздачи статики
+RUN npm install -g serve
+
+# Копируем собранные файлы из builder
+COPY --from=builder /app/dist ./dist
+
+# Expose порт
+EXPOSE 3000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+
+# Запускаем приложение
+CMD ["serve", "-s", "dist", "-l", "3000"]

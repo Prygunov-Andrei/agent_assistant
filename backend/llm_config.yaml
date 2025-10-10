@@ -1,94 +1,16 @@
-# Конфигурация LLM интеграции
 llm:
-  # Основные настройки
-  model: "gpt-4o"
+  use_emulator: false  # false = использовать OpenAI GPT-4o, true = использовать эмулятор
+  model: 'gpt-4o'
   temperature: 0.3
-  max_tokens: 2000
+  max_tokens: 4000
   max_retries: 3
-  timeout: 30
-  
-  # Настройки API
-  api_key_env: "OPENAI_API_KEY"
-  base_url: "https://api.openai.com/v1"
-  
-  # Настройки эмулятора
-  use_emulator: true
-  emulator_delay: 2.0  # Задержка в секундах для имитации реального запроса
-  
-  # Настройки переключения между эмулятором и реальным LLM
-  fallback_to_emulator: true  # Переключение на эмулятор при ошибках реального LLM
-  emulator_enabled: true  # Включение/выключение эмулятора
+  timeout: 60
 
-# Настройки поиска совпадений
-search_thresholds:
-  persons:
-    casting_directors: 0.7
-    directors: 0.6
-    producers: 0.6
-  companies: 0.8
-  projects: 0.6
-
-search_limits:
-  max_results: 5
-  min_confidence: 0.4
-
-# Настройки экспорта датасетов
-dataset_export:
-  records_per_file: 50
-  file_format: "jsonl"
-  output_directory: "training_data/"
-
-# Промпты для LLM
-prompts:
-  system: |
-    Ты агент в большом агентстве артистов. Твоя задача - анализировать запросы от кастинг-директоров и создавать структурированные проекты с ролями, подбирая подходящих артистов из базы данных.
-    
-    Ты должен:
-    1. Определить тип проекта (фильм, сериал, реклама, клип и т.д.)
-    2. Извлечь требования к ролям из текста запроса
-    3. Подобрать подходящих артистов из предоставленного списка
-    4. Создать структурированное описание проекта с ролями
-    5. Извлечь контактную информацию из текста запроса:
-       - Кастинг-директор (имя, телефон, email, telegram)
-       - Режиссер (имя, телефон, email, telegram)
-       - Продюсеры (имя, телефон, email, telegram)
-       - Кинокомпания (название, телефон, email, сайт)
-    6. Если информация не найдена в тексте, используй данные автора запроса
-    
-    ВАЖНО:
-    - Используй ТОЛЬКО ID артистов из предоставленного списка
-    - Отвечай ТОЛЬКО в формате JSON согласно предоставленной схеме
-    - Все suggested_artists должны существовать в отправленном списке
-    - Извлекай контакты из текста запроса, если они упомянуты
-    - Указывай confidence (0.0-1.0) для извлеченной информации
-    - Если не можешь определить поле - пиши 'Не определен'
-    - При некорректной структуре JSON система автоматически повторит запрос
-
-  user_template: |
-    Проанализируй следующий запрос и создай проект с ролями:
-    
-    Запрос: {request_text}
-    Автор: {author_name}
-    
-    Доступные артисты: {artists_json}
-    
-    Верни результат в формате JSON согласно схеме project_analysis.
-    Используй ТОЛЬКО ID артистов из предоставленного списка.
-    Извлеки контактную информацию из текста запроса, если она упомянута.
-
-# Настройки валидации
 validation:
   required_fields:
-    - project_analysis.project_title
-    - project_analysis.project_type
-    - project_analysis.roles
+    - 'project_analysis.project_title'
+    - 'project_analysis.project_type'
+    - 'project_analysis.roles'
   json_schema_strict: true
   retry_on_invalid_json: true
   max_retry_attempts: 3
-
-# Настройки логирования
-logging:
-  level: "INFO"
-  log_requests: true
-  log_responses: false  # Не логируем ответы для безопасности
-  log_file: "logs/llm_requests.log"

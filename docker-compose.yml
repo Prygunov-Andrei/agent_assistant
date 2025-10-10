@@ -1,50 +1,130 @@
+version: '3.8'
+
 services:
+  # PostgreSQL Database
   db:
-    image: postgres:13
+    image: postgres:14-alpine
+    container_name: agent_assistant_db
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: agent_assistant_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-agent_assistant_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - agent_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_assistant_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: agent_assistant_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - agent_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Backend
   backend:
-    build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agent_assistant_backend
+    restart: unless-stopped
+    command: >
+      sh -c "
+        python manage.py migrate &&
+        python manage.py collectstatic --noinput &&
+        gunicorn agent_assistant.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+      "
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_NAME=${DB_NAME:-agent_assistant_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      - SORA_API_KEY=${SORA_API_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
     volumes:
       - ./backend:/app
-      - ./.env:/app/.env
+      - media_files:/app/media
+      - static_files:/app/static
     ports:
       - "8000:8000"
+    networks:
+      - agent_network
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      - DEBUG=True
-      - DB_HOST=db
-      - DB_NAME=agent_assistant_db
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - DB_PORT=5432
-      - BOT_TOKEN=${BOT_TOKEN}
+      redis:
+        condition: service_healthy
 
+  # Frontend (React)
   frontend:
-    build: ./frontend
-    command: npm run dev -- --host 0.0.0.0
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: agent_assistant_frontend
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000}
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_URL=http://localhost:8000/api
+      - "3000:3000"
+    networks:
+      - agent_network
+    depends_on:
+      - backend
+
+  # Nginx Reverse Proxy (для продакшена)
+  nginx:
+    image: nginx:alpine
+    container_name: agent_assistant_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - media_files:/var/www/media:ro
+      - static_files:/var/www/static:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - agent_network
+    depends_on:
+      - backend
+      - frontend
 
 volumes:
   postgres_data:
+    driver: local
+  media_files:
+    driver: local
+  static_files:
+    driver: local
+
+networks:
+  agent_network:
+    driver: bridge

@@ -277,3 +277,35 @@ OPENAI_TEMPERATURE = config('OPENAI_TEMPERATURE', default=0.3, cast=float)
 OPENAI_MAX_TOKENS = config('OPENAI_MAX_TOKENS', default=4000, cast=int)
 OPENAI_MAX_RETRIES = config('OPENAI_MAX_RETRIES', default=3, cast=int)
 OPENAI_TIMEOUT = config('OPENAI_TIMEOUT', default=60, cast=int)
+
+# ==============================
+# LOGGING
+# ==============================
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'llm': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
