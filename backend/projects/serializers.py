@@ -243,6 +243,30 @@ class ProjectSerializer(BaseModelSerializer):
         help_text="Дата создания запроса"
     )
     
+    request_images = serializers.SerializerMethodField(
+        help_text="Изображения запроса"
+    )
+    
+    request_files = serializers.SerializerMethodField(
+        help_text="Файлы запроса"
+    )
+    
+    def get_request_images(self, obj):
+        """Возвращает изображения запроса"""
+        if not obj.request:
+            return []
+        from telegram_requests.serializers import RequestImageSerializer
+        images = obj.request.images.all()
+        return RequestImageSerializer(images, many=True).data
+    
+    def get_request_files(self, obj):
+        """Возвращает файлы запроса"""
+        if not obj.request:
+            return []
+        from telegram_requests.serializers import RequestFileSerializer
+        files = obj.request.files.all()
+        return RequestFileSerializer(files, many=True).data
+    
     # Используем ProjectRoleSerializer для полных данных ролей
     # (Не ProjectRoleListSerializer чтобы получить ВСЕ поля роли)
     roles = serializers.SerializerMethodField()
@@ -292,6 +316,8 @@ class ProjectSerializer(BaseModelSerializer):
             'request_text',
             'request_author',
             'request_created_at',
+            'request_images',
+            'request_files',
             'request_id',
             'project_type_raw',
             'roles'

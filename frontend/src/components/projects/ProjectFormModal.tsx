@@ -815,6 +815,48 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                 <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>
                   {projectData.request_text || `Запрос #${projectData.request} (текст не загружен)`}
                 </div>
+                
+                {/* Media Section */}
+                {((projectData.request_images && projectData.request_images.length > 0) || (projectData.request_files && projectData.request_files.length > 0)) && (
+                  <div style={{ marginTop: '16px' }}>
+                    <strong>Медиа:</strong>
+                    <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', marginTop: '8px' }}>
+                      {projectData.request_images && projectData.request_images.length > 0 && (
+                        <div style={{ marginBottom: projectData.request_files && projectData.request_files.length > 0 ? '12px' : '0' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Изображения ({projectData.request_images.length})</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '8px' }}>
+                            {projectData.request_images.map((image: any, index: number) => {
+                              const imageUrl = image.image.startsWith('http') ? image.image : `http://localhost:8000${image.image}`;
+                              return (
+                                <img key={index} src={imageUrl} alt={`Изображение ${index + 1}`} 
+                                  style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                                  onClick={(e) => { e.stopPropagation(); window.open(imageUrl, '_blank'); }}
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {projectData.request_files && projectData.request_files.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Файлы ({projectData.request_files.length})</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {projectData.request_files.map((file: any, index: number) => {
+                              const fileUrl = file.file.startsWith('http') ? file.file : `http://localhost:8000${file.file}`;
+                              return (
+                                <a key={index} href={fileUrl} target="_blank" rel="noopener noreferrer"
+                                  style={{ fontSize: '12px', color: '#3b82f6', textDecoration: 'none', padding: '6px 8px', backgroundColor: '#eff6ff', borderRadius: '4px', border: '1px solid #bfdbfe', display: 'block' }}
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(fileUrl, '_blank'); }}>
+                                  📎 {file.original_filename || `Файл ${index + 1}`}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
