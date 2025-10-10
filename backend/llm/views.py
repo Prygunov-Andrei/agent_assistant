@@ -90,8 +90,6 @@ def analyze_request(request, request_id):
         
         # Инициализируем LLM сервис
         llm_service = LLMService()
-        logger.info(f"🔧 LLMService created. OpenAI available: {llm_service.openai_service is not None}")
-        logger.info(f"🔧 Current service: {llm_service.get_service_info()['service']}")
         
         # Логируем начало анализа
         logger.info(f"Начало анализа запроса {request_id} пользователем {request.user.username}")
@@ -109,7 +107,7 @@ def analyze_request(request, request_id):
                 'contacts': analysis_result.get('contacts', {}),
                 'confidence': analysis_result['project_analysis'].get('confidence', 0.85),
                 'processing_time': processing_time,
-                'used_emulator': serializer.validated_data['use_emulator'],
+                'used_emulator': analysis_result.get('used_emulator', False),
                 'errors': []
             }
             
@@ -132,9 +130,11 @@ def analyze_request(request, request_id):
             
             return Response(response_data, status=status.HTTP_200_OK)
             
-        except Exception as e:
+        except ValueError as e:
+            # Специальная обработка для отсутствия OpenAI сервиса
             processing_time = time.time() - start_time
-            logger.error(f"Ошибка анализа запроса {request_id}: {str(e)}")
+            error_message = str(e)
+            logger.error(f"OpenAI сервис недоступен для запроса {request_id}: {error_message}")
             
             # Обновляем статус запроса на ошибку
             telegram_request.analysis_status = 'error'
@@ -142,10 +142,49 @@ def analyze_request(request, request_id):
             
             return Response(
                 {
-                    'error': 'Ошибка анализа LLM',
-                    'details': str(e),
+                    'error': 'OpenAI сервис недоступен',
+                    'details': error_message,
                     'processing_time': processing_time,
-                    'used_emulator': serializer.validated_data['use_emulator']
+                    'used_emulator': False,
+                    'suggestion': 'Пожалуйста, настройте OPENAI_API_KEY в переменных окружения или включите fallback_to_emulator в конфигурации'
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+            
+        except Exception as e:
+            processing_time = time.time() - start_time
+            error_type = type(e).__name__
+            error_message = str(e)
+            
+            # Проверяем, является ли это ошибкой OpenAI API (по сообщению об ошибке)
+            if 'Error code: 401' in error_message or 'invalid_api_key' in error_message or 'Incorrect API key' in error_message:
+                logger.error(f"Недействительный API ключ OpenAI для запроса {request_id}: {error_message}")
+                telegram_request.analysis_status = 'error'
+                telegram_request.save()
+                
+                return Response(
+                    {
+                        'error': 'Недействительный API ключ OpenAI',
+                        'details': 'API ключ OpenAI не прошел аутентификацию. Пожалуйста, проверьте настройки OPENAI_API_KEY.',
+                        'processing_time': processing_time,
+                        'used_emulator': False,
+                        'suggestion': 'Получите новый API ключ на https://platform.openai.com/api-keys и обновите OPENAI_API_KEY в .env файле'
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            # Общая обработка других ошибок
+            logger.error(f"Ошибка анализа запроса {request_id} ({error_type}): {error_message}")
+            telegram_request.analysis_status = 'error'
+            telegram_request.save()
+            
+            return Response(
+                {
+                    'error': 'Ошибка анализа LLM',
+                    'error_type': error_type,
+                    'details': error_message,
+                    'processing_time': processing_time,
+                    'used_emulator': False
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

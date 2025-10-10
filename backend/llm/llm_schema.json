@@ -3,11 +3,13 @@
   "title": "LLM Project Analysis Response",
   "description": "Структурированный ответ LLM для анализа запроса кастинг-директора и создания проекта",
   "type": "object",
-  "required": ["project_analysis", "contacts", "confidence"],
+  "required": ["project_analysis", "contacts", "confidence", "errors"],
+  "additionalProperties": false,
   "properties": {
     "project_analysis": {
       "type": "object",
-      "required": ["project_title", "project_type", "genre", "description", "roles"],
+      "required": ["project_title", "project_type", "project_type_raw", "genre", "description", "premiere_date", "roles", "confidence"],
+      "additionalProperties": false,
       "properties": {
         "project_title": {
           "type": "string",
@@ -18,8 +20,8 @@
           "description": "Тип проекта из справочника (Фильм, Сериал, Реклама, Клип, Театр, и т.д.)"
         },
         "project_type_raw": {
-          "type": "string",
-          "description": "Исходный тип проекта из запроса (для подбора совпадений)"
+          "type": ["string", "null"],
+          "description": "Исходный тип проекта из запроса (для подбора совпадений) или null"
         },
         "genre": {
           "type": "string",
@@ -30,16 +32,24 @@
           "description": "Описание проекта, краткий синопсис"
         },
         "premiere_date": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "date",
-          "description": "Дата премьеры в формате YYYY-MM-DD (если указана в запросе)"
+          "description": "Дата премьеры в формате YYYY-MM-DD или null если не указана"
         },
         "roles": {
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["role_type", "character_name", "description"],
+            "required": [
+              "role_type", "character_name", "description", "gender", "skills_required",
+              "age_min", "age_max", "media_presence",
+              "height", "body_type", "hair_color", "eye_color", "hairstyle",
+              "clothing_size", "shoe_size", "nationality",
+              "rate_per_shift", "shooting_dates", "shooting_location", "rate_conditions",
+              "reference_text", "special_conditions", "audition_requirements", "audition_text", "notes", "confidence"
+            ],
+            "additionalProperties": false,
             "properties": {
               "role_type": {
                 "type": "string",
@@ -54,16 +64,16 @@
                 "description": "Полное описание роли"
               },
               "age_min": {
-                "type": "integer",
+                "type": ["integer", "null"],
                 "minimum": 0,
                 "maximum": 100,
-                "description": "Минимальный возраст для роли"
+                "description": "Минимальный возраст для роли (null если не указан)"
               },
               "age_max": {
-                "type": "integer",
+                "type": ["integer", "null"],
                 "minimum": 0,
                 "maximum": 100,
-                "description": "Максимальный возраст для роли"
+                "description": "Максимальный возраст для роли (null если не указан)"
               },
               "gender": {
                 "type": "string",
@@ -71,80 +81,82 @@
                 "description": "Пол для роли"
               },
               "media_presence": {
-                "type": "string",
-                "enum": ["yes", "no", "doesnt_matter"],
-                "description": "Требование медийности"
+                "type": ["string", "null"],
+                "enum": ["yes", "no", "doesnt_matter", null],
+                "description": "Требование медийности (null если не указано)"
               },
               "height": {
-                "type": "string",
-                "description": "Рост (например, '175-185 см')"
+                "type": ["string", "null"],
+                "description": "Рост (например, '175-185 см') или null если не указан"
               },
               "body_type": {
-                "type": "string",
-                "description": "Телосложение (например, 'Спортивное', 'Стройное')"
+                "type": ["string", "null"],
+                "description": "Телосложение (например, 'Спортивное', 'Стройное') или null если не указано"
               },
               "hair_color": {
-                "type": "string",
-                "description": "Цвет волос"
+                "type": ["string", "null"],
+                "description": "Цвет волос или null если не указан"
               },
               "eye_color": {
-                "type": "string",
-                "description": "Цвет глаз"
+                "type": ["string", "null"],
+                "description": "Цвет глаз или null если не указан"
               },
               "hairstyle": {
-                "type": "string",
-                "description": "Прическа"
+                "type": ["string", "null"],
+                "description": "Прическа или null если не указана"
               },
               "clothing_size": {
-                "type": "string",
-                "description": "Размер одежды"
+                "type": ["string", "null"],
+                "description": "Размер одежды или null если не указан"
               },
               "shoe_size": {
-                "type": "string",
-                "description": "Размер обуви из справочника (например, '42', '37')"
+                "type": ["string", "null"],
+                "description": "Размер обуви из справочника (например, '42', '37') или null если не указан"
               },
               "nationality": {
-                "type": "string",
-                "description": "Национальность из справочника (например, 'Русский/Русская', 'Европеец/Европейка')"
+                "type": ["string", "null"],
+                "description": "Национальность из справочника (например, 'Русский/Русская', 'Европеец/Европейка') или null если не указана"
               },
               "rate_per_shift": {
-                "type": "string",
-                "description": "Ставка за смену (например, '15000-20000 руб')"
+                "type": ["string", "null"],
+                "description": "Ставка за смену (например, '15000-20000 руб') или null если не указана"
               },
               "shooting_dates": {
-                "type": "string",
-                "description": "Даты съемок"
+                "type": ["string", "null"],
+                "description": "Даты съемок или null если не указаны"
               },
               "shooting_location": {
-                "type": "string",
-                "description": "Место съемки"
+                "type": ["string", "null"],
+                "description": "Место съемки или null если не указано"
               },
               "rate_conditions": {
-                "type": "string",
-                "description": "Условия оплаты"
+                "type": ["string", "null"],
+                "description": "Условия оплаты или null если не указаны"
               },
               "reference_text": {
-                "type": "string",
-                "description": "Текстовый референс (например, 'Похож на героя из фильма X')"
+                "type": ["string", "null"],
+                "description": "Текстовый референс (например, 'Похож на героя из фильма X') или null если нет"
               },
               "special_conditions": {
-                "type": "string",
-                "description": "Особые условия работы"
+                "type": ["string", "null"],
+                "description": "Особые условия работы или null если нет"
               },
               "audition_requirements": {
-                "type": "string",
-                "description": "Требования к пробам/кастингу"
+                "type": ["string", "null"],
+                "description": "Требования к пробам/кастингу или null если нет"
               },
               "audition_text": {
-                "type": "string",
-                "description": "Текст для проб"
+                "type": ["string", "null"],
+                "description": "Текст для проб или null если нет"
               },
               "notes": {
-                "type": "string",
-                "description": "Дополнительные заметки"
+                "type": ["string", "null"],
+                "description": "Дополнительные заметки или null если нет"
               },
               "skills_required": {
                 "type": "object",
+                "required": ["acting_skills", "special_skills"],
+                "additionalProperties": false,
                 "properties": {
                   "acting_skills": {
                     "type": "array",
@@ -164,49 +176,51 @@
                 "description": "Требуемые навыки для роли"
               },
               "confidence": {
-                "type": "number",
+                "type": ["number", "null"],
                 "minimum": 0,
                 "maximum": 1,
-                "description": "Уверенность LLM в корректности извлечения данных (0-1)"
+                "description": "Уверенность LLM в корректности извлечения данных (0-1) или null"
               }
             }
           }
         },
         "confidence": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0,
           "maximum": 1,
-          "description": "Общая уверенность LLM в анализе проекта"
+          "description": "Общая уверенность LLM в анализе проекта или null"
         }
       }
     },
     "contacts": {
       "type": "object",
-      "required": ["casting_director"],
+      "required": ["casting_director", "director", "producers", "production_company"],
+      "additionalProperties": false,
       "properties": {
         "casting_director": {
           "type": "object",
-          "required": ["name"],
+          "required": ["name", "email", "phone", "telegram", "confidence"],
+          "additionalProperties": false,
           "properties": {
             "name": {
-              "type": "string",
-              "description": "ФИО кастинг-директора"
+              "type": ["string", "null"],
+              "description": "ФИО кастинг-директора или null если не известно"
             },
             "email": {
-              "type": "string",
+              "type": ["string", "null"],
               "format": "email",
-              "description": "Email кастинг-директора"
+              "description": "Email кастинг-директора или null если не известен"
             },
             "phone": {
-              "type": "string",
-              "description": "Телефон кастинг-директора"
+              "type": ["string", "null"],
+              "description": "Телефон кастинг-директора или null если не известен"
             },
             "telegram": {
-              "type": "string",
-              "description": "Telegram username кастинг-директора"
+              "type": ["string", "null"],
+              "description": "Telegram username кастинг-директора или null если не известен"
             },
             "confidence": {
-              "type": "number",
+              "type": ["number", "null"],
               "minimum": 0,
               "maximum": 1,
               "description": "Уверенность в корректности данных"
@@ -215,23 +229,28 @@
         },
         "director": {
           "type": "object",
+          "required": ["name", "email", "phone", "telegram", "confidence"],
+          "additionalProperties": false,
           "properties": {
             "name": {
-              "type": "string",
-              "description": "ФИО режиссера"
+              "type": ["string", "null"],
+              "description": "ФИО режиссера или null если не известно"
             },
             "email": {
-              "type": "string",
-              "format": "email"
+              "type": ["string", "null"],
+              "format": "email",
+              "description": "Email режиссера или null если не известен"
             },
             "phone": {
-              "type": "string"
+              "type": ["string", "null"],
+              "description": "Телефон режиссера или null если не известен"
             },
             "telegram": {
-              "type": "string"
+              "type": ["string", "null"],
+              "description": "Telegram username режиссера или null если не известен"
             },
             "confidence": {
-              "type": "number",
+              "type": ["number", "null"],
               "minimum": 0,
               "maximum": 1
             }
@@ -241,23 +260,28 @@
           "type": "array",
           "items": {
             "type": "object",
+            "required": ["name", "email", "phone", "telegram", "confidence"],
+            "additionalProperties": false,
             "properties": {
               "name": {
-                "type": "string",
-                "description": "ФИО продюсера"
+                "type": ["string", "null"],
+                "description": "ФИО продюсера или null если не известно"
               },
               "email": {
-                "type": "string",
-                "format": "email"
+                "type": ["string", "null"],
+                "format": "email",
+                "description": "Email продюсера или null если не известен"
               },
               "phone": {
-                "type": "string"
+                "type": ["string", "null"],
+                "description": "Телефон продюсера или null если не известен"
               },
               "telegram": {
-                "type": "string"
+                "type": ["string", "null"],
+                "description": "Telegram username продюсера или null если не известен"
               },
               "confidence": {
-                "type": "number",
+                "type": ["number", "null"],
                 "minimum": 0,
                 "maximum": 1
               }
@@ -266,24 +290,29 @@
         },
         "production_company": {
           "type": "object",
+          "required": ["name", "phone", "email", "website", "confidence"],
+          "additionalProperties": false,
           "properties": {
             "name": {
-              "type": "string",
-              "description": "Название продюсерской компании"
+              "type": ["string", "null"],
+              "description": "Название продюсерской компании или null если не известно"
             },
             "phone": {
-              "type": "string"
+              "type": ["string", "null"],
+              "description": "Телефон компании или null если не известен"
             },
             "email": {
-              "type": "string",
-              "format": "email"
+              "type": ["string", "null"],
+              "format": "email",
+              "description": "Email компании или null если не известен"
             },
             "website": {
-              "type": "string",
-              "format": "uri"
+              "type": ["string", "null"],
+              "format": "uri",
+              "description": "Сайт компании или null если не известен"
             },
             "confidence": {
-              "type": "number",
+              "type": ["number", "null"],
               "minimum": 0,
               "maximum": 1
             }
@@ -295,7 +324,7 @@
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "Общая уверенность LLM в результате анализа"
+      "description": "Общая уверенность LLM в результате анализа (обязательно)"
     },
     "errors": {
       "type": "array",

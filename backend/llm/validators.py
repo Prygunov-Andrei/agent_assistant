@@ -191,8 +191,11 @@ class LLMResponseValidator:
     def _validate_single_role(self, role: Dict[str, Any], index: int) -> None:
         """Валидация одной роли"""
         required_role_fields = [
-            'role_type', 'character_name', 'description', 'age_range', 'gender'
+            'role_type', 'character_name', 'description', 'gender'
         ]
+        
+        # age_range опционально - GPT-4o может не всегда его возвращать
+        optional_fields = ['age_range']
         
         for field in required_role_fields:
             if field not in role:

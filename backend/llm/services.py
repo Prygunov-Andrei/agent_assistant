@@ -653,9 +653,15 @@ class LLMService:
             
         Returns:
             Структурированный JSON ответ
+            
+        Raises:
+            Exception: Если OpenAI недоступен и fallback_to_emulator = false
         """
         # Выбираем сервис для анализа
         logger.info(f"🔍 analyze_request called. OpenAI service available: {self.openai_service is not None}")
+        
+        # Проверяем настройку fallback
+        fallback_to_emulator = self.config.get('llm', {}).get('fallback_to_emulator', False)
         
         if self.openai_service:
             try:
@@ -666,11 +672,21 @@ class LLMService:
             except Exception as e:
                 logger.error(f"❌ OpenAI analysis failed: {e}")
                 logger.exception("Full error traceback:")
-                logger.warning("⚠️  Falling back to emulator")
-                return self.emulator.analyze_request(request_data, artists_data)
+                
+                if fallback_to_emulator:
+                    logger.warning("⚠️  Falling back to emulator")
+                    return self.emulator.analyze_request(request_data, artists_data)
+                else:
+                    logger.error("❌ Fallback to emulator disabled. Raising exception.")
+                    raise
         else:
-            logger.info("🧪 Using LLM Emulator for request analysis")
-            return self.emulator.analyze_request(request_data, artists_data)
+            # OpenAI не инициализирован
+            if fallback_to_emulator:
+                logger.info("🧪 Using LLM Emulator for request analysis")
+                return self.emulator.analyze_request(request_data, artists_data)
+            else:
+                logger.error("❌ OpenAI service not available and fallback disabled")
+                raise ValueError("OpenAI service is not available. Please configure OPENAI_API_KEY or enable fallback_to_emulator in config.")
     
     def test_connection(self) -> Dict[str, Any]:
         """

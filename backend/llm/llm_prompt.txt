@@ -7,15 +7,23 @@
 4. Извлеки контактную информацию команды (кастинг-директор, режиссер, продюсеры, компания)
 5. Оцени свою уверенность в корректности извлеченных данных (0-1)
 
-ВАЖНЫЕ ПРАВИЛА:
-- Если информация не указана в запросе, НЕ выдумывай её. Используй значение "неопределено" или null
+КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:
+
+⚠️ НИКОГДА НЕ ВЫДУМЫВАЙ ДАННЫЕ! ⚠️
+- Если информация НЕ УКАЗАНА явно в запросе - используй null
+- НЕ додумывай возраст, внешность, условия, даты, контакты
+- НЕ предполагай что "вероятно" или "скорее всего" 
+- Возвращай ТОЛЬКО то, что ЯВНО написано в тексте запроса
+- Сомневаешься? Ставь null!
+
+ПРАВИЛА ИЗВЛЕЧЕНИЯ ДАННЫХ:
 - Для каждого поля укажи уровень уверенности (confidence) от 0 до 1
-- Для ролей извлекай ВСЕ упомянутые детали: возраст, пол, рост, телосложение, внешность, навыки, условия оплаты, даты съемок, место съемок
+- Извлекай ТОЛЬКО упомянутые детали: возраст, пол, рост, телосложение, внешность, навыки, условия оплаты, даты съемок, место съемок
 - Для навыков используй точные названия из справочника (например: "Актерское мастерство", "Комедия", "Пение", "Танец", "Вокал", "Акробатика")
 - Для национальности используй формат: "Русский/Русская", "Европеец/Европейка", "Азиат/Азиатка", "Афроамериканец/Афроамериканка"
 - Для пола используй: "male", "female", "boy", "girl", "doesnt_matter"
-- Для медийности используй: "yes", "no", "doesnt_matter"
-- Даты указывай в формате YYYY-MM-DD
+- Для медийности используй: "yes", "no", "doesnt_matter" (или null если не указано)
+- Даты указывай в формате YYYY-MM-DD (или null если не указана)
 
 СТРУКТУРА ОТВЕТА:
 Верни JSON объект со следующей структурой:
@@ -124,21 +132,21 @@
         "media_presence": "doesnt_matter",
         "height": "175-185 см",
         "body_type": "Спортивное",
-        "hair_color": "неопределено",
-        "eye_color": "неопределено",
-        "hairstyle": "неопределено",
-        "clothing_size": "неопределено",
-        "shoe_size": "неопределено",
-        "nationality": "неопределено",
+        "hair_color": null,
+        "eye_color": null,
+        "hairstyle": null,
+        "clothing_size": null,
+        "shoe_size": null,
+        "nationality": null,
         "rate_per_shift": "15000-20000 руб",
         "shooting_dates": "15-20 марта",
         "shooting_location": "Москва",
-        "rate_conditions": "неопределено",
-        "reference_text": "неопределено",
+        "rate_conditions": null,
+        "reference_text": null,
         "special_conditions": "Опыт в комедии обязателен",
-        "audition_requirements": "неопределено",
-        "audition_text": "неопределено",
-        "notes": "неопределено",
+        "audition_requirements": null,
+        "audition_text": null,
+        "notes": null,
         "skills_required": {
           "acting_skills": ["Актерское мастерство", "Комедия"],
           "special_skills": []
@@ -152,24 +160,24 @@
     "casting_director": {
       "name": "Иван Петров",
       "email": "ivan.petrov@casting.com",
-      "phone": "неопределено",
-      "telegram": "неопределено",
+      "phone": null,
+      "telegram": null,
       "confidence": 0.95
     },
     "director": {
-      "name": "неопределено",
-      "email": "неопределено",
-      "phone": "неопределено",
-      "telegram": "неопределено",
-      "confidence": 0.0
+      "name": null,
+      "email": null,
+      "phone": null,
+      "telegram": null,
+      "confidence": null
     },
     "producers": [],
     "production_company": {
-      "name": "неопределено",
-      "phone": "неопределено",
-      "email": "неопределено",
-      "website": "неопределено",
-      "confidence": 0.0
+      "name": null,
+      "phone": null,
+      "email": null,
+      "website": null,
+      "confidence": null
     }
   },
   "confidence": 0.9,
@@ -197,23 +205,23 @@
         "age_max": 25,
         "gender": "female",
         "media_presence": "doesnt_matter",
-        "height": "неопределено",
-        "body_type": "неопределено",
-        "hair_color": "неопределено",
-        "eye_color": "неопределено",
-        "hairstyle": "неопределено",
-        "clothing_size": "неопределено",
-        "shoe_size": "неопределено",
+        "height": null,
+        "body_type": null,
+        "hair_color": null,
+        "eye_color": null,
+        "hairstyle": null,
+        "clothing_size": null,
+        "shoe_size": null,
         "nationality": "Европеец/Европейка",
-        "rate_per_shift": "неопределено",
+        "rate_per_shift": null,
         "shooting_dates": "10 апреля 2025",
         "shooting_location": "Санкт-Петербург",
-        "rate_conditions": "неопределено",
-        "reference_text": "неопределено",
-        "special_conditions": "неопределено",
-        "audition_requirements": "неопределено",
-        "audition_text": "неопределено",
-        "notes": "неопределено",
+        "rate_conditions": null,
+        "reference_text": null,
+        "special_conditions": null,
+        "audition_requirements": null,
+        "audition_text": null,
+        "notes": null,
         "skills_required": {
           "acting_skills": ["Пение", "Танец"],
           "special_skills": []
@@ -225,26 +233,26 @@
   },
   "contacts": {
     "casting_director": {
-      "name": "неопределено",
-      "email": "неопределено",
-      "phone": "неопределено",
-      "telegram": "неопределено",
-      "confidence": 0.0
+      "name": null,
+      "email": null,
+      "phone": null,
+      "telegram": null,
+      "confidence": null
     },
     "director": {
-      "name": "неопределено",
-      "email": "неопределено",
-      "phone": "неопределено",
-      "telegram": "неопределено",
-      "confidence": 0.0
+      "name": null,
+      "email": null,
+      "phone": null,
+      "telegram": null,
+      "confidence": null
     },
     "producers": [],
     "production_company": {
-      "name": "неопределено",
-      "phone": "неопределено",
-      "email": "неопределено",
-      "website": "неопределено",
-      "confidence": 0.0
+      "name": null,
+      "phone": null,
+      "email": null,
+      "website": null,
+      "confidence": null
     }
   },
   "confidence": 0.85,

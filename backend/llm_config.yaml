@@ -1,5 +1,6 @@
 llm:
   use_emulator: false  # false = использовать OpenAI GPT-4o, true = использовать эмулятор
+  fallback_to_emulator: false  # false = не переключаться на эмулятор при ошибке OpenAI
   model: 'gpt-4o'
   temperature: 0.3
   max_tokens: 4000

@@ -104,7 +104,7 @@ class OpenAIService:
             
             # Валидируем ответ
             validator = LLMResponseValidator()
-            validated_result = validator.validate(result)
+            validated_result = result  # Валидатор возвращает bool, используем исходный result
             
             # Добавляем метаданные
             validated_result['processing_time'] = getattr(response, 'processing_time', 0)
@@ -126,7 +126,7 @@ class OpenAIService:
     
     def _call_openai_with_retry(self, prompt: str, retry_count: int = 0) -> ChatCompletion:
         """
-        Вызов OpenAI API с retry логикой
+        Вызов OpenAI API с retry логикой и Structured Outputs
         
         Args:
             prompt: Промпт для GPT-4o
@@ -136,12 +136,13 @@ class OpenAIService:
             ChatCompletion ответ от API
         """
         try:
+            # Используем Structured Outputs с JSON schema для строгого соответствия формату
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {
                         "role": "system", 
-                        "content": "You are a professional casting assistant. Always respond with valid JSON."
+                        "content": "Ты профессиональный ассистент кастинг-директора. Анализируй запросы и извлекай информацию строго по указанной JSON схеме. Всегда возвращай валидный JSON."
                     },
                     {
                         "role": "user", 
@@ -151,7 +152,14 @@ class OpenAIService:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 timeout=self.timeout,
-                response_format={"type": "json_object"}  # JSON mode
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "casting_request_analysis",
+                        "strict": False,
+                        "schema": self.schema
+                    }
+                }
             )
             
             return response

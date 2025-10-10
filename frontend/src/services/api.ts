@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../config/api';
 // Создаем экземпляр axios с базовой конфигурацией
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 90000, // 90 секунд для LLM запросов (GPT-4o обрабатывает 15-20 секунд)
   withCredentials: true, // Отправлять cookies для авторизации
   headers: {
     'Content-Type': 'application/json',

@@ -37,6 +37,23 @@ export class LLMService {
       console.error('LLM Service Error Details:', error);
       console.error('Response data:', error.response?.data);
       console.error('Response status:', error.response?.status);
+      
+      // Специальная обработка для ошибок OpenAI
+      if (error.response?.status === 503) {
+        const errorData = error.response.data;
+        const errorMessage = errorData?.error || 'OpenAI сервис недоступен';
+        const suggestion = errorData?.suggestion || 'Проверьте настройки API ключа';
+        
+        throw new Error(`${errorMessage}\n\n${suggestion}`);
+      }
+      
+      // Обработка других ошибок сервера
+      if (error.response?.data?.error) {
+        const details = error.response.data.details ? 
+          `\n\nДетали: ${error.response.data.details}` : '';
+        throw new Error(`${error.response.data.error}${details}`);
+      }
+      
       ErrorHandler.logError(error, 'LLMService.analyzeRequest');
       throw error;
     }
