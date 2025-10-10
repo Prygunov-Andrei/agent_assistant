@@ -1,0 +1,1475 @@
+import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { requestsService } from '../../services/requests';
+import { peopleService } from '../../services/people';
+import { companiesService } from '../../services/companies';
+import { projectsService } from '../../services/projects';
+import { artistsService } from '../../services/artists';
+import { LLMService } from '../../services/llm';
+import { ErrorHandler } from '../../utils/errorHandler';
+
+interface ProjectFormModalProps {
+  mode: 'create' | 'edit' | 'view';
+  isOpen: boolean;
+  onClose: () => void;
+  onSave?: (projectData: any) => Promise<void>;
+  requestData?: {
+    id: number;
+    text: string;
+    images?: Array<{ image: string }>;
+    files?: Array<{ file: string; original_filename: string }>;
+    author_username?: string;
+  };
+  projectData?: any; // Для режима edit/view
+}
+
+const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
+  mode,
+  isOpen,
+  onClose,
+  onSave,
+  requestData,
+  projectData
+}) => {
+  // Основные данные формы
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    project_type: 1,
+    genre: undefined as number | undefined,
+    premiere_date: '',
+    status: 'draft',
+    project_type_raw: ''
+  });
+  
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [roles, setRoles] = useState<any[]>([]);
+  
+  // Команда проекта
+  const [castingDirector, setCastingDirector] = useState<any>(null);
+  const [director, setDirector] = useState<any>(null);
+  const [producer, setProducer] = useState<any>(null);
+  const [productionCompany, setProductionCompany] = useState<any>(null);
+  
+  // Поиск персон
+  const [castingDirectorSearch, setCastingDirectorSearch] = useState<any[]>([]);
+  const [directorSearch, setDirectorSearch] = useState<any[]>([]);
+  const [producerSearch, setProducerSearch] = useState<any[]>([]);
+  const [companySearch, setCompanySearch] = useState<any[]>([]);
+  
+  // Выпадающие списки
+  const [showCastingDirectorDropdown, setShowCastingDirectorDropdown] = useState(false);
+  const [showDirectorDropdown, setShowDirectorDropdown] = useState(false);
+  const [showProducerDropdown, setShowProducerDropdown] = useState(false);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [showProjectTypeDropdown, setShowProjectTypeDropdown] = useState(false);
+  const [showGenreDropdown, setShowGenreDropdown] = useState(false);
+  
+  // Справочники
+  const [projectType, setProjectType] = useState<any>(null);
+  const [genre, setGenre] = useState<any>(null);
+  const [projectTypesList, setProjectTypesList] = useState<any[]>([]);
+  const [genresList, setGenresList] = useState<any[]>([]);
+  const [roleTypesList, setRoleTypesList] = useState<any[]>([]);
+  const [shoeSizesList, setShoeSizesList] = useState<any[]>([]);
+  const [nationalitiesList, setNationalitiesList] = useState<any[]>([]);
+  const [skillsList, setSkillsList] = useState<any[]>([]);
+  
+  // Состояния для свернутых ролей
+  const [collapsedRoles, setCollapsedRoles] = useState<Set<number>>(new Set());
+  
+  // Показать все варианты
+  const [showAllProjectTypes, setShowAllProjectTypes] = useState(false);
+  const [showAllGenres, setShowAllGenres] = useState(false);
+
+  // Ref для отслеживания кликов вне dropdown
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Загрузка справочников
+  const loadReferences = async () => {
+    try {
+      const [types, genres, roleTypes, shoeSizes, nationalities, skills] = await Promise.all([
+        projectsService.getProjectTypes(),
+        projectsService.getGenres(),
+        projectsService.getRoleTypes(),
+        projectsService.getShoeSizes(),
+        projectsService.getNationalities(),
+        artistsService.getSkills()
+      ]);
+      setProjectTypesList(types);
+      setGenresList(genres);
+      setRoleTypesList(roleTypes);
+      setShoeSizesList(shoeSizes);
+      setNationalitiesList(nationalities);
+      setSkillsList(skills);
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectFormModal.loadReferences');
+    }
+  };
+
+  // Инициализация при открытии
+  useEffect(() => {
+    if (isOpen) {
+      loadReferences();
+      
+      if (mode === 'create' && requestData) {
+        // Автоматический LLM анализ для создания из запроса
+        handleAutoAnalysis();
+      } else if ((mode === 'edit' || mode === 'view') && projectData) {
+        // Предзаполнение данных для редактирования/просмотра
+        prefillProjectData();
+      }
+    }
+  }, [isOpen, mode, requestData, projectData]);
+
+  // Автоматический LLM анализ
+  const handleAutoAnalysis = async () => {
+    if (!requestData) return;
+    
+    setIsAnalyzing(true);
+    try {
+      const analysisResult = await LLMService.analyzeRequest(requestData.id, true);
+      
+      const { project_analysis, contacts } = analysisResult;
+      
+      // Предзаполнение формы
+      setFormData({
+        title: project_analysis.title || '',
+        description: project_analysis.description || '',
+        project_type: 1,
+        genre: undefined,
+        premiere_date: project_analysis.premiere_date || '',
+        status: 'draft',
+        project_type_raw: project_analysis.project_type || ''
+      });
+      
+      // Поиск типа проекта и жанра
+      if (project_analysis.project_type) {
+        const foundType = projectTypesList.find((t: any) => 
+          t.name.toLowerCase().includes(project_analysis.project_type.toLowerCase()) ||
+          project_analysis.project_type.toLowerCase().includes(t.name.toLowerCase())
+        );
+        if (foundType) {
+          setProjectType(foundType);
+        } else {
+          setProjectType({ id: null, name: project_analysis.project_type });
+        }
+      }
+      
+      if (project_analysis.genre) {
+        const foundGenre = genresList.find((g: any) => 
+          g.name.toLowerCase().includes(project_analysis.genre.toLowerCase()) ||
+          project_analysis.genre.toLowerCase().includes(g.name.toLowerCase())
+        );
+        if (foundGenre) {
+          setGenre(foundGenre);
+        } else {
+          setGenre({ id: null, name: project_analysis.genre });
+        }
+      }
+      
+      // Предзаполнение команды
+      if (contacts?.casting_director) {
+        await searchCastingDirector(contacts.casting_director);
+      }
+      if (contacts?.director) {
+        await searchDirector(contacts.director);
+      }
+      if (contacts?.producer) {
+        await searchProducer(contacts.producer);
+      }
+      if (contacts?.production_company) {
+        await searchCompany(contacts.production_company);
+      }
+      
+      // Предзаполнение ролей
+      if (project_analysis.roles && Array.isArray(project_analysis.roles)) {
+        const mappedRoles = project_analysis.roles.map((role: any) => {
+          // Найти тип роли
+          let roleType = null;
+          if (role.role_type) {
+            roleType = roleTypesList.find((rt: any) => 
+              rt.name.toLowerCase() === role.role_type.toLowerCase()
+            ) || { id: null, name: role.role_type };
+          }
+          
+          // Найти размер обуви
+          let shoeSize = null;
+          if (role.shoe_size) {
+            shoeSize = shoeSizesList.find((s: any) => s.name === role.shoe_size) || null;
+          }
+          
+          // Найти национальность
+          let nationality = null;
+          if (role.nationality) {
+            nationality = nationalitiesList.find((n: any) => 
+              n.name.toLowerCase() === role.nationality.toLowerCase()
+            ) || null;
+          }
+          
+          // Обработать навыки
+          let skills_required = [];
+          if (role.skills_required && Array.isArray(role.skills_required)) {
+            skills_required = role.skills_required.map((skillName: string) => {
+              const found = skillsList.find((s: any) => 
+                s.name.toLowerCase() === skillName.toLowerCase()
+              );
+              return found || { id: null, name: skillName };
+            });
+          }
+          
+          return {
+            ...role,
+            role_type: roleType,
+            shoe_size: shoeSize,
+            nationality: nationality,
+            skills_required: skills_required
+          };
+        });
+        
+        setRoles(mappedRoles);
+      }
+      
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectFormModal.handleAutoAnalysis');
+      alert('Ошибка при анализе запроса');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Предзаполнение данных проекта для редактирования/просмотра
+  const prefillProjectData = () => {
+    if (!projectData) return;
+    
+    setFormData({
+      title: projectData.title || '',
+      description: projectData.description || '',
+      project_type: projectData.project_type?.id || 1,
+      genre: projectData.genre?.id,
+      premiere_date: projectData.premiere_date || '',
+      status: projectData.status || 'draft',
+      project_type_raw: projectData.project_type_raw || ''
+    });
+    
+    setProjectType(projectData.project_type || null);
+    setGenre(projectData.genre || null);
+    setCastingDirector(projectData.casting_director || null);
+    setDirector(projectData.director || null);
+    setProducer(projectData.producer || null);
+    setProductionCompany(projectData.production_company || null);
+    setRoles(projectData.roles || []);
+  };
+
+  // Поиск персон с отображением dropdown
+  const searchPerson = async (name: string, type: 'casting_director' | 'director' | 'producer') => {
+    try {
+      const results = await peopleService.searchPersons({ full_name: name, person_type: type });
+      
+      if (type === 'casting_director') {
+        setCastingDirectorSearch(results.matches || []);
+        setShowCastingDirectorDropdown(true);
+      } else if (type === 'director') {
+        setDirectorSearch(results.matches || []);
+        setShowDirectorDropdown(true);
+      } else if (type === 'producer') {
+        setProducerSearch(results.matches || []);
+        setShowProducerDropdown(true);
+      }
+    } catch (err) {
+      ErrorHandler.logError(err, `ProjectFormModal.searchPerson.${type}`);
+    }
+  };
+
+  const selectPerson = (person: any, type: 'casting_director' | 'director' | 'producer') => {
+    if (type === 'casting_director') {
+      setCastingDirector(person);
+      setShowCastingDirectorDropdown(false);
+    } else if (type === 'director') {
+      setDirector(person);
+      setShowDirectorDropdown(false);
+    } else if (type === 'producer') {
+      setProducer(person);
+      setShowProducerDropdown(false);
+    }
+    setHasUnsavedChanges(true);
+  };
+
+  const searchCastingDirector = async (name: string) => {
+    try {
+      const results = await peopleService.searchPersons({ full_name: name, person_type: 'casting_director' });
+      setCastingDirectorSearch(results.matches || []);
+      if (results.matches && results.matches.length > 0) {
+        setCastingDirector(results.matches[0]);
+      } else {
+        setCastingDirector({ id: null, name });
+      }
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectFormModal.searchCastingDirector');
+    }
+  };
+
+  const searchDirector = async (name: string) => {
+    try {
+      const results = await peopleService.searchPersons({ full_name: name, person_type: 'director' });
+      setDirectorSearch(results.matches || []);
+      if (results.matches && results.matches.length > 0) {
+        setDirector(results.matches[0]);
+      } else {
+        setDirector({ id: null, name });
+      }
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectFormModal.searchDirector');
+    }
+  };
+
+  const searchProducer = async (name: string) => {
+    try {
+      const results = await peopleService.searchPersons({ full_name: name, person_type: 'producer' });
+      setProducerSearch(results.matches || []);
+      if (results.matches && results.matches.length > 0) {
+        setProducer(results.matches[0]);
+      } else {
+        setProducer({ id: null, name });
+      }
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectFormModal.searchProducer');
+    }
+  };
+
+  const searchCompany = async (name: string) => {
+    try {
+      const results = await companiesService.searchCompanies(name);
+      setCompanySearch(results.matches || results || []);
+      if (results.matches && results.matches.length > 0) {
+        setProductionCompany(results.matches[0]);
+      } else if (results && results.length > 0) {
+        setProductionCompany(results[0]);
+      } else {
+        setProductionCompany({ id: null, name });
+      }
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectFormModal.searchCompany');
+    }
+  };
+
+  const selectCompany = (company: any) => {
+    setProductionCompany(company);
+    setShowCompanyDropdown(false);
+    setHasUnsavedChanges(true);
+  };
+
+  const createNewPerson = (type: string) => {
+    alert(`Создание нового ${type === 'casting_director' ? 'кастинг-директора' : type === 'director' ? 'режиссера' : 'продюсера'} в справочнике`);
+  };
+
+  const createNewCompany = () => {
+    alert('Создание новой кинокомпании в справочнике');
+  };
+
+  // Обработчики изменений
+  const handleFormChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleRoleChange = (index: number, field: string, value: any) => {
+    setRoles(prev => prev.map((role, i) => i === index ? { ...role, [field]: value } : role));
+    setHasUnsavedChanges(true);
+  };
+
+  const addRole = () => {
+    setRoles(prev => [...prev, {
+      name: '',
+      description: '',
+      role_type: null,
+      gender: 'doesnt_matter',
+      age_min: '',
+      age_max: '',
+      media_presence: 'doesnt_matter',
+      height: '',
+      body_type: '',
+      hair_color: '',
+      eye_color: '',
+      hairstyle: '',
+      clothing_size: '',
+      shoe_size: null,
+      nationality: null,
+      rate_per_shift: '',
+      shooting_dates: '',
+      shooting_location: '',
+      rate_conditions: '',
+      skills_required: []
+    }]);
+    setHasUnsavedChanges(true);
+  };
+
+  const removeRole = (index: number) => {
+    setRoles(prev => prev.filter((_, i) => i !== index));
+    setHasUnsavedChanges(true);
+  };
+
+  const toggleRoleCollapse = (index: number) => {
+    setCollapsedRoles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  // Управление навыками роли
+  const addSkillToRole = (roleIndex: number) => {
+    setRoles(prev => prev.map((role, i) => {
+      if (i === roleIndex) {
+        return {
+          ...role,
+          skills_required: [...(role.skills_required || []), { id: null, name: '' }]
+        };
+      }
+      return role;
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const removeSkillFromRole = (roleIndex: number, skillIndex: number) => {
+    setRoles(prev => prev.map((role, i) => {
+      if (i === roleIndex) {
+        return {
+          ...role,
+          skills_required: role.skills_required.filter((_: any, si: number) => si !== skillIndex)
+        };
+      }
+      return role;
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const updateRoleSkill = (roleIndex: number, skillIndex: number, skill: any) => {
+    setRoles(prev => prev.map((role, i) => {
+      if (i === roleIndex) {
+        return {
+          ...role,
+          skills_required: role.skills_required.map((s: any, si: number) => si === skillIndex ? skill : s)
+        };
+      }
+      return role;
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Поиск типа проекта
+  const searchProjectType = (value: string) => {
+    setProjectType({ id: null, name: value });
+    setShowProjectTypeDropdown(true);
+    setShowAllProjectTypes(false);
+  };
+
+  const selectProjectType = (type: any) => {
+    setProjectType(type);
+    setShowProjectTypeDropdown(false);
+    setHasUnsavedChanges(true);
+  };
+
+  // Поиск жанра
+  const searchGenre = (value: string) => {
+    setGenre({ id: null, name: value });
+    setShowGenreDropdown(true);
+    setShowAllGenres(false);
+  };
+
+  const selectGenre = (g: any) => {
+    setGenre(g);
+    setShowGenreDropdown(false);
+    setHasUnsavedChanges(true);
+  };
+
+  // Сохранение/отправка формы
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Валидация
+    if (!formData.title.trim()) { alert('Пожалуйста, введите название проекта'); return; }
+    if (!projectType?.id) { alert('Пожалуйста, выберите тип проекта из справочника'); return; }
+    if (!genre?.id) { alert('Пожалуйста, выберите жанр из справочника'); return; }
+    if (!castingDirector?.id) { alert('Пожалуйста, выберите кастинг-директора'); return; }
+    if (!director?.id) { alert('Пожалуйста, выберите режиссера'); return; }
+    if (!producer?.id) { alert('Пожалуйста, выберите продюсера'); return; }
+    if (!productionCompany?.id) { alert('Пожалуйста, выберите кинокомпанию'); return; }
+    if (roles.length === 0) { alert('Пожалуйста, добавьте хотя бы одну роль'); return; }
+    
+    const incompleteRoles = roles.filter(role => !role.name?.trim() || !role.description?.trim());
+    if (incompleteRoles.length > 0) { alert('Пожалуйста, заполните название и описание для всех ролей'); return; }
+    
+    try {
+      const projectPayload = {
+        ...formData,
+        casting_director: castingDirector,
+        director,
+        producer,
+        production_company: productionCompany,
+        roles
+      };
+      
+      if (onSave) {
+        await onSave(projectPayload);
+      }
+      
+      if (mode === 'create' && requestData) {
+        // Обновляем статус запроса на 'completed'
+        await requestsService.updateRequestStatus(requestData.id, 'completed');
+      }
+      
+      setHasUnsavedChanges(false);
+      onClose();
+      alert(mode === 'create' ? 'Проект успешно создан!' : 'Изменения сохранены!');
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectFormModal.handleSubmit');
+      alert('Ошибка при сохранении проекта');
+    }
+  };
+
+  // Закрытие с предупреждением
+  const handleModalClose = () => {
+    if (hasUnsavedChanges && mode !== 'view') {
+      setShowUnsavedWarning(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleConfirmClose = () => {
+    setShowUnsavedWarning(false);
+    setHasUnsavedChanges(false);
+    onClose();
+  };
+
+  // Обработка кликов вне dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowCastingDirectorDropdown(false);
+        setShowDirectorDropdown(false);
+        setShowProducerDropdown(false);
+        setShowCompanyDropdown(false);
+        setShowProjectTypeDropdown(false);
+        setShowGenreDropdown(false);
+        
+        // Закрыть все skill dropdown
+        setRoles(prev => prev.map(role => {
+          const updatedRole = { ...role };
+          Object.keys(updatedRole).forEach(key => {
+            if (key.startsWith('showSkillDropdown_')) {
+              delete updatedRole[key];
+            }
+          });
+          return updatedRole;
+        }));
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const isReadOnly = mode === 'view';
+
+  return (
+    <>
+      <div 
+        style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+          zIndex: 999999, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        }}
+        onClick={(e) => { if (e.target === e.currentTarget) handleModalClose(); }}
+      >
+        <div style={{ 
+          backgroundColor: 'white', 
+          borderRadius: '12px', 
+          maxWidth: '1200px', 
+          width: '95%', 
+          maxHeight: '90vh', 
+          display: 'flex', 
+          flexDirection: 'column' 
+        }}>
+          {/* HEADER */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            padding: '20px', 
+            borderBottom: '1px solid #e5e7eb', 
+            backgroundColor: '#f9fafb' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'black', margin: 0 }}>
+                {mode === 'create' && requestData && `Создание проекта из запроса #${requestData.id}`}
+                {mode === 'create' && !requestData && 'Создание проекта'}
+                {mode === 'edit' && `Редактирование проекта: ${projectData?.title || ''}`}
+                {mode === 'view' && `Проект: ${projectData?.title || ''}`}
+              </h2>
+              {isAnalyzing && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#dbeafe', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: '#1e40af' }}>
+                  <div style={{ width: '12px', height: '12px', border: '2px solid #1e40af', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                  Анализируем запрос...
+                </div>
+              )}
+            </div>
+            <button onClick={handleModalClose} style={{ fontSize: '24px', fontWeight: 'bold', color: '#6b7280', cursor: 'pointer', border: 'none', background: 'none', padding: '5px' }}>
+              &times;
+            </button>
+          </div>
+
+          {/* BODY - MAIN CONTENT */}
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: '0' }}>
+            {/* LEFT PANEL - Context (только для режима create из запроса) */}
+            {mode === 'create' && requestData && (
+              <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'auto', padding: '20px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>Контекст запроса</h3>
+                <div style={{ marginBottom: '12px' }}><strong>Автор:</strong> {requestData.author_username || 'Не указан'}</div>
+                {requestData.author_username && (
+                  <div style={{ marginBottom: '12px' }}><strong>Telegram:</strong> {requestData.author_username}</div>
+                )}
+                <div style={{ marginBottom: '12px' }}><strong>Текст:</strong></div>
+                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>{requestData.text}</div>
+                
+                {/* Media Section */}
+                {((requestData.images && requestData.images.length > 0) || (requestData.files && requestData.files.length > 0)) && (
+                  <div style={{ marginTop: '16px' }}>
+                    <strong>Медиа:</strong>
+                    <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', marginTop: '8px' }}>
+                      {requestData.images && requestData.images.length > 0 && (
+                        <div style={{ marginBottom: requestData.files && requestData.files.length > 0 ? '12px' : '0' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Изображения ({requestData.images.length})</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '8px' }}>
+                            {requestData.images.map((image: any, index: number) => (
+                              <img key={index} src={image.image} alt={`Изображение ${index + 1}`} 
+                                style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                                onClick={(e) => { e.stopPropagation(); window.open(image.image, '_blank'); }}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {requestData.files && requestData.files.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Файлы ({requestData.files.length})</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {requestData.files.map((file: any, index: number) => (
+                              <a key={index} href={file.file} target="_blank" rel="noopener noreferrer"
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', backgroundColor: '#f9fafb', borderRadius: '4px', textDecoration: 'none', color: '#1f2937', fontSize: '12px', border: '1px solid #e5e7eb' }}
+                                onClick={(e) => e.stopPropagation()}>
+                                <span style={{ fontSize: '14px' }}>📄</span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{file.original_filename || `Файл ${index + 1}`}</span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* LEFT PANEL - Project context (для режима edit/view из проекта) */}
+            {(mode === 'edit' || mode === 'view') && projectData?.request && (
+              <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'auto', padding: '20px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>Контекст запроса</h3>
+                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', lineHeight: '1.4' }}>
+                  {projectData.request.text}
+                </div>
+              </div>
+            )}
+
+            {/* RIGHT PANEL - Form */}
+            <div style={{ flex: 1, overflow: 'auto', padding: '20px' }} ref={dropdownRef}>
+              {/* Команда проекта */}
+              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '16px' }}>Команда проекта</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  {/* Кастинг-директор */}
+                  <div style={{ position: 'relative' }} className="dropdown-container">
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кастинг-директор *</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input 
+                        type="text" 
+                        value={castingDirector?.name || ''} 
+                        onChange={(e) => { 
+                          searchPerson(e.target.value, 'casting_director'); 
+                          setCastingDirector({ id: null, name: e.target.value, match: 0 }); 
+                          setHasUnsavedChanges(true); 
+                        }}
+                        onFocus={() => { if (castingDirector?.name) searchPerson(castingDirector.name, 'casting_director'); }}
+                        disabled={isReadOnly}
+                        style={{ flex: 1, padding: '8px 12px', border: castingDirector?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                        placeholder="Введите имя кастинг-директора" 
+                      />
+                      {castingDirector?.match > 0 && (
+                        <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: castingDirector.match > 0.8 ? '#dcfce7' : '#fef3c7', color: castingDirector.match > 0.8 ? '#166534' : '#92400e' }}>
+                          {Math.round(castingDirector.match * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    {!isReadOnly && showCastingDirectorDropdown && castingDirectorSearch.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                        {castingDirectorSearch.map((person, index) => (
+                          <div key={index} onClick={() => selectPerson(person, 'casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < castingDirectorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{person.phone} • {person.email}</div>
+                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>
+                          </div>
+                        ))}
+                        <div onClick={() => createNewPerson('casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                          + Добавить нового кастинг-директора
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Режиссер */}
+                  <div style={{ position: 'relative' }} className="dropdown-container">
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Режиссер *</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input 
+                        type="text" 
+                        value={director?.name || ''} 
+                        onChange={(e) => { 
+                          searchPerson(e.target.value, 'director'); 
+                          setDirector({ id: null, name: e.target.value, match: 0 }); 
+                          setHasUnsavedChanges(true); 
+                        }}
+                        onFocus={() => { if (director?.name) searchPerson(director.name, 'director'); }}
+                        disabled={isReadOnly}
+                        style={{ flex: 1, padding: '8px 12px', border: director?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                        placeholder="Введите имя режиссера" 
+                      />
+                      {director?.match > 0 && (
+                        <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: director.match > 0.8 ? '#dcfce7' : '#fef3c7', color: director.match > 0.8 ? '#166534' : '#92400e' }}>
+                          {Math.round(director.match * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    {!isReadOnly && showDirectorDropdown && directorSearch.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                        {directorSearch.map((person, index) => (
+                          <div key={index} onClick={() => selectPerson(person, 'director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < directorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{person.phone} • {person.email}</div>
+                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>
+                          </div>
+                        ))}
+                        <div onClick={() => createNewPerson('director')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                          + Добавить нового режиссера
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Продюсер */}
+                  <div style={{ position: 'relative' }} className="dropdown-container">
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Продюсер *</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input 
+                        type="text" 
+                        value={producer?.name || ''} 
+                        onChange={(e) => { 
+                          searchPerson(e.target.value, 'producer'); 
+                          setProducer({ id: null, name: e.target.value, match: 0 }); 
+                          setHasUnsavedChanges(true); 
+                        }}
+                        onFocus={() => { if (producer?.name) searchPerson(producer.name, 'producer'); }}
+                        disabled={isReadOnly}
+                        style={{ flex: 1, padding: '8px 12px', border: producer?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                        placeholder="Введите имя продюсера" 
+                      />
+                      {producer?.match > 0 && (
+                        <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: producer.match > 0.8 ? '#dcfce7' : '#fef3c7', color: producer.match > 0.8 ? '#166534' : '#92400e' }}>
+                          {Math.round(producer.match * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    {!isReadOnly && showProducerDropdown && producerSearch.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                        {producerSearch.map((person, index) => (
+                          <div key={index} onClick={() => selectPerson(person, 'producer')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < producerSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{person.phone} • {person.email}</div>
+                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>
+                          </div>
+                        ))}
+                        <div onClick={() => createNewPerson('producer')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                          + Добавить нового продюсера
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Кинокомпания */}
+                  <div style={{ position: 'relative' }} className="dropdown-container">
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кинокомпания *</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input 
+                        type="text" 
+                        value={productionCompany?.name || ''} 
+                        onChange={(e) => { 
+                          const value = e.target.value;
+                          setProductionCompany({ id: null, name: value, match: 0 }); 
+                          searchCompany(value);
+                          setShowCompanyDropdown(true);
+                          setHasUnsavedChanges(true); 
+                        }}
+                        onFocus={() => { if (productionCompany?.name) { searchCompany(productionCompany.name); setShowCompanyDropdown(true); } }}
+                        disabled={isReadOnly}
+                        style={{ flex: 1, padding: '8px 12px', border: productionCompany?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                        placeholder="Введите название кинокомпании" 
+                      />
+                      {productionCompany?.match > 0 && (
+                        <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: productionCompany.match > 0.8 ? '#dcfce7' : '#fef3c7', color: productionCompany.match > 0.8 ? '#166534' : '#92400e' }}>
+                          {Math.round(productionCompany.match * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    {!isReadOnly && showCompanyDropdown && companySearch.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                        {companySearch.map((company, index) => (
+                          <div key={index} onClick={() => selectCompany(company)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < companySearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{company.name}</div>
+                            {company.phone && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{company.phone} • {company.email}</div>}
+                            {company.website && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{company.website}</div>}
+                          </div>
+                        ))}
+                        <div onClick={createNewCompany} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                          + Добавить новую кинокомпанию
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Форма проекта */}
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Название проекта *</label>
+                  <input 
+                    type="text" 
+                    value={formData.title} 
+                    onChange={(e) => handleFormChange('title', e.target.value)}
+                    disabled={isReadOnly}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                    placeholder="Введите название проекта" 
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Описание проекта</label>
+                  <textarea 
+                    rows={4} 
+                    value={formData.description} 
+                    onChange={(e) => handleFormChange('description', e.target.value)}
+                    disabled={isReadOnly}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                    placeholder="Описание проекта" 
+                  />
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  {/* Тип проекта */}
+                  <div style={{ position: 'relative' }} className="dropdown-container">
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Тип проекта *</label>
+                    <input 
+                      type="text" 
+                      value={projectType?.name || ''} 
+                      onChange={(e) => { setProjectType({ id: null, name: e.target.value }); searchProjectType(e.target.value); setHasUnsavedChanges(true); }}
+                      onFocus={() => { if (projectType?.name) searchProjectType(projectType.name); }}
+                      disabled={isReadOnly}
+                      style={{ width: '100%', padding: '8px 12px', border: projectType?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                      placeholder="Введите тип проекта" 
+                    />
+                    {!isReadOnly && showProjectTypeDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                        {(showAllProjectTypes ? projectTypesList : projectTypesList.filter((type: any) => type.name.toLowerCase().includes((projectType?.name || '').toLowerCase()))).map((type) => (
+                          <div key={type.id} onClick={() => selectProjectType(type)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{type.name}</div>
+                            {type.description && <div style={{ fontSize: '12px', color: '#6b7280' }}>{type.description}</div>}
+                          </div>
+                        ))}
+                        {!showAllProjectTypes && (
+                          <div onClick={(e) => { e.stopPropagation(); setShowAllProjectTypes(true); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                            📋 Показать все варианты ({projectTypesList.length})
+                          </div>
+                        )}
+                        <div onClick={(e) => { e.stopPropagation(); alert('Создание нового типа проекта'); setShowProjectTypeDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
+                          + Создать новый тип проекта
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Жанр */}
+                  <div style={{ position: 'relative' }} className="dropdown-container">
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Жанр *</label>
+                    <input 
+                      type="text" 
+                      value={genre?.name || ''} 
+                      onChange={(e) => { setGenre({ id: null, name: e.target.value }); searchGenre(e.target.value); setHasUnsavedChanges(true); }}
+                      onFocus={() => { if (genre?.name) searchGenre(genre.name); }}
+                      disabled={isReadOnly}
+                      style={{ width: '100%', padding: '8px 12px', border: genre?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                      placeholder="Введите жанр" 
+                    />
+                    {!isReadOnly && showGenreDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                        {(showAllGenres ? genresList : genresList.filter((g: any) => g.name.toLowerCase().includes((genre?.name || '').toLowerCase()))).map((g) => (
+                          <div key={g.id} onClick={() => selectGenre(g)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{g.name}</div>
+                            {g.description && <div style={{ fontSize: '12px', color: '#6b7280' }}>{g.description}</div>}
+                          </div>
+                        ))}
+                        {!showAllGenres && (
+                          <div onClick={(e) => { e.stopPropagation(); setShowAllGenres(true); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                            📋 Показать все варианты ({genresList.length})
+                          </div>
+                        )}
+                        <div onClick={(e) => { e.stopPropagation(); alert('Создание нового жанра'); setShowGenreDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
+                          + Создать новый жанр
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Дата премьеры</label>
+                  <input 
+                    type="text" 
+                    value={formData.premiere_date} 
+                    onChange={(e) => handleFormChange('premiere_date', e.target.value)}
+                    disabled={isReadOnly}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                    placeholder="неопределено" 
+                  />
+                </div>
+
+                {/* БЛОК РОЛЕЙ */}
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#374151' }}>Роли проекта</h4>
+                    {!isReadOnly && (
+                      <button type="button" onClick={addRole} style={{ padding: '6px 12px', fontSize: '14px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                        + Добавить роль
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {roles.map((role, index) => (
+                      <div key={index} style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }} onClick={() => toggleRoleCollapse(index)}>
+                            <h5 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>{role.name || `Роль ${index + 1}`}</h5>
+                            <span style={{ fontSize: '14px', color: '#6b7280' }}>{collapsedRoles.has(index) ? '▼' : '▲'}</span>
+                          </div>
+                          {!isReadOnly && (
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              {!collapsedRoles.has(index) && (
+                                <button type="button" onClick={() => toggleRoleCollapse(index)} style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                  Свернуть
+                                </button>
+                              )}
+                              <button type="button" onClick={() => removeRole(index)} style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                Удалить
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Детали роли - показываем если НЕ свернута */}
+                        {!collapsedRoles.has(index) && (
+                          <>
+                            {/* Базовые поля роли */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Название роли *</label>
+                                <input 
+                                  type="text" 
+                                  value={role.name} 
+                                  onChange={(e) => handleRoleChange(index, 'name', e.target.value)} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                  placeholder="Введите название роли" 
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Тип роли *</label>
+                                <select 
+                                  value={role.role_type?.id || ''} 
+                                  onChange={(e) => { 
+                                    const selectedType = roleTypesList.find((rt: any) => rt.id === parseInt(e.target.value));
+                                    if (selectedType) {
+                                      handleRoleChange(index, 'role_type', selectedType);
+                                    }
+                                  }}
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: role.role_type?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }}
+                                >
+                                  <option value="">Выберите тип</option>
+                                  {roleTypesList.map((rt: any) => (
+                                    <option key={rt.id} value={rt.id}>{rt.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Пол *</label>
+                                <select 
+                                  value={role.gender || 'doesnt_matter'} 
+                                  onChange={(e) => handleRoleChange(index, 'gender', e.target.value)} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }}
+                                >
+                                  <option value="doesnt_matter">Не важно</option>
+                                  <option value="male">Мужчина</option>
+                                  <option value="female">Женщина</option>
+                                  <option value="boy">Мальчик</option>
+                                  <option value="girl">Девочка</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Медийность</label>
+                                <select 
+                                  value={role.media_presence} 
+                                  onChange={(e) => handleRoleChange(index, 'media_presence', e.target.value)} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }}
+                                >
+                                  <option value="doesnt_matter">Неважно</option>
+                                  <option value="yes">Да</option>
+                                  <option value="no">Нет</option>
+                                </select>
+                              </div>
+                            </div>
+                            
+                            {/* Описание роли */}
+                            <div style={{ marginBottom: '16px' }}>
+                              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Описание роли *</label>
+                              <textarea 
+                                rows={3} 
+                                value={role.description} 
+                                onChange={(e) => handleRoleChange(index, 'description', e.target.value)} 
+                                disabled={isReadOnly}
+                                style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                placeholder="Описание роли" 
+                              />
+                            </div>
+
+                            {/* Возраст */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Мин. возраст</label>
+                                <input 
+                                  type="number" 
+                                  value={role.age_min} 
+                                  onChange={(e) => handleRoleChange(index, 'age_min', e.target.value)} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                  placeholder="от" 
+                                  min="0" 
+                                  max="99" 
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Макс. возраст</label>
+                                <input 
+                                  type="number" 
+                                  value={role.age_max} 
+                                  onChange={(e) => handleRoleChange(index, 'age_max', e.target.value)} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                  placeholder="до" 
+                                  min="0" 
+                                  max="99" 
+                                />
+                              </div>
+                            </div>
+
+                            {/* Внешность */}
+                            <div style={{ marginBottom: '16px' }}>
+                              <h6 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Внешность</h6>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Рост</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.height} 
+                                    onChange={(e) => handleRoleChange(index, 'height', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Телосложение</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.body_type} 
+                                    onChange={(e) => handleRoleChange(index, 'body_type', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Цвет волос</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.hair_color} 
+                                    onChange={(e) => handleRoleChange(index, 'hair_color', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Цвет глаз</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.eye_color} 
+                                    onChange={(e) => handleRoleChange(index, 'eye_color', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Прическа</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.hairstyle} 
+                                    onChange={(e) => handleRoleChange(index, 'hairstyle', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Размер одежды</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.clothing_size} 
+                                    onChange={(e) => handleRoleChange(index, 'clothing_size', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Размер обуви</label>
+                                  <select 
+                                    value={role.shoe_size?.id || ''} 
+                                    onChange={(e) => { 
+                                      const selected = shoeSizesList.find((s: any) => s.id === parseInt(e.target.value));
+                                      handleRoleChange(index, 'shoe_size', selected || null);
+                                    }}
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }}
+                                  >
+                                    <option value="">Не указан</option>
+                                    {shoeSizesList.map((s: any) => (
+                                      <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Национальность</label>
+                                  <select 
+                                    value={role.nationality?.id || ''} 
+                                    onChange={(e) => { 
+                                      const selected = nationalitiesList.find((n: any) => n.id === parseInt(e.target.value));
+                                      handleRoleChange(index, 'nationality', selected || null);
+                                    }}
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }}
+                                  >
+                                    <option value="">Не указана</option>
+                                    {nationalitiesList.map((n: any) => (
+                                      <option key={n.id} value={n.id}>{n.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Рабочие условия */}
+                            <div style={{ marginBottom: '16px' }}>
+                              <h6 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Рабочие условия</h6>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Ставка за смену</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.rate_per_shift} 
+                                    onChange={(e) => handleRoleChange(index, 'rate_per_shift', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Даты смен</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.shooting_dates} 
+                                    onChange={(e) => handleRoleChange(index, 'shooting_dates', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Место съемки</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.shooting_location} 
+                                    onChange={(e) => handleRoleChange(index, 'shooting_location', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#6b7280' }}>Условия по ставке</label>
+                                  <input 
+                                    type="text" 
+                                    value={role.rate_conditions} 
+                                    onChange={(e) => handleRoleChange(index, 'rate_conditions', e.target.value)} 
+                                    disabled={isReadOnly}
+                                    style={{ width: '100%', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                    placeholder="неопределено" 
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Блок навыков */}
+                            <div style={{ marginBottom: '16px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <h6 style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>Требуемые навыки</h6>
+                                {!isReadOnly && (
+                                  <button 
+                                    type="button" 
+                                    onClick={() => addSkillToRole(index)} 
+                                    style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                  >
+                                    + Добавить навык
+                                  </button>
+                                )}
+                              </div>
+                              {role.skills_required && role.skills_required.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  {role.skills_required.map((skill: any, skillIndex: number) => {
+                                    const filteredSkills = skill?.name 
+                                      ? skillsList.filter((s: any) => s.name.toLowerCase().includes(skill.name.toLowerCase()))
+                                      : skillsList;
+                                    const showAllSkills = (role as any)[`showAllSkills_${skillIndex}`] || false;
+                                    const showDropdown = (role as any)[`showSkillDropdown_${skillIndex}`] || false;
+                                    
+                                    return (
+                                      <div key={skillIndex} style={{ display: 'flex', gap: '8px', alignItems: 'center', position: 'relative' }} className="dropdown-container">
+                                        <div style={{ flex: 1, position: 'relative' }}>
+                                          <input 
+                                            type="text"
+                                            value={skill?.name || ''} 
+                                            onChange={(e) => {
+                                              const value = e.target.value;
+                                              updateRoleSkill(index, skillIndex, { id: null, name: value });
+                                              handleRoleChange(index, `showSkillDropdown_${skillIndex}`, true);
+                                              handleRoleChange(index, `showAllSkills_${skillIndex}`, false);
+                                            }}
+                                            onFocus={() => {
+                                              if (skill?.name) {
+                                                handleRoleChange(index, `showSkillDropdown_${skillIndex}`, true);
+                                              }
+                                            }}
+                                            disabled={isReadOnly}
+                                            style={{ width: '100%', padding: '6px 8px', border: skill?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '13px', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }}
+                                            placeholder="Введите навык"
+                                          />
+                                          {!isReadOnly && showDropdown && (
+                                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '150px', overflowY: 'auto' }}>
+                                              {(showAllSkills ? skillsList : filteredSkills).map((s: any) => (
+                                                <div key={s.id} onClick={() => {
+                                                  updateRoleSkill(index, skillIndex, s);
+                                                  handleRoleChange(index, `showSkillDropdown_${skillIndex}`, false);
+                                                }} style={{ padding: '6px 10px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb', fontSize: '13px' }}
+                                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} 
+                                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                                                  {s.name}
+                                                </div>
+                                              ))}
+                                              {!showAllSkills && filteredSkills.length < skillsList.length && (
+                                                <div onClick={(e) => { e.stopPropagation(); handleRoleChange(index, `showAllSkills_${skillIndex}`, true); }} 
+                                                  style={{ padding: '6px 10px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}
+                                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} 
+                                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>
+                                                  📋 Показать все варианты ({skillsList.length})
+                                                </div>
+                                              )}
+                                              <div onClick={(e) => { e.stopPropagation(); alert('Создание нового навыка в справочнике'); handleRoleChange(index, `showSkillDropdown_${skillIndex}`, false); }} 
+                                                style={{ padding: '6px 10px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}
+                                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} 
+                                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
+                                                + Создать новый навык
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {!isReadOnly && (
+                                          <button 
+                                            type="button" 
+                                            onClick={() => removeSkillFromRole(index, skillIndex)} 
+                                            style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                          >
+                                            ×
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div style={{ padding: '12px', backgroundColor: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '4px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
+                                  Навыки не указаны
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Дополнительные поля */}
+                            <div style={{ marginBottom: '16px' }}>
+                              <div style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Референс</label>
+                                <textarea 
+                                  value={role.reference_text} 
+                                  onChange={(e) => handleRoleChange(index, 'reference_text', e.target.value)} 
+                                  rows={2} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                  placeholder="неопределено" 
+                                />
+                              </div>
+                              <div style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Особые условия</label>
+                                <textarea 
+                                  value={role.special_conditions} 
+                                  onChange={(e) => handleRoleChange(index, 'special_conditions', e.target.value)} 
+                                  rows={2} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                  placeholder="неопределено" 
+                                />
+                              </div>
+                              <div style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Требования к пробам</label>
+                                <textarea 
+                                  value={role.audition_requirements} 
+                                  onChange={(e) => handleRoleChange(index, 'audition_requirements', e.target.value)} 
+                                  rows={2} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                  placeholder="неопределено" 
+                                />
+                              </div>
+                              <div style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Текст проб</label>
+                                <textarea 
+                                  value={role.audition_text} 
+                                  onChange={(e) => handleRoleChange(index, 'audition_text', e.target.value)} 
+                                  rows={3} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                  placeholder="неопределено" 
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Заметки</label>
+                                <textarea 
+                                  value={role.notes} 
+                                  onChange={(e) => handleRoleChange(index, 'notes', e.target.value)} 
+                                  rows={2} 
+                                  disabled={isReadOnly}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical', backgroundColor: isReadOnly ? '#f9fafb' : 'white' }} 
+                                  placeholder="неопределено" 
+                                />
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+                  <button type="button" onClick={handleModalClose} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>
+                    {isReadOnly ? 'Закрыть' : 'Отмена'}
+                  </button>
+                  {!isReadOnly && (
+                    <button type="submit" style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#2563eb', color: 'white' }}>
+                      {mode === 'create' ? 'Создать проект' : 'Сохранить изменения'}
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Warning Dialog */}
+      {showUnsavedWarning && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1000000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', maxWidth: '400px', width: '90%' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: 'black' }}>Несохраненные изменения</h3>
+            <p style={{ color: '#6b7280', marginBottom: '24px' }}>У вас есть несохраненные изменения. Вы уверены, что хотите закрыть без сохранения?</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button onClick={() => setShowUnsavedWarning(false)} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>Отмена</button>
+              <button onClick={handleConfirmClose} style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#dc2626', color: 'white' }}>Закрыть без сохранения</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default ProjectFormModal;
