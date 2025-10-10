@@ -35,6 +35,14 @@ class RequestsService {
   }
 
   /**
+   * Обновить запрос (любые поля)
+   */
+  async updateRequest(id: number, data: Partial<RequestListItem>): Promise<RequestListItem> {
+    const response = await api.patch<RequestListItem>(`/requests/${id}/`, data);
+    return response.data;
+  }
+
+  /**
    * Добавить ответ на запрос
    */
   async addResponse(id: number, responseText: string): Promise<RequestListItem> {

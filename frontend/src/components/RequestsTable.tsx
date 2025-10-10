@@ -270,29 +270,29 @@ const RequestsTable: React.FC = () => {
               role_type: foundRoleType || (role.role_type ? { id: null, name: role.role_type } : null),
               role_type_id: foundRoleType?.id || null,
               gender: role.gender || 'doesnt_matter',
-              age_min: role.age_min || '',
-              age_max: role.age_max || '',
+              age_min: role.age_min ?? '',  // ?? вместо || чтобы 0 не превращался в ''
+              age_max: role.age_max ?? '',
               media_presence: role.media_presence || 'doesnt_matter',
               shoe_size: foundShoeSize || null,
               nationality: foundNationality || null,
-              // Внешность - из LLM
-              clothing_size: role.clothing_size || 'неопределено',
-              hairstyle: role.hairstyle || 'неопределено',
-              hair_color: role.hair_color || 'неопределено',
-              eye_color: role.eye_color || 'неопределено',
-              height: role.height || 'неопределено',
-              body_type: role.body_type || 'неопределено',
-              // Дополнительные поля - из LLM
-              reference_text: role.reference_text || 'неопределено',
-              special_conditions: role.special_conditions || role.special_requirements?.join(', ') || 'неопределено',
-              audition_requirements: role.audition_requirements || 'неопределено',
-              audition_text: role.audition_text || 'неопределено',
-              // Рабочие условия - из LLM
-              rate_per_shift: role.rate_per_shift || 'неопределено',
-              rate_conditions: role.rate_conditions || 'неопределено',
-              shooting_dates: role.shooting_dates || 'неопределено',
-              shooting_location: role.shooting_location || 'неопределено',
-              notes: role.notes || 'неопределено',
+              // Внешность - из LLM (оставляем null как есть)
+              clothing_size: role.clothing_size || '',
+              hairstyle: role.hairstyle || '',
+              hair_color: role.hair_color || '',
+              eye_color: role.eye_color || '',
+              height: role.height || '',
+              body_type: role.body_type || '',
+              // Дополнительные поля - из LLM (оставляем null как есть)
+              reference_text: role.reference_text || '',
+              special_conditions: role.special_conditions || role.special_requirements?.join(', ') || '',
+              audition_requirements: role.audition_requirements || '',
+              audition_text: role.audition_text || '',
+              // Рабочие условия - из LLM (оставляем null как есть)
+              rate_per_shift: role.rate_per_shift || '',
+              rate_conditions: role.rate_conditions || '',
+              shooting_dates: role.shooting_dates || '',
+              shooting_location: role.shooting_location || '',
+              notes: role.notes || '',
               // Конвертируем skills_required из массива строк в массив объектов
               skills_required: (role.skills_required?.acting_skills || []).map((skillName: string) => {
                 const foundSkill = skillsList.find((s: any) => 
@@ -577,6 +577,8 @@ const RequestsTable: React.FC = () => {
     
     try {
       // Подготовка данных для API
+      // НЕ передаем request при создании (OneToOneField может конфликтовать)
+      // Обновим связь после создания проекта
       const projectPayload: any = {
         title: formData.title,
         description: formData.description,
@@ -590,11 +592,6 @@ const RequestsTable: React.FC = () => {
         production_company: productionCompany.id
       };
       
-      // Добавляем request только если есть selectedRequest
-      if (selectedRequest?.id) {
-        projectPayload.request = selectedRequest.id;
-      }
-      
       console.log('Создание проекта:', projectPayload);
       console.log('Типы полей:', {
         casting_director: typeof projectPayload.casting_director,
@@ -607,40 +604,62 @@ const RequestsTable: React.FC = () => {
       const createdProject = await projectsService.createProject(projectPayload);
       console.log('Проект создан:', createdProject);
       
+      // Обновляем проект - добавляем связь с запросом через PATCH
+      if (selectedRequest?.id) {
+        try {
+          // Сначала отвязываем запрос от любого старого проекта (если был)
+          // Затем привязываем к новому проекту
+          await projectsService.updateProject(createdProject.id, {
+            request: selectedRequest.id
+          });
+          console.log('Связь с запросом установлена');
+        } catch (patchErr: any) {
+          // Если ошибка "уже существует" - игнорируем, иначе логируем
+          if (patchErr?.response?.data?.request) {
+            console.warn('Запрос уже связан с другим проектом. Создаем проект без связи.');
+          } else {
+            console.warn('Не удалось установить связь с запросом:', patchErr);
+          }
+          // Продолжаем создание проекта даже если связь не установилась
+        }
+      }
+      
       // Создаем роли проекта
       for (const role of roles) {
         console.log('Создание роли - исходные данные:', role);
         
+        // Backend теперь принимает null, передаем все поля
         const rolePayload = {
           project: createdProject.id,
           name: role.name,
           description: role.description,
-          role_type: role.role_type?.id,
-          gender: role.gender,
-          age_min: role.age_min,
-          age_max: role.age_max,
-          media_presence: role.media_presence,
-          height: role.height,
-          body_type: role.body_type,
-          hair_color: role.hair_color,
-          eye_color: role.eye_color,
-          hairstyle: role.hairstyle,
-          clothing_size: role.clothing_size,
-          shoe_size: role.shoe_size?.id,
-          nationality: role.nationality?.id,
-          rate_per_shift: role.rate_per_shift,
-          shooting_dates: role.shooting_dates,
-          shooting_location: role.shooting_location,
-          rate_conditions: role.rate_conditions,
-          reference_text: role.reference_text,
-          special_conditions: role.special_conditions,
-          audition_requirements: role.audition_requirements,
-          audition_text: role.audition_text,
-          notes: role.notes,
-          skills_required: role.skills_required
+          role_type: role.role_type?.id || null,
+          gender: role.gender || null,
+          age_min: role.age_min !== '' && role.age_min !== null && role.age_min !== undefined ? role.age_min : null,
+          age_max: role.age_max !== '' && role.age_max !== null && role.age_max !== undefined ? role.age_max : null,
+          media_presence: role.media_presence && role.media_presence !== '' ? role.media_presence : null,
+          height: role.height && role.height !== '' ? role.height : null,
+          body_type: role.body_type && role.body_type !== '' ? role.body_type : null,
+          hair_color: role.hair_color && role.hair_color !== '' ? role.hair_color : null,
+          eye_color: role.eye_color && role.eye_color !== '' ? role.eye_color : null,
+          hairstyle: role.hairstyle && role.hairstyle !== '' ? role.hairstyle : null,
+          clothing_size: role.clothing_size && role.clothing_size !== '' ? role.clothing_size : null,
+          shoe_size: role.shoe_size?.id || null,
+          nationality: role.nationality?.id || null,
+          rate_per_shift: role.rate_per_shift && role.rate_per_shift !== '' ? role.rate_per_shift : null,
+          shooting_dates: role.shooting_dates && role.shooting_dates !== '' ? role.shooting_dates : null,
+          shooting_location: role.shooting_location && role.shooting_location !== '' ? role.shooting_location : null,
+          rate_conditions: role.rate_conditions && role.rate_conditions !== '' ? role.rate_conditions : null,
+          reference_text: role.reference_text && role.reference_text !== '' ? role.reference_text : null,
+          special_conditions: role.special_conditions && role.special_conditions !== '' ? role.special_conditions : null,
+          audition_requirements: role.audition_requirements && role.audition_requirements !== '' ? role.audition_requirements : null,
+          audition_text: role.audition_text && role.audition_text !== '' ? role.audition_text : null,
+          notes: role.notes && role.notes !== '' ? role.notes : null,
+          skills_required: role.skills_required || null
         };
         
         console.log('Создание роли - payload для API:', rolePayload);
+        console.log('Создание роли - полный JSON:', JSON.stringify(rolePayload, null, 2));
         
         await projectsService.createProjectRole(rolePayload);
       }
@@ -660,7 +679,14 @@ const RequestsTable: React.FC = () => {
       ErrorHandler.logError(err, 'RequestsTable.handleProjectSubmit');
       console.error('Детали ошибки:', err);
       console.error('Ответ сервера:', err.response?.data);
-      alert(`Ошибка при создании проекта: ${JSON.stringify(err.response?.data || err.message)}`);
+      console.error('Полный ответ:', JSON.stringify(err.response?.data, null, 2));
+      
+      // Форматируем ошибку для пользователя
+      const errorMessage = err.response?.data 
+        ? Object.entries(err.response.data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('\n')
+        : err.message;
+      
+      alert(`Ошибка при создании проекта:\n\n${errorMessage}`);
     }
   };
 

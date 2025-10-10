@@ -80,7 +80,25 @@ class ProjectRoleSerializer(BaseModelSerializer):
     
     skills_required = serializers.JSONField(
         required=False,
+        allow_null=True,
         help_text="Требуемые навыки (JSON массив)"
+    )
+    
+    # Явно переопределяем IntegerField для поддержки null
+    age_min = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        min_value=0,
+        max_value=100,
+        help_text="Минимальный возраст для роли"
+    )
+    
+    age_max = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        min_value=0,
+        max_value=100,
+        help_text="Максимальный возраст для роли"
     )
     
     def __init__(self, *args, **kwargs):
@@ -128,28 +146,33 @@ class ProjectRoleSerializer(BaseModelSerializer):
             **BaseModelSerializer.Meta.extra_kwargs,
             'project': {'help_text': 'ID проекта, к которому относится роль'},
             'name': {'help_text': 'Название роли'},
-            'role_type': {'help_text': 'ID типа роли'},
+            'role_type': {'help_text': 'ID типа роли', 'required': False, 'allow_null': True},
             'description': {'help_text': 'Описание роли'},
-            'media_presence': {'help_text': 'Медийность (да/нет/неважно)'},
-            'clothing_size': {'help_text': 'Размер одежды'},
-            'hairstyle': {'help_text': 'Прическа'},
-            'hair_color': {'help_text': 'Цвет волос'},
-            'eye_color': {'help_text': 'Цвет глаз'},
-            'height': {'help_text': 'Рост'},
-            'body_type': {'help_text': 'Телосложение'},
-            'reference_photo': {'help_text': 'Фото референс'},
-            'reference_text': {'help_text': 'Текстовый референс'},
-            'special_conditions': {'help_text': 'Особые условия'},
-            'audition_requirements': {'help_text': 'Требования к пробам'},
-            'audition_text': {'help_text': 'Текст проб текстом'},
-            'audition_files': {'help_text': 'Файлы проб'},
-            'rate_per_shift': {'help_text': 'Ставка за смену'},
-            'rate_conditions': {'help_text': 'Условия по ставке'},
-            'shooting_dates': {'help_text': 'Даты смен'},
-            'shooting_location': {'help_text': 'Место съемки'},
-            'notes': {'help_text': 'Заметки'},
-            'suggested_artists': {'help_text': 'ID артистов, предложенных для роли'},
-            'skills_required': {'help_text': 'Требуемые навыки (JSON массив)'}
+            'gender': {'required': False, 'allow_null': True},
+            'age_min': {'required': False, 'allow_null': True, 'help_text': 'Минимальный возраст'},
+            'age_max': {'required': False, 'allow_null': True, 'help_text': 'Максимальный возраст'},
+            'media_presence': {'help_text': 'Медийность (да/нет/неважно)', 'required': False, 'allow_null': True},
+            'clothing_size': {'help_text': 'Размер одежды', 'required': False, 'allow_null': True},
+            'hairstyle': {'help_text': 'Прическа', 'required': False, 'allow_null': True},
+            'hair_color': {'help_text': 'Цвет волос', 'required': False, 'allow_null': True},
+            'eye_color': {'help_text': 'Цвет глаз', 'required': False, 'allow_null': True},
+            'height': {'help_text': 'Рост', 'required': False, 'allow_null': True},
+            'body_type': {'help_text': 'Телосложение', 'required': False, 'allow_null': True},
+            'shoe_size': {'required': False, 'allow_null': True},
+            'nationality': {'required': False, 'allow_null': True},
+            'reference_photo': {'help_text': 'Фото референс', 'required': False, 'allow_null': True},
+            'reference_text': {'help_text': 'Текстовый референс', 'required': False, 'allow_null': True},
+            'special_conditions': {'help_text': 'Особые условия', 'required': False, 'allow_null': True},
+            'audition_requirements': {'help_text': 'Требования к пробам', 'required': False, 'allow_null': True},
+            'audition_text': {'help_text': 'Текст проб текстом', 'required': False, 'allow_null': True},
+            'audition_files': {'help_text': 'Файлы проб', 'required': False, 'allow_null': True},
+            'rate_per_shift': {'help_text': 'Ставка за смену', 'required': False, 'allow_null': True},
+            'rate_conditions': {'help_text': 'Условия по ставке', 'required': False, 'allow_null': True},
+            'shooting_dates': {'help_text': 'Даты смен', 'required': False, 'allow_null': True},
+            'shooting_location': {'help_text': 'Место съемки', 'required': False, 'allow_null': True},
+            'notes': {'help_text': 'Заметки', 'required': False, 'allow_null': True},
+            'suggested_artists': {'help_text': 'ID артистов, предложенных для роли', 'required': False},
+            'skills_required': {'help_text': 'Требуемые навыки (JSON массив)', 'required': False, 'allow_null': True}
         }
 
 
@@ -292,6 +315,23 @@ class ProjectSerializer(BaseModelSerializer):
         """Возвращает полные данные ролей через ProjectRoleSerializer"""
         roles = obj.roles.filter(is_active=True)
         return ProjectRoleSerializer(roles, many=True).data
+    
+    def update(self, instance, validated_data):
+        """
+        Обновление проекта.
+        Если обновляется поле request, автоматически отвязываем его от старого проекта.
+        """
+        request_obj = validated_data.get('request')
+        
+        # Если обновляется request и он уже связан с другим проектом
+        if request_obj and request_obj != instance.request:
+            # Находим старый проект с этим request и отвязываем
+            old_project = Project.objects.filter(request=request_obj).exclude(id=instance.id).first()
+            if old_project:
+                old_project.request = None
+                old_project.save(update_fields=['request'])
+        
+        return super().update(instance, validated_data)
     
     class Meta(BaseModelSerializer.Meta):
         model = Project
