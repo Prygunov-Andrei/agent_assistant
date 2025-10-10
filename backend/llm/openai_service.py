@@ -112,6 +112,10 @@ class OpenAIService:
             validated_result['model'] = self.model
             
             logger.info(f"Successfully analyzed request #{request_id}")
+            
+            # Сохраняем последний успешный ответ для эмулятора
+            self._save_last_response(validated_result)
+            
             return validated_result
             
         except OpenAIError as e:
@@ -156,7 +160,7 @@ class OpenAIService:
                     "type": "json_schema",
                     "json_schema": {
                         "name": "casting_request_analysis",
-                        "strict": False,
+                        "strict": True,
                         "schema": self.schema
                     }
                 }
@@ -233,4 +237,19 @@ class OpenAIService:
             'max_retries': self.max_retries,
             'timeout': self.timeout
         }
+    
+    def _save_last_response(self, response: Dict[str, Any]) -> None:
+        """
+        Сохранение последнего успешного ответа для эмулятора
+        
+        Args:
+            response: Ответ от GPT-4o
+        """
+        try:
+            cache_file = Path(__file__).parent / 'last_llm_response.json'
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(response, f, ensure_ascii=False, indent=2)
+            logger.info(f"Last LLM response saved to {cache_file}")
+        except Exception as e:
+            logger.warning(f"Failed to save last LLM response: {e}")
 

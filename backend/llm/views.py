@@ -92,12 +92,19 @@ def analyze_request(request, request_id):
         llm_service = LLMService()
         
         # Логируем начало анализа
-        logger.info(f"Начало анализа запроса {request_id} пользователем {request.user.username}")
+        use_emulator = serializer.validated_data['use_emulator']
+        logger.info(f"Начало анализа запроса {request_id} пользователем {request.user.username}, режим: {'эмулятор' if use_emulator else 'OpenAI GPT-4o'}")
         start_time = time.time()
         
         # Выполняем анализ
         try:
-            analysis_result = llm_service.analyze_request(request_data, artists_data)
+            # Принудительно используем эмулятор если указано в параметре
+            if use_emulator:
+                logger.info("📝 Режим черновика: используем эмулятор")
+                analysis_result = llm_service.emulator.analyze_request(request_data, artists_data)
+            else:
+                logger.info("🤖 Режим GPT-4o: используем OpenAI API")
+                analysis_result = llm_service.analyze_request(request_data, artists_data)
             
             processing_time = time.time() - start_time
             

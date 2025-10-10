@@ -32,6 +32,7 @@ const RequestsTable: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [useDraftMode, setUseDraftMode] = useState(true); // true = эмулятор (черновик), false = GPT-4o (реальный анализ)
   const [roles, setRoles] = useState<any[]>([]);
   
   // Состояния для модального окна удаления
@@ -169,6 +170,7 @@ const RequestsTable: React.FC = () => {
     });
     setRoles([]);
     setCollapsedRoles(new Set());
+    setUseDraftMode(true); // Сбрасываем на черновик по умолчанию
     setCastingDirector(null);
     setDirector(null);
     setProducer(null);
@@ -198,8 +200,8 @@ const RequestsTable: React.FC = () => {
   const handleAutoAnalysis = async (request: RequestListItem) => {
     setIsAnalyzing(true);
     try {
-      // Вызываем реальный LLM сервис (эмулятор)
-      const analysisData = await LLMService.analyzeRequest(request.id);
+      // Вызываем LLM сервис (GPT-4o или эмулятор в зависимости от useDraftMode)
+      const analysisData = await LLMService.analyzeRequest(request.id, useDraftMode);
       
       console.log('Analysis Data Full:', JSON.stringify(analysisData, null, 2));
       
@@ -353,6 +355,7 @@ const RequestsTable: React.FC = () => {
     setFormData({ title: '', description: '', project_type: 1, genre: undefined, premiere_date: '', status: 'draft', project_type_raw: '' });
     setRoles([]);
     setCollapsedRoles(new Set());
+    setUseDraftMode(true); // Сбрасываем на черновик по умолчанию
     setCastingDirector(null);
     setDirector(null);
     setProducer(null);
@@ -574,19 +577,23 @@ const RequestsTable: React.FC = () => {
     
     try {
       // Подготовка данных для API
-      const projectPayload = {
+      const projectPayload: any = {
         title: formData.title,
         description: formData.description,
         project_type: projectType.id,
         genre: genre.id,
-        premiere_date: formData.premiere_date,
+        premiere_date: formData.premiere_date || null, // Пустая строка → null
         status: 'in_production',
         casting_director: castingDirector.id,
         director: director.id,
         producers: [producer.id], // ManyToMany - передаем массив
-        production_company: productionCompany.id,
-        request: selectedRequest?.id
+        production_company: productionCompany.id
       };
+      
+      // Добавляем request только если есть selectedRequest
+      if (selectedRequest?.id) {
+        projectPayload.request = selectedRequest.id;
+      }
       
       console.log('Создание проекта:', projectPayload);
       console.log('Типы полей:', {
@@ -638,9 +645,11 @@ const RequestsTable: React.FC = () => {
         await projectsService.createProjectRole(rolePayload);
       }
       
-      // Обновляем статус запроса на 'completed'
+      // Обновляем статус запроса
       if (selectedRequest) {
-        await requestsService.updateRequestStatus(selectedRequest.id, 'completed');
+        await requestsService.updateRequest(selectedRequest.id, {
+          analysis_status: 'processed'
+        });
       }
       
       setShowProjectModal(false);
@@ -908,11 +917,13 @@ const RequestsTable: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'black', margin: 0 }}>Создание проекта из запроса #{selectedRequest.id}</h2>
                 {isAnalyzing && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#d1fae5', padding: '8px 16px', borderRadius: '8px', fontSize: '14px', color: '#065f46', border: '2px solid #10b981', boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)' }}>
-                    <div style={{ width: '16px', height: '16px', border: '3px solid #10b981', borderTop: '3px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: useDraftMode ? '#fef3c7' : '#d1fae5', padding: '8px 16px', borderRadius: '8px', fontSize: '14px', color: useDraftMode ? '#92400e' : '#065f46', border: `2px solid ${useDraftMode ? '#f59e0b' : '#10b981'}`, boxShadow: useDraftMode ? '0 2px 8px rgba(245, 158, 11, 0.2)' : '0 2px 8px rgba(16, 185, 129, 0.2)' }}>
+                    <div style={{ width: '16px', height: '16px', border: `3px solid ${useDraftMode ? '#f59e0b' : '#10b981'}`, borderTop: '3px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
                     <div>
-                      <div style={{ fontWeight: 'bold' }}>🤖 Анализ GPT-4o...</div>
-                      <div style={{ fontSize: '11px', color: '#047857', marginTop: '2px' }}>Списываются токены • Обработка ~2 сек</div>
+                      <div style={{ fontWeight: 'bold' }}>{useDraftMode ? '📝 Загрузка черновика...' : '🤖 Анализ GPT-4o...'}</div>
+                      <div style={{ fontSize: '11px', color: useDraftMode ? '#78350f' : '#047857', marginTop: '2px' }}>
+                        {useDraftMode ? 'Загрузка кеша • Мгновенно' : 'Списываются токены • Обработка ~15-20 сек'}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -930,6 +941,41 @@ const RequestsTable: React.FC = () => {
                   <div style={{ marginBottom: '12px' }}><strong>Telegram:</strong> {selectedRequest.author_username}</div>
                 )}
                 <div style={{ marginBottom: '12px' }}><strong>Дата:</strong> {selectedRequest.original_created_at ? new Date(selectedRequest.original_created_at).toLocaleDateString('ru-RU') : 'Не указано'}</div>
+                
+                {/* Режим анализа */}
+                <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: useDraftMode ? '#fef3c7' : '#dbeafe', borderRadius: '6px', border: `2px solid ${useDraftMode ? '#f59e0b' : '#3b82f6'}` }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Режим анализа:</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      onClick={() => setUseDraftMode(true)}
+                      style={{
+                        flex: 1, padding: '8px 12px', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold',
+                        border: useDraftMode ? '2px solid #f59e0b' : '1px solid #d1d5db',
+                        backgroundColor: useDraftMode ? '#fff' : '#f9fafb',
+                        color: useDraftMode ? '#92400e' : '#6b7280',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📝 Черновик
+                    </button>
+                    <button 
+                      onClick={() => setUseDraftMode(false)}
+                      style={{
+                        flex: 1, padding: '8px 12px', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold',
+                        border: !useDraftMode ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                        backgroundColor: !useDraftMode ? '#fff' : '#f9fafb',
+                        color: !useDraftMode ? '#1e40af' : '#6b7280',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🤖 GPT-4o
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
+                    {useDraftMode ? '✅ Использует последний кеш GPT-4o (без трат токенов)' : '⚠️ Реальный анализ GPT-4o (~15-20 сек, тратятся токены)'}
+                  </div>
+                </div>
+                
                 <div style={{ marginBottom: '12px' }}><strong>Текст:</strong></div>
                 <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>{selectedRequest.text}</div>
                 

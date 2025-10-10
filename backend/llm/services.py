@@ -117,6 +117,9 @@ class LLMEmulatorService:
         """
         Эмуляция анализа запроса с валидацией
         
+        Возвращает последний успешный ответ от GPT-4o (если есть),
+        иначе возвращает тестовые данные
+        
         Args:
             request_data: Данные запроса (текст, автор и т.д.)
             artists_data: Список доступных артистов
@@ -127,7 +130,17 @@ class LLMEmulatorService:
         try:
             error_metrics.increment_metric('total_requests')
             
-            # Простая заглушка - всегда возвращаем одни и те же данные для тестирования
+            # Пытаемся загрузить последний ответ от GPT-4o
+            last_response = self._load_last_llm_response()
+            if last_response:
+                logger.info("🔄 Using cached LLM response from last GPT-4o call")
+                # Обновляем флаг, что используется эмулятор
+                last_response['used_emulator'] = True
+                last_response['processing_time'] = 0.001
+                return last_response
+            
+            # Если нет кешированного ответа, используем заглушку
+            logger.info("🧪 Using default test data (no cached LLM response)")
             result = {
                 'project_analysis': {
                     'project_title': 'Друзья навсегда',
@@ -489,6 +502,30 @@ class LLMEmulatorService:
         }
         
         return random.choice(titles.get(template, titles['default']))
+    
+    def _load_last_llm_response(self) -> Optional[Dict[str, Any]]:
+        """
+        Загрузка последнего сохраненного ответа от GPT-4o
+        
+        Returns:
+            Последний ответ от GPT-4o или None если файл не существует
+        """
+        try:
+            from pathlib import Path
+            cache_file = Path(__file__).parent / 'last_llm_response.json'
+            
+            if not cache_file.exists():
+                return None
+            
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                response = json.load(f)
+            
+            logger.info(f"✅ Loaded cached LLM response from {cache_file}")
+            return response
+            
+        except Exception as e:
+            logger.warning(f"Failed to load last LLM response: {e}")
+            return None
     
     def _generate_description(self, text: str, template: str) -> str:
         """Генерация описания проекта"""

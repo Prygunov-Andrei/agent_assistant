@@ -33,7 +33,6 @@
         },
         "premiere_date": {
           "type": ["string", "null"],
-          "format": "date",
           "description": "Дата премьеры в формате YYYY-MM-DD или null если не указана"
         },
         "roles": {
@@ -208,7 +207,6 @@
             },
             "email": {
               "type": ["string", "null"],
-              "format": "email",
               "description": "Email кастинг-директора или null если не известен"
             },
             "phone": {
@@ -238,7 +236,6 @@
             },
             "email": {
               "type": ["string", "null"],
-              "format": "email",
               "description": "Email режиссера или null если не известен"
             },
             "phone": {
@@ -269,7 +266,6 @@
               },
               "email": {
                 "type": ["string", "null"],
-                "format": "email",
                 "description": "Email продюсера или null если не известен"
               },
               "phone": {
@@ -303,12 +299,10 @@
             },
             "email": {
               "type": ["string", "null"],
-              "format": "email",
               "description": "Email компании или null если не известен"
             },
             "website": {
               "type": ["string", "null"],
-              "format": "uri",
               "description": "Сайт компании или null если не известен"
             },
             "confidence": {
