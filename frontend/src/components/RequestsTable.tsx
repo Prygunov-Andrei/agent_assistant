@@ -340,8 +340,8 @@ const RequestsTable: React.FC = () => {
     if (hasUnsavedChanges) {
       setShowUnsavedWarning(true);
     } else {
-      setShowProjectModal(false);
-      setSelectedRequest(null);
+    setShowProjectModal(false);
+    setSelectedRequest(null);
     }
   };
 

@@ -1,0 +1,309 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LLM Project Analysis Response",
+  "description": "Структурированный ответ LLM для анализа запроса кастинг-директора и создания проекта",
+  "type": "object",
+  "required": ["project_analysis", "contacts", "confidence"],
+  "properties": {
+    "project_analysis": {
+      "type": "object",
+      "required": ["project_title", "project_type", "genre", "description", "roles"],
+      "properties": {
+        "project_title": {
+          "type": "string",
+          "description": "Название проекта, извлеченное из текста запроса"
+        },
+        "project_type": {
+          "type": "string",
+          "description": "Тип проекта из справочника (Фильм, Сериал, Реклама, Клип, Театр, и т.д.)"
+        },
+        "project_type_raw": {
+          "type": "string",
+          "description": "Исходный тип проекта из запроса (для подбора совпадений)"
+        },
+        "genre": {
+          "type": "string",
+          "description": "Жанр проекта из справочника (Драма, Комедия, Боевик, и т.д.)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание проекта, краткий синопсис"
+        },
+        "premiere_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Дата премьеры в формате YYYY-MM-DD (если указана в запросе)"
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["role_type", "character_name", "description"],
+            "properties": {
+              "role_type": {
+                "type": "string",
+                "description": "Тип роли из справочника (Актер, Актриса, Массовка, и т.д.)"
+              },
+              "character_name": {
+                "type": "string",
+                "description": "Название роли/персонажа"
+              },
+              "description": {
+                "type": "string",
+                "description": "Полное описание роли"
+              },
+              "age_min": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Минимальный возраст для роли"
+              },
+              "age_max": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Максимальный возраст для роли"
+              },
+              "gender": {
+                "type": "string",
+                "enum": ["male", "female", "boy", "girl", "doesnt_matter"],
+                "description": "Пол для роли"
+              },
+              "media_presence": {
+                "type": "string",
+                "enum": ["yes", "no", "doesnt_matter"],
+                "description": "Требование медийности"
+              },
+              "height": {
+                "type": "string",
+                "description": "Рост (например, '175-185 см')"
+              },
+              "body_type": {
+                "type": "string",
+                "description": "Телосложение (например, 'Спортивное', 'Стройное')"
+              },
+              "hair_color": {
+                "type": "string",
+                "description": "Цвет волос"
+              },
+              "eye_color": {
+                "type": "string",
+                "description": "Цвет глаз"
+              },
+              "hairstyle": {
+                "type": "string",
+                "description": "Прическа"
+              },
+              "clothing_size": {
+                "type": "string",
+                "description": "Размер одежды"
+              },
+              "shoe_size": {
+                "type": "string",
+                "description": "Размер обуви из справочника (например, '42', '37')"
+              },
+              "nationality": {
+                "type": "string",
+                "description": "Национальность из справочника (например, 'Русский/Русская', 'Европеец/Европейка')"
+              },
+              "rate_per_shift": {
+                "type": "string",
+                "description": "Ставка за смену (например, '15000-20000 руб')"
+              },
+              "shooting_dates": {
+                "type": "string",
+                "description": "Даты съемок"
+              },
+              "shooting_location": {
+                "type": "string",
+                "description": "Место съемки"
+              },
+              "rate_conditions": {
+                "type": "string",
+                "description": "Условия оплаты"
+              },
+              "reference_text": {
+                "type": "string",
+                "description": "Текстовый референс (например, 'Похож на героя из фильма X')"
+              },
+              "special_conditions": {
+                "type": "string",
+                "description": "Особые условия работы"
+              },
+              "audition_requirements": {
+                "type": "string",
+                "description": "Требования к пробам/кастингу"
+              },
+              "audition_text": {
+                "type": "string",
+                "description": "Текст для проб"
+              },
+              "notes": {
+                "type": "string",
+                "description": "Дополнительные заметки"
+              },
+              "skills_required": {
+                "type": "object",
+                "properties": {
+                  "acting_skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Требуемые актерские навыки (например, 'Актерское мастерство', 'Комедия', 'Пение', 'Танец')"
+                  },
+                  "special_skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Специальные навыки (например, 'Вождение', 'Акробатика')"
+                  }
+                },
+                "description": "Требуемые навыки для роли"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Уверенность LLM в корректности извлечения данных (0-1)"
+              }
+            }
+          }
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Общая уверенность LLM в анализе проекта"
+        }
+      }
+    },
+    "contacts": {
+      "type": "object",
+      "required": ["casting_director"],
+      "properties": {
+        "casting_director": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "ФИО кастинг-директора"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Email кастинг-директора"
+            },
+            "phone": {
+              "type": "string",
+              "description": "Телефон кастинг-директора"
+            },
+            "telegram": {
+              "type": "string",
+              "description": "Telegram username кастинг-директора"
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Уверенность в корректности данных"
+            }
+          }
+        },
+        "director": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "ФИО режиссера"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "telegram": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "producers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "ФИО продюсера"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "telegram": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "production_company": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Название продюсерской компании"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "website": {
+              "type": "string",
+              "format": "uri"
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Общая уверенность LLM в результате анализа"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Список ошибок или предупреждений при анализе"
+    }
+  }
+}
+

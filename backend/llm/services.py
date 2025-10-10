@@ -575,12 +575,27 @@ class LLMEmulatorService:
 
 class LLMService:
     """
-    Основной сервис для работы с LLM (будет реализован в Дне 15)
+    Основной сервис для работы с LLM
+    
+    Автоматически выбирает между OpenAI GPT-4o и эмулятором
+    в зависимости от настроек
     """
     
     def __init__(self):
         self.config = self._load_config()
         self.emulator = LLMEmulatorService()
+        self.openai_service = None
+        
+        # Попытка инициализации OpenAI сервиса
+        if self._should_use_openai():
+            try:
+                from .openai_service import OpenAIService
+                self.openai_service = OpenAIService()
+                logger.info("OpenAI service initialized successfully")
+            except Exception as e:
+                logger.warning(f"Failed to initialize OpenAI service: {e}")
+                logger.warning("Falling back to emulator mode")
+                self.openai_service = None
     
     def _load_config(self) -> Dict[str, Any]:
         """Загрузка конфигурации LLM"""
@@ -595,6 +610,22 @@ class LLMService:
             logger.error(f"Error loading LLM config: {e}")
             return {}
     
+    def _should_use_openai(self) -> bool:
+        """
+        Определяет нужно ли использовать OpenAI API
+        
+        Returns:
+            True если настроен API ключ и не включен режим эмулятора
+        """
+        # Проверяем наличие API ключа
+        api_key = getattr(settings, 'OPENAI_API_KEY', None)
+        if not api_key:
+            return False
+        
+        # Проверяем флаг use_emulator в конфиге
+        use_emulator = self.config.get('llm', {}).get('use_emulator', True)
+        return not use_emulator
+    
     def analyze_request(self, request_data: Dict[str, Any], artists_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Анализ запроса через LLM или эмулятор
@@ -606,13 +637,55 @@ class LLMService:
         Returns:
             Структурированный JSON ответ
         """
-        # Пока используем только эмулятор
-        use_emulator = self.config.get('llm', {}).get('use_emulator', True)
-        
-        if use_emulator:
+        # Выбираем сервис для анализа
+        if self.openai_service:
+            try:
+                logger.info("Using OpenAI GPT-4o for request analysis")
+                return self.openai_service.analyze_request(request_data, artists_data)
+            except Exception as e:
+                logger.error(f"OpenAI analysis failed: {e}")
+                logger.warning("Falling back to emulator")
+                return self.emulator.analyze_request(request_data, artists_data)
+        else:
             logger.info("Using LLM Emulator for request analysis")
             return self.emulator.analyze_request(request_data, artists_data)
-        else:
-            # Здесь будет реальный LLM (День 15)
-            logger.info("Real LLM not implemented yet, falling back to emulator")
-            return self.emulator.analyze_request(request_data, artists_data)
+    
+    def test_connection(self) -> Dict[str, Any]:
+        """
+        Тестирование подключения к LLM сервису
+        
+        Returns:
+            Словарь со статусом подключения
+        """
+        result = {
+            'emulator_available': True,
+            'openai_available': False,
+            'current_mode': 'emulator'
+        }
+        
+        if self.openai_service:
+            try:
+                result['openai_available'] = self.openai_service.test_connection()
+                result['current_mode'] = 'openai'
+            except Exception as e:
+                logger.error(f"OpenAI connection test failed: {e}")
+        
+        return result
+    
+    def get_service_info(self) -> Dict[str, Any]:
+        """
+        Получение информации о текущем сервисе
+        
+        Returns:
+            Словарь с информацией о сервисе
+        """
+        info = {
+            'service': 'emulator',
+            'config': self.config
+        }
+        
+        if self.openai_service:
+            info['service'] = 'openai'
+            info['model_info'] = self.openai_service.get_model_info()
+        
+        return info

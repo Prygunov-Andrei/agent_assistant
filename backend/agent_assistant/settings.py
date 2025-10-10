@@ -265,3 +265,15 @@ CACHES = {
 # Используем Redis для продакшена, локальный кэш для разработки
 if not DEBUG:
     CACHES['default'] = CACHES['redis']
+
+# ==============================
+# OPENAI / LLM SETTINGS
+# ==============================
+
+# OpenAI API Configuration
+OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
+OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o')
+OPENAI_TEMPERATURE = config('OPENAI_TEMPERATURE', default=0.3, cast=float)
+OPENAI_MAX_TOKENS = config('OPENAI_MAX_TOKENS', default=4000, cast=int)
+OPENAI_MAX_RETRIES = config('OPENAI_MAX_RETRIES', default=3, cast=int)
+OPENAI_TIMEOUT = config('OPENAI_TIMEOUT', default=60, cast=int)
