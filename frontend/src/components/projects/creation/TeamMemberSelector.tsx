@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { peopleService } from '../../../services/people';
 import { companiesService } from '../../../services/companies';
 import { ErrorHandler } from '../../../utils/errorHandler';
+import { PersonModal } from '../../people/PersonModal';
+import type { Person } from '../../../types/people';
 
 interface PersonMatch {
   id: number;
@@ -49,6 +51,7 @@ export const TeamMemberSelector: React.FC<TeamMemberSelectorProps> = ({
   const [matches, setMatches] = useState<(PersonMatch | CompanyMatch)[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<PersonMatch | CompanyMatch | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     if (llmSuggestion && llmSuggestion !== 'Не определен') {
@@ -88,8 +91,32 @@ export const TeamMemberSelector: React.FC<TeamMemberSelectorProps> = ({
   };
 
   const handleCreateNew = () => {
-    setSelectedMatch(null);
-    onCreateNew?.();
+    if (type === 'person') {
+      setShowCreateModal(true);
+    } else {
+      setSelectedMatch(null);
+      onCreateNew?.();
+    }
+  };
+  
+  const handleModalSuccess = (person: Person | null) => {
+    if (person) {
+      // Автоматически выбрать созданную персону
+      const newMatch: PersonMatch = {
+        ...person,
+        full_name: person.full_name
+      };
+      setSelectedMatch(newMatch);
+      onSelectionChange(person.id, person.full_name);
+    }
+    setShowCreateModal(false);
+  };
+  
+  const getPersonTypeFromLabel = (label: string): 'director' | 'producer' | 'casting_director' => {
+    if (label.includes('Кастинг-директор')) return 'casting_director';
+    if (label.includes('Режиссер')) return 'director';
+    if (label.includes('Продюсер')) return 'producer';
+    return 'casting_director'; // default
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -235,6 +262,17 @@ export const TeamMemberSelector: React.FC<TeamMemberSelectorProps> = ({
           </div>
         )}
       </div>
+      
+      {/* Модальное окно создания персоны */}
+      {type === 'person' && (
+        <PersonModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          personType={getPersonTypeFromLabel(label)}
+          mode="create"
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </div>
   );
 };

@@ -18,6 +18,39 @@ class PersonSerializer(serializers.ModelSerializer):
         help_text="Краткое имя персоны (Фамилия И.О.)"
     )
     
+    projects_count = serializers.IntegerField(
+        read_only=True,
+        help_text="Количество проектов персоны"
+    )
+    
+    recent_projects = serializers.SerializerMethodField(
+        help_text="Последние 5 проектов персоны"
+    )
+    
+    def get_recent_projects(self, obj):
+        """Получить последние 5 проектов персоны"""
+        # Получаем проекты в зависимости от типа персоны
+        if obj.person_type == 'casting_director':
+            projects = obj.casting_projects.filter(is_active=True)
+        elif obj.person_type == 'director':
+            projects = obj.directed_projects.filter(is_active=True)
+        elif obj.person_type == 'producer':
+            projects = obj.produced_projects.filter(is_active=True)
+        else:
+            return []
+        
+        # Сортируем от новых к старым и ограничиваем количество
+        projects = projects.order_by('-created_at')[:5]
+        
+        return [
+            {
+                'id': p.id,
+                'title': p.title,
+                'created_at': p.created_at.isoformat() if p.created_at else None
+            }
+            for p in projects
+        ]
+    
     class Meta:
         model = Person
         fields = [
@@ -43,6 +76,8 @@ class PersonSerializer(serializers.ModelSerializer):
             'created_by',
             'created_at',
             'updated_at',
+            'projects_count',
+            'recent_projects',
         ]
         read_only_fields = [
             'id',
@@ -118,6 +153,39 @@ class PersonListSerializer(serializers.ModelSerializer):
         help_text="Краткое имя персоны (Фамилия И.О.)"
     )
     
+    projects_count = serializers.IntegerField(
+        read_only=True,
+        help_text="Количество проектов персоны"
+    )
+    
+    recent_projects = serializers.SerializerMethodField(
+        help_text="Последние 5 проектов персоны"
+    )
+    
+    def get_recent_projects(self, obj):
+        """Получить последние 5 проектов персоны"""
+        # Получаем проекты в зависимости от типа персоны
+        if obj.person_type == 'casting_director':
+            projects = obj.casting_projects.filter(is_active=True)
+        elif obj.person_type == 'director':
+            projects = obj.directed_projects.filter(is_active=True)
+        elif obj.person_type == 'producer':
+            projects = obj.produced_projects.filter(is_active=True)
+        else:
+            return []
+        
+        # Сортируем от новых к старым и ограничиваем количество
+        projects = projects.order_by('-created_at')[:5]
+        
+        return [
+            {
+                'id': p.id,
+                'title': p.title,
+                'created_at': p.created_at.isoformat() if p.created_at else None
+            }
+            for p in projects
+        ]
+    
     class Meta:
         model = Person
         fields = [
@@ -128,10 +196,15 @@ class PersonListSerializer(serializers.ModelSerializer):
             'full_name',
             'short_name',
             'photo',
+            'phone',
+            'email',
+            'telegram_username',
             'nationality',
             'is_active',
             'created_by',
             'created_at',
+            'projects_count',
+            'recent_projects',
         ]
         read_only_fields = fields
 

@@ -4,7 +4,11 @@ import type {
   PersonMatch, 
   PersonSearchRequest, 
   PersonNameSearchRequest, 
-  PersonType 
+  PersonType,
+  PersonFormData,
+  PersonSearchParams,
+  PaginatedResponse,
+  PersonProject
 } from '../types/people';
 
 class PeopleService {
@@ -65,6 +69,103 @@ class PeopleService {
     const response = await apiClient.post(`${this.baseUrl}search_by_name/`, {
       name: params.name,
       limit: params.limit || 3
+    });
+    return response.data;
+  }
+
+  /**
+   * Получить персону по ID
+   */
+  async getPersonById(id: number): Promise<Person> {
+    const response = await apiClient.get(`${this.baseUrl}${id}/`);
+    return response.data;
+  }
+
+  /**
+   * Получить проекты персоны
+   */
+  async getPersonProjects(id: number, limit: number = 5): Promise<PersonProject[]> {
+    const response = await apiClient.get(`${this.baseUrl}${id}/projects/`, {
+      params: { limit }
+    });
+    return response.data;
+  }
+
+  /**
+   * Создать персону
+   */
+  async createPerson(data: PersonFormData): Promise<Person> {
+    const formData = new FormData();
+    
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === 'photo' && value instanceof File) {
+          formData.append(key, value);
+        } else if (key === 'social_media') {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, String(value));
+        }
+      }
+    });
+    
+    const response = await apiClient.post(this.baseUrl, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  }
+
+  /**
+   * Обновить персону
+   */
+  async updatePerson(id: number, data: Partial<PersonFormData>): Promise<Person> {
+    const formData = new FormData();
+    
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === 'photo' && value instanceof File) {
+          formData.append(key, value);
+        } else if (key === 'social_media') {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, String(value));
+        }
+      }
+    });
+    
+    const response = await apiClient.put(`${this.baseUrl}${id}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  }
+
+  /**
+   * Удалить персону
+   */
+  async deletePerson(id: number): Promise<void> {
+    await apiClient.delete(`${this.baseUrl}${id}/`);
+  }
+
+  /**
+   * Расширенный поиск персон с пагинацией и сортировкой
+   */
+  async searchWithPagination(params: PersonSearchParams): Promise<PaginatedResponse<Person>> {
+    const response = await apiClient.get(`${this.baseUrl}search/`, { params });
+    return response.data;
+  }
+
+  /**
+   * Получить персон по типу с пагинацией
+   */
+  async getByTypeWithPagination(
+    personType: 'director' | 'producer' | 'casting_director',
+    params?: { page?: number; page_size?: number; sort?: string }
+  ): Promise<PaginatedResponse<Person>> {
+    const response = await apiClient.get(`${this.baseUrl}search/`, {
+      params: {
+        person_type: personType,
+        ...params
+      }
     });
     return response.data;
   }

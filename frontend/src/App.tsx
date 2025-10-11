@@ -7,6 +7,9 @@ import Projects from './pages/Projects';
 import Login from './pages/Login';
 import TestPersonMatching from './pages/TestPersonMatching';
 import ProjectCreationPage from './pages/ProjectCreationPage';
+import CastingDirectors from './pages/CastingDirectors';
+import Producers from './pages/Producers';
+import Directors from './pages/Directors';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -87,10 +90,7 @@ const App: React.FC = () => {
                  element={
                    <ProtectedRoute>
                      <Layout>
-                       <div className="text-center py-12">
-                         <h1 className="text-2xl font-bold text-gray-900">Кастинг-директора</h1>
-                         <p className="text-gray-600 mt-2">Страница в разработке</p>
-                       </div>
+                       <CastingDirectors />
                      </Layout>
                    </ProtectedRoute>
                  }
@@ -102,10 +102,7 @@ const App: React.FC = () => {
                  element={
                    <ProtectedRoute>
                      <Layout>
-                       <div className="text-center py-12">
-                         <h1 className="text-2xl font-bold text-gray-900">Продюсеры</h1>
-                         <p className="text-gray-600 mt-2">Страница в разработке</p>
-                       </div>
+                       <Producers />
                      </Layout>
                    </ProtectedRoute>
                  }
@@ -116,10 +113,7 @@ const App: React.FC = () => {
                  element={
                    <ProtectedRoute>
                      <Layout>
-                       <div className="text-center py-12">
-                         <h1 className="text-2xl font-bold text-gray-900">Режиссеры</h1>
-                         <p className="text-gray-600 mt-2">Страница в разработке</p>
-                       </div>
+                       <Directors />
                      </Layout>
                    </ProtectedRoute>
                  }

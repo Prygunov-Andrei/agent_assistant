@@ -1,7 +1,8 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Q
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q, Count, Case, When, IntegerField
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
 from .models import Person
 from .serializers import (
@@ -13,6 +14,13 @@ from .serializers import (
     PersonTypeSerializer
 )
 from .services import person_matching_service
+
+
+class PersonPagination(PageNumberPagination):
+    """Пагинация для списка персон"""
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class PersonPermission(permissions.BasePermission):
@@ -65,6 +73,7 @@ class PersonViewSet(viewsets.ModelViewSet):
     
     queryset = Person.objects.all()
     permission_classes = [permissions.IsAuthenticated, PersonPermission]
+    pagination_class = PersonPagination
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -76,10 +85,23 @@ class PersonViewSet(viewsets.ModelViewSet):
         return PersonSerializer
     
     def get_queryset(self):
-        """Фильтрация queryset для списка активных персон"""
+        """Фильтрация queryset для списка активных персон с аннотацией количества проектов"""
         queryset = super().get_queryset()
+        
+        # Аннотация количества проектов для каждого типа персоны
+        queryset = queryset.annotate(
+            projects_count=Case(
+                When(person_type='casting_director', then=Count('casting_projects', distinct=True)),
+                When(person_type='director', then=Count('directed_projects', distinct=True)),
+                When(person_type='producer', then=Count('produced_projects', distinct=True)),
+                default=0,
+                output_field=IntegerField()
+            )
+        )
+        
         if self.action == 'list':
             queryset = queryset.filter(is_active=True)
+        
         return queryset
     
     @extend_schema(
@@ -96,13 +118,37 @@ class PersonViewSet(viewsets.ModelViewSet):
     
     @extend_schema(
         summary="Поиск персон",
-        description="Поиск персон по имени, типу и другим параметрам",
+        description="Расширенный поиск персон по имени, контактам, проектам и другим параметрам",
         parameters=[
             OpenApiParameter(
                 name='name',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
                 description='Часть имени персоны для поиска'
+            ),
+            OpenApiParameter(
+                name='phone',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Телефон для поиска'
+            ),
+            OpenApiParameter(
+                name='email',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Email для поиска'
+            ),
+            OpenApiParameter(
+                name='telegram',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Telegram username для поиска'
+            ),
+            OpenApiParameter(
+                name='project',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Название проекта для поиска'
             ),
             OpenApiParameter(
                 name='person_type',
@@ -116,28 +162,78 @@ class PersonViewSet(viewsets.ModelViewSet):
                 location=OpenApiParameter.QUERY,
                 description='Национальность для фильтрации'
             ),
+            OpenApiParameter(
+                name='sort',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Сортировка: created_at, -created_at, full_name, projects_count',
+                default='-created_at'
+            ),
         ],
         tags=["Персоны"]
     )
     @action(detail=False, methods=['get'])
     def search(self, request):
-        """Поиск персон по различным параметрам"""
+        """Расширенный поиск персон по различным параметрам"""
         queryset = self.get_queryset()
         
-        name = request.query_params.get('name', None)
-        person_type = request.query_params.get('person_type', None)
-        nationality = request.query_params.get('nationality', None)
-        
+        # Поиск по имени
+        name = request.query_params.get('name')
         if name:
             queryset = queryset.filter(
                 Q(first_name__icontains=name) |
                 Q(last_name__icontains=name) |
                 Q(middle_name__icontains=name)
             )
+        
+        # Поиск по контактам
+        phone = request.query_params.get('phone')
+        if phone:
+            queryset = queryset.filter(phone__icontains=phone)
+        
+        email = request.query_params.get('email')
+        if email:
+            queryset = queryset.filter(email__icontains=email)
+        
+        telegram = request.query_params.get('telegram')
+        if telegram:
+            queryset = queryset.filter(telegram_username__icontains=telegram)
+        
+        # Поиск по проектам
+        project = request.query_params.get('project')
+        if project:
+            queryset = queryset.filter(
+                Q(casting_projects__title__icontains=project) |
+                Q(directed_projects__title__icontains=project) |
+                Q(produced_projects__title__icontains=project)
+            ).distinct()
+        
+        # Фильтр по типу
+        person_type = request.query_params.get('person_type')
         if person_type:
             queryset = queryset.filter(person_type=person_type)
+        
+        # Фильтр по национальности
+        nationality = request.query_params.get('nationality')
         if nationality:
             queryset = queryset.filter(nationality__icontains=nationality)
+        
+        # Сортировка
+        sort_by = request.query_params.get('sort', '-created_at')
+        if sort_by == 'projects_count':
+            queryset = queryset.order_by('-projects_count')
+        elif sort_by == 'full_name':
+            queryset = queryset.order_by('last_name', 'first_name')
+        elif sort_by == 'created_at':
+            queryset = queryset.order_by('created_at')
+        else:  # -created_at по умолчанию
+            queryset = queryset.order_by('-created_at')
+        
+        # Используем пагинацию
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -316,4 +412,42 @@ class PersonViewSet(viewsets.ModelViewSet):
         """Получить список доступных типов персон"""
         types = person_matching_service.get_person_types()
         serializer = PersonTypeSerializer(types, many=True)
+        return Response(serializer.data)
+    
+    @extend_schema(
+        summary="Получить проекты персоны",
+        description="Получить список проектов, в которых участвует персона",
+        parameters=[
+            OpenApiParameter(
+                name='limit',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Количество проектов для вывода',
+                default=5
+            )
+        ],
+        tags=["Персоны"]
+    )
+    @action(detail=True, methods=['get'])
+    def projects(self, request, pk=None):
+        """Получить проекты персоны (последние N)"""
+        from projects.serializers import ProjectListSerializer
+        
+        person = self.get_object()
+        limit = int(request.query_params.get('limit', 5))
+        
+        # Получаем проекты в зависимости от типа персоны
+        if person.person_type == 'casting_director':
+            projects = person.casting_projects.filter(is_active=True)
+        elif person.person_type == 'director':
+            projects = person.directed_projects.filter(is_active=True)
+        elif person.person_type == 'producer':
+            projects = person.produced_projects.filter(is_active=True)
+        else:
+            projects = person.casting_projects.none()
+        
+        # Сортируем от новых к старым и ограничиваем количество
+        projects = projects.order_by('-created_at')[:limit]
+        
+        serializer = ProjectListSerializer(projects, many=True)
         return Response(serializer.data)

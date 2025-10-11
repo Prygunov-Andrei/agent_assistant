@@ -19,6 +19,8 @@ class Person(models.Model):
     
     first_name = models.CharField(
         max_length=100,
+        blank=True,
+        default='',
         verbose_name="Имя"
     )
     

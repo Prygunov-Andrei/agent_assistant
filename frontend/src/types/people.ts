@@ -1,3 +1,9 @@
+export interface PersonProject {
+  id: number;
+  title: string;
+  created_at: string;
+}
+
 export interface Person {
   id: number;
   person_type: 'director' | 'producer' | 'casting_director';
@@ -22,6 +28,8 @@ export interface Person {
   created_by: string;
   created_at: string;
   updated_at: string;
+  projects_count?: number;
+  recent_projects?: PersonProject[];
 }
 
 export interface PersonMatch extends Person {
@@ -73,4 +81,31 @@ export interface PersonSelectionProps {
   maxSelections?: number;
   personType?: 'director' | 'producer' | 'casting_director' | '';
   className?: string;
+}
+
+export interface PersonFormData {
+  person_type: 'director' | 'producer' | 'casting_director';
+  first_name?: string;
+  last_name: string;
+  middle_name?: string;
+  photo?: File | null;
+  bio?: string;
+  birth_date?: string;
+  nationality?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  telegram_username?: string;
+  kinopoisk_url?: string;
+  social_media?: Record<string, any>;
+  awards?: string;
+}
+
+export type PersonModalMode = 'view' | 'create' | 'edit';
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 }
