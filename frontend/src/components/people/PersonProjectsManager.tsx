@@ -102,9 +102,17 @@ export const PersonProjectsManager: React.FC<PersonProjectsManagerProps> = ({
       setSearchQuery('');
       setSearchResults([]);
       setShowSearch(false);
-    } catch (err) {
+    } catch (err: any) {
       ErrorHandler.logError(err, 'PersonProjectsManager.handleAddProject');
-      alert('Ошибка при добавлении проекта');
+      
+      // Показываем понятное сообщение об ошибке
+      if (err.response?.status === 403) {
+        alert(`❌ Нет прав для редактирования этого проекта\n\n` +
+              `Проект "${project.title}" может редактировать только его создатель.\n\n` +
+              `Вы можете попросить создателя проекта добавить вас в команду.`);
+      } else {
+        alert('Ошибка при добавлении проекта');
+      }
     }
   };
   
@@ -141,9 +149,18 @@ export const PersonProjectsManager: React.FC<PersonProjectsManagerProps> = ({
       
       // Удаляем из локального списка
       onProjectsChange(projects.filter(p => p.id !== projectId));
-    } catch (err) {
+    } catch (err: any) {
       ErrorHandler.logError(err, 'PersonProjectsManager.handleRemoveProject');
-      alert('Ошибка при удалении связи с проектом');
+      
+      // Показываем понятное сообщение об ошибке
+      if (err.response?.status === 403) {
+        const projectToRemove = projects.find(p => p.id === projectId);
+        alert(`❌ Нет прав для редактирования этого проекта\n\n` +
+              `Проект "${projectToRemove?.title}" может редактировать только его создатель.\n\n` +
+              `Вы можете попросить создателя проекта удалить вас из команды.`);
+      } else {
+        alert('Ошибка при удалении связи с проектом');
+      }
     }
   };
   
