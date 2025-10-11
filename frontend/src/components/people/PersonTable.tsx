@@ -43,13 +43,15 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
   
   useEffect(() => {
     loadPeople();
-  }, [personType, currentPage, searchParams]);
+  }, [personType, currentPage]);
   
   const loadPeople = async (newSearchParams?: PersonSearchParams) => {
     setLoading(true);
     setError(null);
     try {
       const params = newSearchParams || searchParams;
+      console.log('PersonTable.loadPeople с параметрами:', params);
+      
       const response = await peopleService.searchWithPagination({
         ...params,
         person_type: personType,
@@ -57,6 +59,7 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
         page_size: pageSize
       });
       
+      console.log('PersonTable.loadPeople результат:', response.count, 'записей');
       setPeople(response.results);
       setTotalCount(response.count);
       setTotalPages(Math.ceil(response.count / pageSize));
@@ -69,7 +72,7 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
   };
   
   const handleSearch = (params: PersonSearchParams) => {
-    setSearchParams(params);
+    console.log('PersonTable.handleSearch вызван с:', params);
     setCurrentPage(1);
     loadPeople(params);
   };
@@ -86,8 +89,11 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
     setModalOpen(true);
   };
   
-  const handleModalSuccess = () => {
-    loadPeople();
+  const handleModalSuccess = (person: Person | null) => {
+    console.log('PersonTable.handleModalSuccess вызван', person ? `для персоны ${person.id}` : 'для удаления');
+    // После успешного создания/обновления/удаления - перезагружаем с текущими параметрами
+    setCurrentPage(1); // Возвращаемся на первую страницу
+    loadPeople(searchParams); // Используем текущие параметры поиска
   };
   
   const getPersonTypeLabel = () => {
@@ -150,6 +156,8 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
         <PersonProjects 
           projects={person.recent_projects || []} 
           onProjectClick={handleProjectClick}
+          totalCount={person.projects_count}
+          showCount={true}
         />
       </td>
     </tr>

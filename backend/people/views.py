@@ -76,7 +76,8 @@ class PersonViewSet(viewsets.ModelViewSet):
     pagination_class = PersonPagination
     
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        # Явно устанавливаем is_active=True при создании
+        serializer.save(created_by=self.request.user, is_active=True)
     
     def get_serializer_class(self):
         """Выбор сериализатора в зависимости от действия"""
@@ -177,36 +178,47 @@ class PersonViewSet(viewsets.ModelViewSet):
         """Расширенный поиск персон по различным параметрам"""
         queryset = self.get_queryset()
         
-        # Поиск по имени
+        # Получаем все параметры поиска
         name = request.query_params.get('name')
-        if name:
-            queryset = queryset.filter(
-                Q(first_name__icontains=name) |
-                Q(last_name__icontains=name) |
-                Q(middle_name__icontains=name)
-            )
-        
-        # Поиск по контактам
         phone = request.query_params.get('phone')
-        if phone:
-            queryset = queryset.filter(phone__icontains=phone)
-        
         email = request.query_params.get('email')
-        if email:
-            queryset = queryset.filter(email__icontains=email)
-        
         telegram = request.query_params.get('telegram')
-        if telegram:
-            queryset = queryset.filter(telegram_username__icontains=telegram)
-        
-        # Поиск по проектам
         project = request.query_params.get('project')
+        
+        # Если хотя бы один из параметров поиска есть - строим общий OR запрос
+        search_filters = Q()
+        has_search = False
+        
+        if name:
+            search_filters |= Q(first_name__icontains=name)
+            search_filters |= Q(last_name__icontains=name)
+            search_filters |= Q(middle_name__icontains=name)
+            has_search = True
+        
+        if phone:
+            search_filters |= Q(phone__icontains=phone)
+            has_search = True
+        
+        if email:
+            search_filters |= Q(email__icontains=email)
+            has_search = True
+        
+        if telegram:
+            search_filters |= Q(telegram_username__icontains=telegram)
+            has_search = True
+        
         if project:
-            queryset = queryset.filter(
-                Q(casting_projects__title__icontains=project) |
-                Q(directed_projects__title__icontains=project) |
-                Q(produced_projects__title__icontains=project)
-            ).distinct()
+            search_filters |= Q(casting_projects__title__icontains=project)
+            search_filters |= Q(directed_projects__title__icontains=project)
+            search_filters |= Q(produced_projects__title__icontains=project)
+            has_search = True
+        
+        # Применяем фильтры если есть поисковый запрос
+        if has_search:
+            queryset = queryset.filter(search_filters).distinct()
+        
+        # Всегда фильтруем только активные персоны
+        queryset = queryset.filter(is_active=True)
         
         # Фильтр по типу
         person_type = request.query_params.get('person_type')

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { PersonSearchParams } from '../../types/people';
 
 interface PersonSearchBarProps {
@@ -10,19 +10,22 @@ export const PersonSearchBar: React.FC<PersonSearchBarProps> = ({ personType, on
   const [searchText, setSearchText] = useState('');
   const [sort, setSort] = useState<string>('-created_at');
   
-  const handleSearch = () => {
-    onSearch({
-      person_type: personType,
-      name: searchText,
-      sort
-    });
-  };
-  
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
+  // Живой поиск с debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearch({
+        person_type: personType,
+        name: searchText,
+        phone: searchText,
+        email: searchText,
+        telegram: searchText,
+        project: searchText,
+        sort
+      });
+    }, 300); // Задержка 300ms
+    
+    return () => clearTimeout(timer);
+  }, [searchText, sort, personType]);
   
   return (
     <div style={{ 
@@ -39,23 +42,15 @@ export const PersonSearchBar: React.FC<PersonSearchBarProps> = ({ personType, on
         type="text"
         value={searchText}
         onChange={(e) => setSearchText(e.target.value)}
-        onKeyPress={handleKeyPress}
-        placeholder="Поиск по ФИО, телефону, email, telegram..."
+        placeholder="Поиск по ФИО, телефону, email, telegram, проектам..."
         className="form-input"
         style={{ flex: 1 }}
       />
       <select
         value={sort}
-        onChange={(e) => {
-          setSort(e.target.value);
-          onSearch({
-            person_type: personType,
-            name: searchText,
-            sort: e.target.value
-          });
-        }}
+        onChange={(e) => setSort(e.target.value)}
         className="form-input"
-        style={{ width: '200px' }}
+        style={{ width: '220px' }}
       >
         <option value="-created_at">Сначала новые</option>
         <option value="created_at">Сначала старые</option>
@@ -63,13 +58,6 @@ export const PersonSearchBar: React.FC<PersonSearchBarProps> = ({ personType, on
         <option value="-projects_count">Больше проектов</option>
         <option value="projects_count">Меньше проектов</option>
       </select>
-      <button
-        onClick={handleSearch}
-        className="btn btn-primary"
-        style={{ whiteSpace: 'nowrap' }}
-      >
-        🔍 Поиск
-      </button>
     </div>
   );
 };

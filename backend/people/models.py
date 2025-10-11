@@ -151,14 +151,14 @@ class Person(models.Model):
         ]
     
     def __str__(self):
-        if self.middle_name:
-            return f"{self.last_name} {self.first_name} {self.middle_name}"
-        return f"{self.last_name} {self.first_name}"
+        return self.full_name
     
     @property
     def full_name(self):
         """Полное имя персоны"""
-        parts = [self.last_name, self.first_name]
+        parts = [self.last_name]
+        if self.first_name:
+            parts.append(self.first_name)
         if self.middle_name:
             parts.append(self.middle_name)
         return " ".join(parts)
@@ -166,6 +166,12 @@ class Person(models.Model):
     @property
     def short_name(self):
         """Краткое имя (Фамилия И.О.)"""
+        parts = [self.last_name]
+        
+        if self.first_name:
+            parts.append(f"{self.first_name[0]}.")
+            
         if self.middle_name:
-            return f"{self.last_name} {self.first_name[0]}.{self.middle_name[0]}."
-        return f"{self.last_name} {self.first_name[0]}."
+            parts.append(f"{self.middle_name[0]}.")
+        
+        return " ".join(parts)

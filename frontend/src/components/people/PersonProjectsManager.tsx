@@ -63,7 +63,22 @@ export const PersonProjectsManager: React.FC<PersonProjectsManagerProps> = ({
   
   const handleAddProject = async (project: ProjectSearchResult) => {
     try {
-      // Обновляем проект, добавляя ссылку на персону
+      const newProject: PersonProject = {
+        id: project.id,
+        title: project.title,
+        created_at: new Date().toISOString()
+      };
+      
+      // Если personId = 0, то мы в режиме создания - только локально добавляем
+      if (personId === 0) {
+        onProjectsChange([...projects, newProject]);
+        setSearchQuery('');
+        setSearchResults([]);
+        setShowSearch(false);
+        return;
+      }
+      
+      // Иначе обновляем проект через API
       const updateData: any = {};
       
       if (personType === 'casting_director') {
@@ -73,19 +88,16 @@ export const PersonProjectsManager: React.FC<PersonProjectsManagerProps> = ({
       } else if (personType === 'producer') {
         // Для продюсеров - это ManyToMany, нужно добавить в список
         const projectDetails = await projectsService.getProject(project.id);
-        const existingProducers = projectDetails.producers?.map((p: any) => p.id) || [];
+        // Фильтруем null значения
+        const existingProducers = (projectDetails.producers || [])
+          .map((p: any) => p?.id)
+          .filter((id: any) => id != null);
         updateData.producers = [...existingProducers, personId];
       }
       
       await projectsService.updateProject(project.id, updateData);
       
       // Добавляем проект в локальный список
-      const newProject: PersonProject = {
-        id: project.id,
-        title: project.title,
-        created_at: new Date().toISOString()
-      };
-      
       onProjectsChange([...projects, newProject]);
       setSearchQuery('');
       setSearchResults([]);
@@ -102,7 +114,13 @@ export const PersonProjectsManager: React.FC<PersonProjectsManagerProps> = ({
     }
     
     try {
-      // Обновляем проект, удаляя ссылку на персону
+      // Если personId = 0, то мы в режиме создания - только локально удаляем
+      if (personId === 0) {
+        onProjectsChange(projects.filter(p => p.id !== projectId));
+        return;
+      }
+      
+      // Иначе обновляем проект через API, удаляя ссылку на персону
       const updateData: any = {};
       
       if (personType === 'casting_director') {
@@ -112,7 +130,10 @@ export const PersonProjectsManager: React.FC<PersonProjectsManagerProps> = ({
       } else if (personType === 'producer') {
         // Для продюсеров - удаляем из списка
         const projectDetails = await projectsService.getProject(projectId);
-        const existingProducers = projectDetails.producers?.map((p: any) => p.id) || [];
+        // Фильтруем null значения
+        const existingProducers = (projectDetails.producers || [])
+          .map((p: any) => p?.id)
+          .filter((id: any) => id != null);
         updateData.producers = existingProducers.filter((id: number) => id !== personId);
       }
       

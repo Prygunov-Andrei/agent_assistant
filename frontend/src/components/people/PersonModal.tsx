@@ -33,6 +33,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({
   const [person, setPerson] = useState<Person | null>(null);
   const [currentPersonId, setCurrentPersonId] = useState<number | undefined>(personId);
   const [allProjects, setAllProjects] = useState<PersonProject[]>([]);
+  const [pendingProjects, setPendingProjects] = useState<PersonProject[]>([]); // Проекты для создания
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -108,19 +109,53 @@ export const PersonModal: React.FC<PersonModalProps> = ({
         // Сохраняем ID созданной персоны
         setCurrentPersonId(result.id);
         
-        // После успешного создания - переключаемся в режим редактирования
-        // чтобы пользователь мог добавить проекты
-        setPerson(result);
-        setMode('edit');
+        // Если есть предварительно выбранные проекты - привязываем их
+        if (pendingProjects.length > 0) {
+          try {
+            for (const project of pendingProjects) {
+              console.log('Привязка проекта:', project.id, 'к персоне:', result.id, 'тип:', personType);
+              
+              // Загружаем полные данные проекта
+              const projectDetails = await projectsService.getProject(project.id);
+              
+              const updateData: any = {};
+              
+              if (personType === 'casting_director') {
+                updateData.casting_director = result.id;
+              } else if (personType === 'director') {
+                updateData.director = result.id;
+              } else if (personType === 'producer') {
+                // Фильтруем null значения и берем только id
+                const existingProducers = (projectDetails.producers || [])
+                  .map((p: any) => p?.id)
+                  .filter((id: any) => id != null);
+                console.log('Существующие продюсеры:', existingProducers);
+                updateData.producers = [...existingProducers, result.id];
+              }
+              
+              console.log('Данные для PATCH:', JSON.stringify(updateData));
+              const updated = await projectsService.updateProject(project.id, updateData);
+              console.log('Проект обновлен:', updated);
+            }
+          } catch (err: any) {
+            console.error('Ошибка привязки проектов:', err);
+            console.error('Детали ошибки:', err.response?.data);
+            ErrorHandler.logError(err, 'PersonModal.linkPendingProjects');
+            // Показываем детальную ошибку
+            const errorDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+            alert(`Не удалось привязать проекты:\n${errorDetail}\n\nВы можете добавить их позже через редактирование.`);
+          }
+        }
         
-        // Загружаем проекты (пока пустой массив)
-        const projects = await peopleService.getPersonProjects(result.id, 100);
-        setAllProjects(projects);
+        // Уведомляем родителя об успехе и закрываем окно
+        console.log('PersonModal: персона создана успешно', result);
+        if (onSuccess) {
+          console.log('PersonModal: вызываем onSuccess');
+          onSuccess(result);
+        }
+        console.log('PersonModal: закрываем окно');
+        onClose();
         
-        // Уведомляем родителя об успехе
-        onSuccess?.(result);
-        
-        // НЕ закрываем окно - остаемся в режиме редактирования
         setLoading(false);
         return;
       } else {
@@ -274,7 +309,18 @@ export const PersonModal: React.FC<PersonModalProps> = ({
               onCancel={onClose}
               mode={mode}
             >
-              {/* Управление проектами в режиме редактирования */}
+              {/* Управление проектами в режиме создания */}
+              {mode === 'create' && (
+                <PersonProjectsManager
+                  personId={0} // Временный ID для режима создания
+                  personType={personType}
+                  projects={pendingProjects}
+                  onProjectsChange={(newProjects) => {
+                    setPendingProjects(newProjects);
+                  }}
+                />
+              )}
+              
               {mode === 'edit' && person && (
                 <PersonProjectsManager
                   personId={person.id}
