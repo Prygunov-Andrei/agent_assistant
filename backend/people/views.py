@@ -221,12 +221,16 @@ class PersonViewSet(viewsets.ModelViewSet):
         # Сортировка
         sort_by = request.query_params.get('sort', '-created_at')
         if sort_by == 'projects_count':
+            queryset = queryset.order_by('projects_count')
+        elif sort_by == '-projects_count':
             queryset = queryset.order_by('-projects_count')
         elif sort_by == 'full_name':
             queryset = queryset.order_by('last_name', 'first_name')
         elif sort_by == 'created_at':
             queryset = queryset.order_by('created_at')
-        else:  # -created_at по умолчанию
+        elif sort_by == '-created_at':
+            queryset = queryset.order_by('-created_at')
+        else:  # по умолчанию сортируем по дате создания
             queryset = queryset.order_by('-created_at')
         
         # Используем пагинацию

@@ -43,7 +43,7 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
   
   useEffect(() => {
     loadPeople();
-  }, [personType, currentPage]);
+  }, [personType, currentPage, searchParams]);
   
   const loadPeople = async (newSearchParams?: PersonSearchParams) => {
     setLoading(true);
