@@ -164,14 +164,14 @@ const ProjectCreationModal: React.FC<ProjectCreationModalProps> = ({
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center" 
         style={{ 
-          position: 'fixed !important', 
-          top: '0 !important', 
-          left: '0 !important', 
-          right: '0 !important', 
-          bottom: '0 !important', 
-          zIndex: '9999 !important',
-          width: '100vw !important',
-          height: '100vh !important'
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          zIndex: 9999,
+          width: '100vw',
+          height: '100vh'
         }}
       >
         <AnimatedContainer animation="scaleIn" className="w-full h-full">

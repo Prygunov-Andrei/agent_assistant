@@ -23,7 +23,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Конфигурация
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8000/api')
+# Для Docker используем имя сервиса (backend), для локального запуска - localhost
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://backend:8000/api')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://your-domain.com/webhook')
 

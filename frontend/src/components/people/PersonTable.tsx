@@ -36,13 +36,13 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
   const [pageSize] = useState(20);
   
   // Текущие параметры поиска
-  const [searchParams, setSearchParams] = useState<PersonSearchParams>({
+  const [searchParams, setSearchParamsState] = useState<PersonSearchParams>({
     person_type: personType,
     sort: '-created_at'
   });
   
   useEffect(() => {
-    loadPeople();
+    loadPeople(searchParams);
   }, [personType, currentPage]);
   
   const loadPeople = async (newSearchParams?: PersonSearchParams) => {
@@ -63,6 +63,7 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
       setPeople(response.results);
       setTotalCount(response.count);
       setTotalPages(Math.ceil(response.count / pageSize));
+      setSearchParamsState(params);
     } catch (err) {
       ErrorHandler.logError(err, 'PersonTable.loadPeople');
       setError('Ошибка загрузки персон');

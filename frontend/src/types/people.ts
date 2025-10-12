@@ -33,6 +33,7 @@ export interface Person {
 }
 
 export interface PersonMatch extends Person {
+  name?: string; // Для совместимости с CompanyMatch
   score: number;
   confidence: 'high' | 'medium' | 'low';
 }
@@ -59,13 +60,18 @@ export interface PersonType {
 }
 
 export interface PersonSearchParams {
+  name?: string;
   email?: string;
   phone?: string;
+  telegram?: string; // Альтернатива telegram_username
   telegram_username?: string;
   first_name?: string;
   last_name?: string;
   person_type?: string;
   limit?: number;
+  sort?: string;
+  page?: number;
+  page_size?: number;
 }
 
 export interface PersonNameSearchParams {

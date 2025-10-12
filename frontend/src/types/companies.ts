@@ -19,6 +19,7 @@ export interface Company {
 export interface CompanyMatch {
   id: number;
   name: string;
+  full_name?: string; // Для совместимости с PersonMatch
   company_type: CompanyTypeValue;
   company_type_display: string;
   description?: string;
@@ -39,6 +40,11 @@ export interface CompanySearchRequest {
   website?: string;
   email?: string;
   company_type?: CompanyTypeValue;
+}
+
+export interface CompanySearchResponse {
+  matches: CompanyMatch[];
+  total: number;
 }
 
 export interface CompanyType {

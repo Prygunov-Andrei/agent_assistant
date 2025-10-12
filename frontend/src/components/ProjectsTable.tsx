@@ -6,91 +6,17 @@ import VirtualizedList from './common/VirtualizedList';
 import { TableSkeleton } from './common/SkeletonLoader';
 import AnimatedContainer from './common/AnimatedContainer';
 import ProjectFormModal from './projects/ProjectFormModal';
-
-interface Project {
-  id: number;
-  title: string;
-  project_type: {
-    id: number;
-    name: string;
-  };
-  genre: {
-    id: number;
-    name: string;
-  };
-  description?: string;
-  premiere_date?: string;
-  status?: string;
-  casting_director?: {
-    id: number;
-    name: string;
-  };
-  director?: {
-    id: number;
-    name: string;
-  };
-  producer?: {
-    id: number;
-    name: string;
-  };
-  production_company?: {
-    id: number;
-    name: string;
-  };
-  roles: Array<{
-    id: number;
-    name: string;
-    description?: string;
-    role_type?: {
-      id: number;
-      name: string;
-    };
-    gender?: string;
-    age_min?: number;
-    age_max?: number;
-    media_presence?: string;
-    height?: string;
-    body_type?: string;
-    hair_color?: string;
-    eye_color?: string;
-    hairstyle?: string;
-    clothing_size?: string;
-    shoe_size?: {
-      id: number;
-      name: string;
-    };
-    nationality?: {
-      id: number;
-      name: string;
-    };
-    rate_per_shift?: string;
-    shooting_dates?: string;
-    shooting_location?: string;
-    rate_conditions?: string;
-    skills_required?: Array<{
-      id?: number;
-      name: string;
-    }>;
-  }>;
-  created_at: string;
-  request?: {
-    id: number;
-    text: string;
-  };
-}
+import type { ProjectExpanded } from '../types/projects';
 
 const ProjectsTable: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectExpanded[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Состояния модального окна просмотра
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectExpanded | null>(null);
   
-  // Состояние для модального окна удаления
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -99,7 +25,7 @@ const ProjectsTable: React.FC = () => {
       const response = await projectsService.getProjects();
       // API возвращает { results: [...], count: N, next: ..., previous: ... }
       const data = response.results || response;
-      setProjects(Array.isArray(data) ? data : []);
+      setProjects(Array.isArray(data) ? (data as unknown as ProjectExpanded[]) : []);
     } catch (err) {
       ErrorHandler.logError(err, 'ProjectsTable.fetchProjects');
       setError('Ошибка загрузки проектов');
@@ -113,10 +39,10 @@ const ProjectsTable: React.FC = () => {
   }, []);
 
   // Обработчик клика по строке проекта
-  const handleRowClick = async (project: Project) => {
+  const handleRowClick = async (project: ProjectExpanded) => {
     try {
       // Загружаем ПОЛНЫЕ данные проекта с API (включая все роли с деталями)
-      const fullProject = await projectsService.getProject(project.id);
+      const fullProject = await projectsService.getProject(project.id) as unknown as ProjectExpanded;
       console.log('Полный проект:', fullProject);
       setSelectedProject(fullProject);
       setShowViewModal(true);
@@ -132,42 +58,9 @@ const ProjectsTable: React.FC = () => {
     setSelectedProject(null);
   };
 
-  // Открытие модального окна удаления
-  const handleDeleteClick = (e: React.MouseEvent, projectId: number) => {
-    e.stopPropagation();
-    setProjectToDelete(projectId);
-    setShowDeleteModal(true);
-  };
-
-  // Подтверждение удаления
-  const handleConfirmDelete = async () => {
-    if (!projectToDelete) return;
-    
-    try {
-      await projectsService.deleteProject(projectToDelete);
-      setProjects(projects.filter(p => p.id !== projectToDelete));
-      setShowDeleteModal(false);
-      setProjectToDelete(null);
-      
-      // Если удаляем текущий просматриваемый проект, закрываем окно
-      if (selectedProject?.id === projectToDelete) {
-        setShowViewModal(false);
-        setSelectedProject(null);
-      }
-    } catch (err) {
-      ErrorHandler.logError(err, 'ProjectsTable.handleConfirmDelete');
-      alert('Ошибка при удалении проекта');
-    }
-  };
-
-  // Отмена удаления
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
-    setProjectToDelete(null);
-  };
 
   // Рендер строки таблицы
-  const renderProjectRow = (project: Project, _index: number) => (
+  const renderProjectRow = (project: ProjectExpanded, _index: number) => (
     <tr 
       key={project.id} 
       className="requests-table-row hover:bg-blue-50 cursor-pointer transition-colors duration-200"
@@ -300,113 +193,6 @@ const ProjectsTable: React.FC = () => {
         onClose={handleCloseViewModal}
         projectData={selectedProject}
       />
-
-      {/* Delete Confirmation Dialog */}
-      {showDeleteModal && (
-        <div 
-          style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0, 
-            backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-            zIndex: 1000000, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            animation: 'fadeIn 0.2s ease-in-out'
-          }}
-          onClick={handleCancelDelete}
-        >
-          <div 
-            style={{ 
-              backgroundColor: 'white', 
-              borderRadius: '12px', 
-              padding: '28px', 
-              maxWidth: '440px', 
-              width: '90%',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-              animation: 'slideIn 0.2s ease-out'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ 
-                width: '48px', 
-                height: '48px', 
-                borderRadius: '50%', 
-                backgroundColor: '#fee2e2', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
-                </svg>
-              </div>
-              <div>
-                <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '4px', color: '#111827' }}>
-                  Удалить проект?
-                </h3>
-                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                  Это действие нельзя отменить
-                </p>
-              </div>
-            </div>
-            
-            <p style={{ color: '#4b5563', marginBottom: '24px', fontSize: '15px', lineHeight: '1.5' }}>
-              Вы уверены, что хотите удалить этот проект? Все роли и связанные данные будут безвозвратно удалены из системы.
-            </p>
-            
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button 
-                onClick={handleCancelDelete} 
-                style={{ 
-                  padding: '10px 20px', 
-                  border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  cursor: 'pointer', 
-                  backgroundColor: 'white', 
-                  color: '#374151',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f9fafb';
-                  e.currentTarget.style.borderColor = '#9ca3af';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                }}
-              >
-                Отмена
-              </button>
-              <button 
-                onClick={handleConfirmDelete} 
-                style={{ 
-                  padding: '10px 20px', 
-                  border: 'none', 
-                  borderRadius: '8px', 
-                  cursor: 'pointer', 
-                  backgroundColor: '#dc2626', 
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-              >
-                Удалить проект
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

@@ -182,6 +182,7 @@ class TelegramWebhookDataSerializer(serializers.Serializer):
             forward_from_chat = message['forward_from_chat']
             author_id = forward_from_chat.get('id')
             chat_name = forward_from_chat.get('title') or f"Chat_{author_id}"
+            author_username = forward_from_chat.get('username', '')  # Каналы тоже могут иметь username
             
             author_name = chat_name
         else:

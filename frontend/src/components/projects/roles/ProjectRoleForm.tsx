@@ -411,7 +411,7 @@ export const ProjectRoleForm: React.FC<ProjectRoleFormProps> = ({
               Предложенные артисты
             </label>
             <ArtistSelectionComponent
-              selectedArtists={formData.suggested_artists}
+              selectedArtists={formData.suggested_artists || []}
               onSelectionChange={(artistIds) => handleInputChange('suggested_artists', artistIds)}
               placeholder="Выберите артистов для этой роли..."
               maxSelections={10}

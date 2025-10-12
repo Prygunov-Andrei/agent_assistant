@@ -45,7 +45,7 @@ export const PersonProjectsManager: React.FC<PersonProjectsManagerProps> = ({
         !projects.find(existing => existing.id === p.id)
       );
       
-      setSearchResults(filtered.slice(0, 10));
+      setSearchResults(filtered.slice(0, 10) as unknown as ProjectSearchResult[]);
     } catch (err) {
       ErrorHandler.logError(err, 'PersonProjectsManager.handleSearch');
     } finally {

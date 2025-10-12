@@ -87,27 +87,6 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   // Ref для отслеживания кликов вне dropdown
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Загрузка справочников
-  const loadReferences = async () => {
-    try {
-      const [types, genres, roleTypes, shoeSizes, nationalities, skills] = await Promise.all([
-        projectsService.getProjectTypes(),
-        projectsService.getGenres(),
-        projectsService.getRoleTypes(),
-        projectsService.getShoeSizes(),
-        projectsService.getNationalities(),
-        artistsService.getSkills()
-      ]);
-      setProjectTypesList(types);
-      setGenresList(genres);
-      setRoleTypesList(roleTypes);
-      setShoeSizesList(shoeSizes);
-      setNationalitiesList(nationalities);
-      setSkillsList(skills);
-    } catch (err) {
-      ErrorHandler.logError(err, 'ProjectFormModal.loadReferences');
-    }
-  };
 
   // Инициализация при открытии
   useEffect(() => {
@@ -197,16 +176,16 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       
       // Предзаполнение команды
       if (contacts?.casting_director) {
-        await searchCastingDirector(contacts.casting_director);
+        await searchCastingDirector(contacts.casting_director.name);
       }
       if (contacts?.director) {
-        await searchDirector(contacts.director);
+        await searchDirector(contacts.director.name);
       }
-      if (contacts?.producer) {
-        await searchProducer(contacts.producer);
+      if (contacts?.producers && contacts.producers.length > 0) {
+        await searchProducer(contacts.producers[0].name);
       }
       if (contacts?.production_company) {
-        await searchCompany(contacts.production_company);
+        await searchCompany(contacts.production_company.name);
       }
       
       // Предзаполнение ролей
@@ -378,16 +357,16 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   // Поиск персон с отображением dropdown
   const searchPerson = async (name: string, type: 'casting_director' | 'director' | 'producer') => {
     try {
-      const results = await peopleService.searchPersons({ full_name: name, person_type: type });
+      const results = await peopleService.searchPersonsByName({ name, person_type: type });
       
       if (type === 'casting_director') {
-        setCastingDirectorSearch(results.matches || []);
+        setCastingDirectorSearch(results || []);
         setShowCastingDirectorDropdown(true);
       } else if (type === 'director') {
-        setDirectorSearch(results.matches || []);
+        setDirectorSearch(results || []);
         setShowDirectorDropdown(true);
       } else if (type === 'producer') {
-        setProducerSearch(results.matches || []);
+        setProducerSearch(results || []);
         setShowProducerDropdown(true);
       }
     } catch (err) {
@@ -411,10 +390,10 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 
   const searchCastingDirector = async (name: string) => {
     try {
-      const results = await peopleService.searchPersons({ full_name: name, person_type: 'casting_director' });
-      setCastingDirectorSearch(results.matches || []);
-      if (results.matches && results.matches.length > 0) {
-        setCastingDirector(results.matches[0]);
+      const results = await peopleService.searchPersonsByName({ name, person_type: 'casting_director' });
+      setCastingDirectorSearch(results || []);
+      if (results && results.length > 0) {
+        setCastingDirector(results[0]);
       } else {
         setCastingDirector({ id: null, name });
       }
@@ -425,10 +404,10 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 
   const searchDirector = async (name: string) => {
     try {
-      const results = await peopleService.searchPersons({ full_name: name, person_type: 'director' });
-      setDirectorSearch(results.matches || []);
-      if (results.matches && results.matches.length > 0) {
-        setDirector(results.matches[0]);
+      const results = await peopleService.searchPersonsByName({ name, person_type: 'director' });
+      setDirectorSearch(results || []);
+      if (results && results.length > 0) {
+        setDirector(results[0]);
       } else {
         setDirector({ id: null, name });
       }
@@ -439,10 +418,10 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 
   const searchProducer = async (name: string) => {
     try {
-      const results = await peopleService.searchPersons({ full_name: name, person_type: 'producer' });
-      setProducerSearch(results.matches || []);
-      if (results.matches && results.matches.length > 0) {
-        setProducer(results.matches[0]);
+      const results = await peopleService.searchPersonsByName({ name, person_type: 'producer' });
+      setProducerSearch(results || []);
+      if (results && results.length > 0) {
+        setProducer(results[0]);
       } else {
         setProducer({ id: null, name });
       }
@@ -453,11 +432,9 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 
   const searchCompany = async (name: string) => {
     try {
-      const results = await companiesService.searchCompanies(name);
-      setCompanySearch(results.matches || results || []);
-      if (results.matches && results.matches.length > 0) {
-        setProductionCompany(results.matches[0]);
-      } else if (results && results.length > 0) {
+      const results = await companiesService.searchCompanies({ name, limit: 5 });
+      setCompanySearch(results || []);
+      if (results && results.length > 0) {
         setProductionCompany(results[0]);
       } else {
         setProductionCompany({ id: null, name });

@@ -5,12 +5,11 @@ import { MediaViewer } from '../../MediaViewer';
 
 interface ModalContextPanelProps {
   request: RequestListItem;
-  analysisResult?: LLMAnalysisResult | null;
+  analysisResult?: LLMAnalysisResult;
 }
 
 const ModalContextPanel: React.FC<ModalContextPanelProps> = ({
   request,
-  analysisResult,
 }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -30,8 +29,6 @@ const ModalContextPanel: React.FC<ModalContextPanelProps> = ({
           <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2">
             Контекст запроса
           </h3>
-          
-          {/* Информация об авторе и дате */}
           <div className="space-y-2 text-xs md:text-sm text-gray-600">
             <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
               <span className="font-medium">Автор:</span>
@@ -57,10 +54,8 @@ const ModalContextPanel: React.FC<ModalContextPanelProps> = ({
         </div>
       </div>
 
-      {/* Содержимое панели - текст запроса и медиафайлы */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-3 md:p-4 space-y-4">
-          {/* Текст запроса */}
           <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 shadow-sm">
             <h4 className="font-medium text-gray-900 mb-3 text-sm md:text-base">
               Полный текст запроса
@@ -69,8 +64,6 @@ const ModalContextPanel: React.FC<ModalContextPanelProps> = ({
               {request.text}
             </div>
           </div>
-          
-          {/* Медиафайлы */}
           <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 shadow-sm">
             <h4 className="font-medium text-gray-900 mb-3 text-sm md:text-base">
               Медиафайлы
@@ -78,9 +71,8 @@ const ModalContextPanel: React.FC<ModalContextPanelProps> = ({
             <div className="max-h-32 md:max-h-48 overflow-y-auto">
               <MediaViewer 
                 requestId={request.id}
-                showImages={true}
-                showDocuments={true}
-                compact={true}
+                showImages
+                showDocuments
               />
             </div>
           </div>

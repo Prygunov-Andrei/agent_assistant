@@ -203,9 +203,13 @@ export const RoleTabs: React.FC<RoleTabsProps> = ({
                   Требуемые навыки
                 </label>
                 <p className="text-sm text-gray-900">
-                  {roles[activeTab]?.skills_required?.length > 0 
-                    ? roles[activeTab].skills_required?.join(', ') || ''
-                    : 'Не указано'}
+                  {(() => {
+                    const currentRole = roles[activeTab];
+                    if (currentRole && currentRole.skills_required && currentRole.skills_required.length > 0) {
+                      return currentRole.skills_required.join(', ');
+                    }
+                    return 'Не указано';
+                  })()}
                 </p>
               </div>
 
@@ -214,9 +218,13 @@ export const RoleTabs: React.FC<RoleTabsProps> = ({
                   Предложенные артисты
                 </label>
                 <p className="text-sm text-gray-900">
-                  {roles[activeTab]?.suggested_artists?.length > 0 
-                    ? `${roles[activeTab].suggested_artists.length} артистов`
-                    : 'Не выбрано'}
+                  {(() => {
+                    const currentRole = roles[activeTab];
+                    if (currentRole && currentRole.suggested_artists && currentRole.suggested_artists.length > 0) {
+                      return `${currentRole.suggested_artists.length} артистов`;
+                    }
+                    return 'Не выбрано';
+                  })()}
                 </p>
               </div>
             </div>

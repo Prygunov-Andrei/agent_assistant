@@ -2,10 +2,13 @@
 
 export interface LLMAnalysisResult {
   project_analysis: ProjectAnalysis;
+  contacts?: ProjectContacts; // Для прямого доступа
 }
 
 export interface ProjectAnalysis {
+  title?: string; // Альтернатива project_title
   project_title: string;
+  project_description?: string; // Альтернатива description
   project_type: string;
   project_type_raw?: string;
   genre: string;
@@ -17,11 +20,15 @@ export interface ProjectAnalysis {
 }
 
 export interface ProjectRole {
+  role_name?: string; // Альтернатива character_name
   role_type: string;
   character_name: string;
+  role_description?: string; // Альтернатива description
   description: string;
   age_range: string;
   gender: string;
+  media_presence?: string;
+  audition_requirements?: string;
   suggested_artists: number[];
   skills_required: SkillsRequired;
   confidence?: number;

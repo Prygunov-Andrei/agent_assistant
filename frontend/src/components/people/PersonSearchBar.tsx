@@ -19,13 +19,12 @@ export const PersonSearchBar: React.FC<PersonSearchBarProps> = ({ personType, on
         phone: searchText,
         email: searchText,
         telegram: searchText,
-        project: searchText,
         sort
       });
     }, 300); // Задержка 300ms
     
     return () => clearTimeout(timer);
-  }, [searchText, sort, personType]);
+  }, [searchText, sort, personType, onSearch]);
   
   return (
     <div style={{ 

@@ -271,8 +271,11 @@ export interface Project {
   project_type_raw?: string; // Сырой тип из LLM
   genre?: number; // ID жанра
   director?: number; // ID персоны
+  casting_director?: number; // ID кастинг-директора
+  producers?: number[]; // ID продюсеров
   production_company?: number; // ID компании
   request?: number; // ID исходного запроса
+  roles?: ProjectRole[]; // Роли в проекте
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -361,3 +364,4 @@ export interface CreateArtistRequest {
 export * from './projects';
 export * from './matching';
 export * from './media';
+export * from './people';

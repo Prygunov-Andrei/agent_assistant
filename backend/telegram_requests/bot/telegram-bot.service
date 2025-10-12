@@ -1,0 +1,22 @@
+[Unit]
+Description=Telegram Bot for Agent Assistant
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/agent_assistant/backend
+Environment="PATH=/opt/agent_assistant/backend/venv/bin"
+EnvironmentFile=/opt/agent_assistant/.env
+ExecStart=/opt/agent_assistant/backend/venv/bin/python /opt/agent_assistant/backend/telegram_requests/bot/bot.py
+Restart=always
+RestartSec=10
+
+# Логирование
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=telegram-bot
+
+[Install]
+WantedBy=multi-user.target
+

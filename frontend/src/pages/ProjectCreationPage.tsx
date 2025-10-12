@@ -211,15 +211,14 @@ const ProjectCreationPage: React.FC = () => {
                     initialData={analysisResult?.project_analysis ? {
                       title: analysisResult.project_analysis.project_title,
                       description: analysisResult.project_analysis.project_description,
-                      project_type: analysisResult.project_analysis.project_type,
-                      genre: analysisResult.project_analysis.genre,
+                      project_type: 0, // Будет определён в форме на основе project_type_raw
                       premiere_date: analysisResult.project_analysis.premiere_date,
                       roles: analysisResult.project_analysis.roles.map(role => ({
-                        name: role.role_name,
-                        description: role.role_description,
-                        media_presence: role.media_presence,
+                        name: role.role_name || role.character_name,
+                        description: role.role_description || role.description,
+                        media_presence: role.media_presence as 'yes' | 'no' | 'doesnt_matter' | undefined,
                         audition_requirements: role.audition_requirements,
-                        skills_required: role.skills_required,
+                        skills_required: role.skills_required?.acting_skills || [],
                         suggested_artists: [],
                       })),
                     } : undefined}

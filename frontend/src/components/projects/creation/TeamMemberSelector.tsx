@@ -69,13 +69,13 @@ export const TeamMemberSelector: React.FC<TeamMemberSelectorProps> = ({
           name: llmSuggestion,
           limit: 5
         });
-        setMatches(personMatches);
+        setMatches(personMatches as unknown as (PersonMatch | CompanyMatch)[]);
       } else {
         const companyMatches = await companiesService.searchCompanies({
           name: llmSuggestion,
           limit: 5
         });
-        setMatches(companyMatches);
+        setMatches(companyMatches as unknown as (PersonMatch | CompanyMatch)[]);
       }
     } catch (error) {
       ErrorHandler.logError(error, `TeamMemberSelector.findMatches.${type}`);
@@ -87,7 +87,8 @@ export const TeamMemberSelector: React.FC<TeamMemberSelectorProps> = ({
 
   const handleSelectMatch = (match: PersonMatch | CompanyMatch) => {
     setSelectedMatch(match);
-    onSelectionChange(match.id, match.full_name || match.name);
+    const displayName = ('full_name' in match && match.full_name) || ('name' in match && match.name) || '';
+    onSelectionChange(match.id, displayName);
   };
 
   const handleCreateNew = () => {
@@ -166,7 +167,9 @@ export const TeamMemberSelector: React.FC<TeamMemberSelectorProps> = ({
           <div className="flex items-start space-x-2">
             <span className="text-lg">✅</span>
             <div className="flex-1">
-              <p className="text-sm font-medium text-green-800">Выбрано: {selectedMatch.full_name || selectedMatch.name}</p>
+              <p className="text-sm font-medium text-green-800">
+                Выбрано: {('full_name' in selectedMatch && selectedMatch.full_name) || ('name' in selectedMatch && selectedMatch.name) || ''}
+              </p>
               {selectedMatch.email && <p className="text-xs text-green-600 mt-1">{selectedMatch.email}</p>}
               {selectedMatch.phone && <p className="text-xs text-green-600">{selectedMatch.phone}</p>}
             </div>
@@ -216,7 +219,7 @@ export const TeamMemberSelector: React.FC<TeamMemberSelectorProps> = ({
                       <span className="text-lg">{getConfidenceIcon(confidence)}</span>
                       <div>
                         <p className="text-sm font-medium text-gray-800">
-                          {match.full_name || match.name}
+                          {('full_name' in match && match.full_name) || ('name' in match && match.name) || ''}
                         </p>
                         {match.email && <p className="text-xs text-gray-600 mt-1">{match.email}</p>}
                         {match.phone && <p className="text-xs text-gray-600">{match.phone}</p>}

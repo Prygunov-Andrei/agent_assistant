@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build:
+      context: ./backend
+      dockerfile: telegram_requests/bot/Dockerfile
+    container_name: agent_assistant_telegram_bot
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - API_BASE_URL=${API_BASE_URL:-http://backend:8000/api}
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+    env_file:
+      - .env
+    networks:
+      - agent_assistant_agent_network
+    # Логи
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "bot.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  agent_assistant_agent_network:
+    external: true
+

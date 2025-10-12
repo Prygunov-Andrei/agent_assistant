@@ -6,7 +6,7 @@ import type { LLMAnalysisResult } from '../../../types/llm';
 import { projectsService } from '../../../services/projects';
 import { ErrorHandler } from '../../../utils/errorHandler';
 import ArtistSelectionComponent from '../roles/ArtistSelectionComponent';
-import { CompanySelectionComponent, DuplicateProjectWarning } from '../../matching';
+import { DuplicateProjectWarning } from '../../matching';
 import { TeamMemberSelector } from './TeamMemberSelector';
 
 interface ProjectCreationFormProps {
@@ -64,18 +64,10 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
   const [genres, setGenres] = useState<Genre[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  
-          // Состояние для выбора компаний и проверки дубликатов
-          const [selectedProductionCompany, setSelectedProductionCompany] = useState<number | null>(null);
-          const [duplicateProjects, setDuplicateProjects] = useState<any[]>([]);
-          const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-          
-          // Состояние для выбранных участников команды
-          const [selectedCastingDirector, setSelectedCastingDirector] = useState<{id: number | null, name: string | null}>({id: null, name: null});
-          const [selectedDirector, setSelectedDirector] = useState<{id: number | null, name: string | null}>({id: null, name: null});
-          const [selectedProducer, setSelectedProducer] = useState<{id: number | null, name: string | null}>({id: null, name: null});
+  const [selectedProductionCompany, setSelectedProductionCompany] = useState<number | null>(null);
+  const [duplicateProjects, setDuplicateProjects] = useState<any[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
-  // Загрузка справочников при монтировании компонента
   useEffect(() => {
     const loadReferenceData = async () => {
       try {
@@ -96,7 +88,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     loadReferenceData();
   }, []);
 
-  // Обновление ролей когда приходит анализ LLM
   useEffect(() => {
     if (analysisResult?.project_analysis?.roles && analysisResult.project_analysis.roles.length > 0) {
       const llmRoles = analysisResult.project_analysis.roles.map((role: any) => ({
@@ -131,7 +122,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     }
   }, [analysisResult]);
 
-  // Отслеживание изменений формы
   const notifyChanges = (hasFormChanges: boolean) => {
     if (hasFormChanges !== hasChanges) {
       setHasChanges(hasFormChanges);
@@ -139,7 +129,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     }
   };
 
-  // Обработчик изменения полей формы
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -148,7 +137,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     notifyChanges(true);
   };
 
-  // Обработчик изменения ролей
   const handleRoleChange = (roleIndex: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -159,7 +147,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     notifyChanges(true);
   };
 
-  // Добавление новой роли
   const addRole = () => {
     setFormData(prev => ({
       ...prev,
@@ -189,7 +176,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     notifyChanges(true);
   };
 
-  // Удаление роли
   const removeRole = (roleIndex: number) => {
     setFormData(prev => ({
       ...prev,
@@ -198,12 +184,11 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     notifyChanges(true);
   };
 
-  // Проверка дубликатов проектов
   const checkForDuplicates = async (title: string) => {
     if (!title || title.length < 3) return;
-    
     try {
-      const duplicates = await projectsService.checkDuplicateProjects(title);
+      const response = await projectsService.searchProjects(title);
+      const duplicates = response.results || [];
       setDuplicateProjects(duplicates);
       if (duplicates.length > 0) {
         setShowDuplicateWarning(true);
@@ -213,61 +198,45 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     }
   };
 
-  // Обработка игнорирования предупреждения о дубликатах
   const handleIgnoreDuplicateWarning = () => {
     setShowDuplicateWarning(false);
     setDuplicateProjects([]);
   };
 
-  // Обработка выбора существующего проекта
-  const handleSelectExistingProject = (projectId: number) => {
+  const handleSelectExistingProject = (_projectId: number) => {
     setShowDuplicateWarning(false);
     setDuplicateProjects([]);
-    // Здесь можно добавить логику для загрузки существующего проекта
   };
 
-  // Валидация формы
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-
     if (!formData.title?.trim()) {
       newErrors.title = 'Название проекта обязательно';
     }
-
     if (!formData.project_type) {
       newErrors.project_type = 'Тип проекта обязателен';
     }
-
     if (!formData.genre) {
       newErrors.genre = 'Жанр обязателен';
     }
-
-    // Валидация ролей
     formData.roles.forEach((role, index) => {
       if (!role.name?.trim()) {
         newErrors[`role_${index}_name`] = 'Название роли обязательно';
       }
     });
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Обработка отправки формы
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm()) {
       return;
     }
-
-    // Проверка на дубликаты
     await checkForDuplicates(formData.title);
-
     if (duplicateProjects.length > 0 && !showDuplicateWarning) {
-      return; // Ждем подтверждения пользователя
+      return;
     }
-
     try {
       const projectData: ProjectForm = {
         ...formData,
@@ -281,10 +250,8 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Основная информация */}
       <div className="bg-gray-50 p-6 rounded-lg">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Основная информация</h2>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -303,7 +270,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
               <p className="text-red-500 text-xs mt-1">{errors.title}</p>
             )}
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Тип проекта *
@@ -327,7 +293,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
               <p className="text-red-500 text-xs mt-1">{errors.project_type}</p>
             )}
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Жанр *
@@ -351,7 +316,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
               <p className="text-red-500 text-xs mt-1">{errors.genre}</p>
             )}
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Дата премьеры
@@ -364,7 +328,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
             />
           </div>
         </div>
-
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Описание проекта
@@ -378,63 +341,51 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
           />
         </div>
       </div>
-
-              {/* Команда проекта */}
-              <div className="bg-blue-50 p-6 rounded-lg">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Команда проекта</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Кастинг-директор */}
-                  <TeamMemberSelector
-                    label="Кастинг-директор"
-                    llmSuggestion={analysisResult?.contacts?.casting_director?.name || 'Не определен'}
-                    llmEmail={analysisResult?.contacts?.casting_director?.email}
-                    llmPhone={analysisResult?.contacts?.casting_director?.phone}
-                    llmTelegram={analysisResult?.contacts?.casting_director?.telegram}
-                    type="person"
-                    onSelectionChange={(id, name) => setSelectedCastingDirector({id, name})}
-                    onCreateNew={() => console.log('Создать нового кастинг-директора')}
-                  />
-
-                  {/* Режиссер */}
-                  <TeamMemberSelector
-                    label="Режиссер"
-                    llmSuggestion={analysisResult?.contacts?.director?.name || 'Не определен'}
-                    llmEmail={analysisResult?.contacts?.director?.email}
-                    llmPhone={analysisResult?.contacts?.director?.phone}
-                    llmTelegram={analysisResult?.contacts?.director?.telegram}
-                    type="person"
-                    onSelectionChange={(id, name) => setSelectedDirector({id, name})}
-                    onCreateNew={() => console.log('Создать нового режиссера')}
-                  />
-
-                  {/* Продюсер */}
-                  <TeamMemberSelector
-                    label="Продюсер"
-                    llmSuggestion={analysisResult?.contacts?.producers?.[0]?.name || 'Не определен'}
-                    llmEmail={analysisResult?.contacts?.producers?.[0]?.email}
-                    llmPhone={analysisResult?.contacts?.producers?.[0]?.phone}
-                    llmTelegram={analysisResult?.contacts?.producers?.[0]?.telegram}
-                    type="person"
-                    onSelectionChange={(id, name) => setSelectedProducer({id, name})}
-                    onCreateNew={() => console.log('Создать нового продюсера')}
-                  />
-
-                  {/* Продакшн-компания */}
-                  <TeamMemberSelector
-                    label="Продакшн-компания"
-                    llmSuggestion={analysisResult?.contacts?.production_company?.name || 'Не определен'}
-                    llmEmail={analysisResult?.contacts?.production_company?.email}
-                    llmPhone={analysisResult?.contacts?.production_company?.phone}
-                    llmWebsite={analysisResult?.contacts?.production_company?.website}
-                    type="company"
-                    onSelectionChange={(id, name) => setSelectedProductionCompany(id)}
-                    onCreateNew={() => console.log('Создать новую компанию')}
-                  />
-                </div>
-              </div>
-
-      {/* Предупреждение о дубликатах проектов */}
+      <div className="bg-blue-50 p-6 rounded-lg">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Команда проекта</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <TeamMemberSelector
+            label="Кастинг-директор"
+            llmSuggestion={analysisResult?.contacts?.casting_director?.name || 'Не определен'}
+            llmEmail={analysisResult?.contacts?.casting_director?.email}
+            llmPhone={analysisResult?.contacts?.casting_director?.phone}
+            llmTelegram={analysisResult?.contacts?.casting_director?.telegram}
+            type="person"
+            onSelectionChange={(id, name) => console.log('select casting director', id, name)}
+            onCreateNew={() => console.log('Создать нового кастинг-директора')}
+          />
+          <TeamMemberSelector
+            label="Режиссер"
+            llmSuggestion={analysisResult?.contacts?.director?.name || 'Не определен'}
+            llmEmail={analysisResult?.contacts?.director?.email}
+            llmPhone={analysisResult?.contacts?.director?.phone}
+            llmTelegram={analysisResult?.contacts?.director?.telegram}
+            type="person"
+            onSelectionChange={(id, name) => console.log('select director', id, name)}
+            onCreateNew={() => console.log('Создать нового режиссера')}
+          />
+          <TeamMemberSelector
+            label="Продюсер"
+            llmSuggestion={analysisResult?.contacts?.producers?.[0]?.name || 'Не определен'}
+            llmEmail={analysisResult?.contacts?.producers?.[0]?.email}
+            llmPhone={analysisResult?.contacts?.producers?.[0]?.phone}
+            llmTelegram={analysisResult?.contacts?.producers?.[0]?.telegram}
+            type="person"
+            onSelectionChange={(id, name) => console.log('select producer', id, name)}
+            onCreateNew={() => console.log('Создать нового продюсера')}
+          />
+          <TeamMemberSelector
+            label="Продакшн-компания"
+            llmSuggestion={analysisResult?.contacts?.production_company?.name || 'Не определен'}
+            llmEmail={analysisResult?.contacts?.production_company?.email}
+            llmPhone={analysisResult?.contacts?.production_company?.phone}
+            llmWebsite={analysisResult?.contacts?.production_company?.website}
+            type="company"
+            onSelectionChange={(id, _name) => setSelectedProductionCompany(id)}
+            onCreateNew={() => console.log('Создать новую компанию')}
+          />
+        </div>
+      </div>
       {showDuplicateWarning && duplicateProjects.length > 0 && (
         <DuplicateProjectWarning
           duplicates={duplicateProjects}
@@ -442,8 +393,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
           onSelectExisting={handleSelectExistingProject}
         />
       )}
-
-      {/* Роли */}
       <div className="bg-gray-50 p-6 rounded-lg">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Роли в проекте</h2>
@@ -455,7 +404,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
             Добавить роль
           </button>
         </div>
-
         <div className="space-y-4">
           {formData.roles.map((role, index) => (
             <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
@@ -469,7 +417,6 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
                   Удалить
                 </button>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -479,85 +426,79 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
                     type="text"
                     value={role.name}
                     onChange={(e) => handleRoleChange(index, 'name', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors[`role_${index}_name`] ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Название роли"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Введите название роли"
                   />
                   {errors[`role_${index}_name`] && (
                     <p className="text-red-500 text-xs mt-1">{errors[`role_${index}_name`]}</p>
                   )}
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Медийность
+                    Описание роли
                   </label>
-                  <select
-                    value={role.media_presence || 'doesnt_matter'}
-                    onChange={(e) => handleRoleChange(index, 'media_presence', e.target.value)}
+                  <textarea
+                    value={role.description}
+                    onChange={(e) => handleRoleChange(index, 'description', e.target.value)}
+                    rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="doesnt_matter">Неважно</option>
-                    <option value="yes">Да</option>
-                    <option value="no">Нет</option>
-                  </select>
+                    placeholder="Описание роли"
+                  />
                 </div>
               </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Описание роли
-                </label>
-                <textarea
-                  value={role.description}
-                  onChange={(e) => handleRoleChange(index, 'description', e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Описание роли"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Требования к участию
+                  </label>
+                  <textarea
+                    value={role.audition_requirements}
+                    onChange={(e) => handleRoleChange(index, 'audition_requirements', e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Требования к участию"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Навыки
+                  </label>
+                  <input
+                    type="text"
+                    value={Array.isArray(role.skills_required) ? role.skills_required.join(', ') : ''}
+                    onChange={(e) => handleRoleChange(index, 'skills_required', e.target.value.split(',').map((skill) => skill.trim()))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Введите навыки через запятую"
+                  />
+                </div>
               </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Требуемые навыки
-                </label>
-                <input
-                  type="text"
-                  value={Array.isArray(role.skills_required) ? role.skills_required.join(', ') : ''}
-                  onChange={(e) => handleRoleChange(index, 'skills_required', e.target.value.split(', ').filter(s => s.trim()))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Навыки через запятую"
-                />
-              </div>
-
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Предложенные артисты
                 </label>
                 <ArtistSelectionComponent
-                  roleIndex={index}
                   selectedArtists={role.suggested_artists || []}
-                  onArtistsChange={(artists) => handleRoleChange(index, 'suggested_artists', artists)}
+                  onSelectionChange={(artists: number[]) => handleRoleChange(index, 'suggested_artists', artists)}
+                  placeholder="Выберите артистов для этой роли..."
+                  maxSelections={10}
+                  className="border border-gray-300 rounded-md p-3"
                 />
               </div>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Кнопки действий */}
-      <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+      <div className="flex justify-end space-x-3">
         <button
           type="button"
           onClick={onCancel}
-          className="px-6 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
         >
           Отмена
         </button>
         <button
           type="submit"
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           Создать проект
         </button>

@@ -47,6 +47,10 @@ export interface ProjectCreationForm {
   project_type: number;
   genre?: number;
   premiere_date?: string; // Дата премьеры
+  production_company?: number; // ID компании
+  director?: number; // ID директора
+  casting_director?: number; // ID кастинг-директора
+  producers?: number[]; // ID продюсеров
   request_id?: number; // ID исходного запроса
   roles: ProjectRoleForm[];
 }
@@ -72,8 +76,8 @@ export interface ProjectRoleForm {
   shooting_dates?: string;
   shooting_location?: string;
   notes?: string;
-  skills_required: string[];
-  suggested_artists: number[];
+  skills_required?: string[];
+  suggested_artists?: number[];
 }
 
 // Тип проекта
@@ -136,4 +140,104 @@ export interface ProjectSearchRequest {
 export interface ProjectStatus {
   value: string;
   label: string;
+}
+
+// Результат поиска проекта (с expanded полями)
+export interface ProjectSearchResult {
+  id: number;
+  title: string;
+  description?: string;
+  status: string;
+  status_display?: string;
+  project_type?: {
+    id: number;
+    name: string;
+  };
+  genre?: {
+    id: number;
+    name: string;
+  };
+  director?: {
+    id: number;
+    full_name: string;
+  };
+  production_company?: {
+    id: number;
+    name: string;
+  };
+  created_at: string;
+  updated_at?: string;
+}
+
+// Проект с expanded полями (для UI отображения)
+export interface ProjectExpanded {
+  id: number;
+  title: string;
+  project_type: {
+    id: number;
+    name: string;
+  };
+  genre: {
+    id: number;
+    name: string;
+  };
+  description?: string;
+  premiere_date?: string;
+  status?: string;
+  casting_director?: {
+    id: number;
+    name: string;
+  };
+  director?: {
+    id: number;
+    name: string;
+  };
+  producer?: {
+    id: number;
+    name: string;
+  };
+  production_company?: {
+    id: number;
+    name: string;
+  };
+  roles: Array<{
+    id: number;
+    name: string;
+    description?: string;
+    role_type?: {
+      id: number;
+      name: string;
+    };
+    gender?: string;
+    age_min?: number;
+    age_max?: number;
+    media_presence?: string;
+    height?: string;
+    body_type?: string;
+    hair_color?: string;
+    eye_color?: string;
+    hairstyle?: string;
+    clothing_size?: string;
+    shoe_size?: {
+      id: number;
+      name: string;
+    };
+    nationality?: {
+      id: number;
+      name: string;
+    };
+    rate_per_shift?: string;
+    shooting_dates?: string;
+    shooting_location?: string;
+    rate_conditions?: string;
+    skills_required?: Array<{
+      id?: number;
+      name: string;
+    }>;
+  }>;
+  created_at: string;
+  request?: {
+    id: number;
+    text: string;
+  };
 }
