@@ -32,8 +32,12 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
-# Media files
+# Media files (uploaded content only, not source code)
+backend/media/
 media/
+
+# BUT allow frontend media components (source code)
+!frontend/src/components/media/
 
 # Environment variables
 .env
