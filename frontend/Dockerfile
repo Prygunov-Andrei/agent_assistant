@@ -5,6 +5,9 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Build argument для API URL
+ARG VITE_API_URL=http://localhost:8000
+
 # Копируем package files
 COPY package*.json ./
 
@@ -13,6 +16,9 @@ RUN npm ci --silent
 
 # Копируем исходники
 COPY . .
+
+# Устанавливаем переменную окружения для vite build
+ENV VITE_API_URL=${VITE_API_URL}
 
 # Собираем production build
 RUN npm run build
