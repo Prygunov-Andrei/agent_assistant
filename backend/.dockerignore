@@ -1,0 +1,67 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+local_settings.py
+
+# Testing
+tests/
+*/tests/
+**/__pycache__/
+pytest_cache/
+.pytest_cache/
+*.pytest_cache
+.coverage
+htmlcov/
+.tox/
+
+# Test files
+**/test_*.py
+**/*_test.py
+**/conftest.py
+pytest.ini
+
+# Development
+.git
+.gitignore
+.env
+.env.*
+*.md
+README*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts
+fix_*.py
+test_*.py
+
+# Static files (will be collected)
+staticfiles/
+
+# Media (user uploads)
+media/
+
+# Logs
+logs/
+*.log
+

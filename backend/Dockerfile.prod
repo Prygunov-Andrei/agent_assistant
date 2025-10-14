@@ -1,0 +1,41 @@
+FROM python:3.9-slim
+
+# Устанавливаем переменные окружения
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Создаем рабочую директорию
+WORKDIR /app
+
+# Устанавливаем только необходимые системные зависимости
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Копируем production requirements
+COPY requirements-prod.txt .
+
+# Устанавливаем Python зависимости
+RUN pip install --upgrade pip && \
+    pip install -r requirements-prod.txt
+
+# Копируем только необходимые файлы проекта (без тестов благодаря .dockerignore)
+COPY . .
+
+# Создаем директории
+RUN mkdir -p /app/media /app/static /app/logs && \
+    chmod 777 /app/logs
+
+# Expose порт
+EXPOSE 8000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/', timeout=5)" || exit 1
+
+# Команда запуска
+CMD ["gunicorn", "agent_assistant.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120"]
+
