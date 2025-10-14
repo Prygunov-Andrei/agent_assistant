@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Устанавливаем системные утилиты (pgrep для healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends procps && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Устанавливаем только необходимые зависимости для бота
@@ -19,4 +22,3 @@ USER nobody
 
 # Запускаем бота
 CMD ["python", "-u", "bot.py"]
-
