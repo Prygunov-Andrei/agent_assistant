@@ -77,10 +77,11 @@ const RequestsTable: React.FC = () => {
     setError(null);
     try {
       const data = await requestsService.getRequests();
-      setRequests(data);
+      setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
       ErrorHandler.logError(err, 'RequestsTable.fetchRequests');
       setError('Ошибка загрузки запросов');
+      setRequests([]); // Устанавливаем пустой массив при ошибке
     } finally {
       setLoading(false);
     }
