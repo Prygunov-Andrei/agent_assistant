@@ -53,7 +53,8 @@ media/
 Thumbs.db
 
 # Docker
-.dockerignore
+# .dockerignore files are needed for production builds
+# .dockerignore
 
 # Cursor rules
 .cursorrules

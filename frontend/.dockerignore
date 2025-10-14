@@ -1,0 +1,20 @@
+node_modules
+dist
+.git
+.gitignore
+README.md
+.env
+.env.local
+.vscode
+.idea
+
+# Exclude tests from production build
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+tests/
+jest.config.cjs
+tsconfig.test.json
+
