@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:14-alpine
+    container_name: agent_assistant_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-agent_assistant_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - agent_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: agent_assistant_redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - agent_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # Django Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agent_assistant_backend
+    restart: unless-stopped
+    command: >
+      sh -c "
+        python manage.py migrate &&
+        python manage.py collectstatic --noinput &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_NAME=${DB_NAME:-agent_assistant_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      - SORA_API_KEY=${SORA_API_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+    volumes:
+      - ./backend:/app
+      - media_files:/app/media
+      - static_files:/app/static
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - agent_network
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # Frontend (React) - Production build
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: agent_assistant_frontend
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000}
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - agent_network
+    depends_on:
+      - backend
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  # Telegram Bot
+  telegram-bot:
+    build:
+      context: ./backend
+      dockerfile: telegram_requests/bot/Dockerfile
+    container_name: agent_assistant_telegram_bot
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - API_BASE_URL=http://backend:8000/api
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - DB_NAME=${DB_NAME:-agent_assistant_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_HOST=db
+      - DB_PORT=5432
+    networks:
+      - agent_network
+    depends_on:
+      - backend
+      - db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "bot.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+volumes:
+  postgres_data:
+    driver: local
+  media_files:
+    driver: local
+  static_files:
+    driver: local
+
+networks:
+  agent_network:
+    driver: bridge
+
