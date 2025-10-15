@@ -7,23 +7,24 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 class WebhookHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/deploy':
-            # Запускаем деплой
+            # Запускаем деплой В ФОНЕ (асинхронно)
             try:
-                result = subprocess.run(
+                # Запускаем deploy.sh в фоновом процессе
+                subprocess.Popen(
                     ['/opt/agent_assistant/deploy.sh'],
-                    capture_output=True,
-                    text=True,
-                    timeout=300
+                    stdout=open('/opt/agent_assistant/deploy_output.log', 'a'),
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True
                 )
                 
+                # СРАЗУ возвращаем ответ (не ждем завершения деплоя)
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 
                 response = {
                     'status': 'success',
-                    'message': 'Deployment started',
-                    'output': result.stdout
+                    'message': 'Deployment started in background'
                 }
                 self.wfile.write(json.dumps(response).encode())
                 
