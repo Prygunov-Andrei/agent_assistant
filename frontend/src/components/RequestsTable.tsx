@@ -32,7 +32,8 @@ const RequestsTable: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [useDraftMode, setUseDraftMode] = useState(true); // true = эмулятор (черновик), false = GPT-4o (реальный анализ)
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [hasBeenAnalyzed, setHasBeenAnalyzed] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
   
   // Состояния для модального окна удаления
@@ -171,7 +172,8 @@ const RequestsTable: React.FC = () => {
     });
     setRoles([]);
     setCollapsedRoles(new Set());
-    setUseDraftMode(true); // Сбрасываем на черновик по умолчанию
+    setHasBeenAnalyzed(false); // Сбрасываем флаг анализа
+    setAnalysisProgress(0);
     setCastingDirector(null);
     setDirector(null);
     setProducer(null);
@@ -194,15 +196,26 @@ const RequestsTable: React.FC = () => {
     setProjectType(null);
     setGenre(null);
     
-    // Автоматически запускаем LLM анализ
-    await handleAutoAnalysis(request);
+    // НЕ запускаем автоматический анализ при открытии
+    // Пользователь может выбрать режим: Черновик (пустая форма) или GPT-4o (анализ)
+    // await handleAutoAnalysis(request);
   };
 
   const handleAutoAnalysis = async (request: RequestListItem) => {
     setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    
+    // Симуляция прогресса для визуального эффекта
+    const progressInterval = setInterval(() => {
+      setAnalysisProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 15;
+      });
+    }, 500);
+    
     try {
-      // Вызываем LLM сервис (GPT-4o или эмулятор в зависимости от useDraftMode)
-      const analysisData = await LLMService.analyzeRequest(request.id, useDraftMode);
+      // Вызываем LLM сервис (реальный анализ GPT-4o)
+      const analysisData = await LLMService.analyzeRequest(request.id, false);
       
       console.log('Analysis Data Full:', JSON.stringify(analysisData, null, 2));
       
@@ -334,8 +347,17 @@ const RequestsTable: React.FC = () => {
       console.error('Ошибка LLM анализа:', error);
       ErrorHandler.logError(error, 'RequestsTable.handleAutoAnalysis');
       alert('Ошибка при анализе запроса. Попробуйте еще раз.');
+      clearInterval(progressInterval);
+      setAnalysisProgress(0);
     } finally {
-      setIsAnalyzing(false);
+      clearInterval(progressInterval);
+      setAnalysisProgress(100);
+      setTimeout(() => {
+        setIsAnalyzing(false);
+        setAnalysisProgress(0);
+        setHasBeenAnalyzed(true);
+        setHasUnsavedChanges(true); // Отмечаем что есть несохраненные изменения после анализа
+      }, 500);
     }
   };
 
@@ -343,8 +365,8 @@ const RequestsTable: React.FC = () => {
     if (hasUnsavedChanges) {
       setShowUnsavedWarning(true);
     } else {
-    setShowProjectModal(false);
-    setSelectedRequest(null);
+      setShowProjectModal(false);
+      setSelectedRequest(null);
     }
   };
 
@@ -356,7 +378,8 @@ const RequestsTable: React.FC = () => {
     setFormData({ title: '', description: '', project_type: 1, genre: undefined, premiere_date: '', status: 'draft', project_type_raw: '' });
     setRoles([]);
     setCollapsedRoles(new Set());
-    setUseDraftMode(true); // Сбрасываем на черновик по умолчанию
+    setHasBeenAnalyzed(false);
+    setAnalysisProgress(0);
     setCastingDirector(null);
     setDirector(null);
     setProducer(null);
@@ -911,6 +934,14 @@ const RequestsTable: React.FC = () => {
 
   return (
     <>
+      {/* CSS анимация для прогресс-бара */}
+      <style>{`
+        @keyframes shimmer {
+          0% { left: -100%; }
+          100% { left: 100%; }
+        }
+      `}</style>
+      
       <AnimatedContainer animation="fadeIn" className="fade-in">
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
@@ -943,17 +974,6 @@ const RequestsTable: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'black', margin: 0 }}>Создание проекта из запроса #{selectedRequest.id}</h2>
-                {isAnalyzing && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: useDraftMode ? '#fef3c7' : '#d1fae5', padding: '8px 16px', borderRadius: '8px', fontSize: '14px', color: useDraftMode ? '#92400e' : '#065f46', border: `2px solid ${useDraftMode ? '#f59e0b' : '#10b981'}`, boxShadow: useDraftMode ? '0 2px 8px rgba(245, 158, 11, 0.2)' : '0 2px 8px rgba(16, 185, 129, 0.2)' }}>
-                    <div style={{ width: '16px', height: '16px', border: `3px solid ${useDraftMode ? '#f59e0b' : '#10b981'}`, borderTop: '3px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
-                    <div>
-                      <div style={{ fontWeight: 'bold' }}>{useDraftMode ? '📝 Загрузка черновика...' : '🤖 Анализ GPT-4o...'}</div>
-                      <div style={{ fontSize: '11px', color: useDraftMode ? '#78350f' : '#047857', marginTop: '2px' }}>
-                        {useDraftMode ? 'Загрузка кеша • Мгновенно' : 'Списываются токены • Обработка ~15-20 сек'}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
               <button onClick={handleModalClose} style={{ fontSize: '24px', fontWeight: 'bold', color: '#6b7280', cursor: 'pointer', border: 'none', background: 'none', padding: '5px' }}>&times;</button>
             </div>
@@ -969,42 +989,127 @@ const RequestsTable: React.FC = () => {
                 )}
                 <div style={{ marginBottom: '12px' }}><strong>Дата:</strong> {selectedRequest.original_created_at ? new Date(selectedRequest.original_created_at).toLocaleDateString('ru-RU') : 'Не указано'}</div>
                 
-                {/* Режим анализа */}
-                <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: useDraftMode ? '#fef3c7' : '#dbeafe', borderRadius: '6px', border: `2px solid ${useDraftMode ? '#f59e0b' : '#3b82f6'}` }}>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Режим анализа:</div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                {/* Кнопка анализа запроса */}
+                {!hasBeenAnalyzed && !isAnalyzing && (
+                  <div style={{ marginBottom: '16px' }}>
                     <button 
-                      onClick={() => setUseDraftMode(true)}
+                      onClick={() => {
+                        if (selectedRequest) {
+                          handleAutoAnalysis(selectedRequest);
+                        }
+                      }}
                       style={{
-                        flex: 1, padding: '8px 12px', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold',
-                        border: useDraftMode ? '2px solid #f59e0b' : '1px solid #d1d5db',
-                        backgroundColor: useDraftMode ? '#fff' : '#f9fafb',
-                        color: useDraftMode ? '#92400e' : '#6b7280',
-                        cursor: 'pointer'
+                        width: '100%',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        color: 'white',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 12px -2px rgba(59, 130, 246, 0.4)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(59, 130, 246, 0.3)';
                       }}
                     >
-                      📝 Черновик
+                      <span style={{ fontSize: '18px' }}>🤖</span>
+                      <span>Анализировать запрос</span>
                     </button>
-                    <button 
-                      onClick={() => setUseDraftMode(false)}
-                      style={{
-                        flex: 1, padding: '8px 12px', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold',
-                        border: !useDraftMode ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                        backgroundColor: !useDraftMode ? '#fff' : '#f9fafb',
-                        color: !useDraftMode ? '#1e40af' : '#6b7280',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🤖 GPT-4o
-                    </button>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px', textAlign: 'center' }}>
+                      GPT-4o проанализирует запрос и предзаполнит форму (~15-20 сек)
+                    </div>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
-                    {useDraftMode ? '✅ Использует последний кеш GPT-4o (без трат токенов)' : '⚠️ Реальный анализ GPT-4o (~15-20 сек, тратятся токены)'}
+                )}
+                
+                {/* Прогресс-бар анализа */}
+                {isAnalyzing && (
+                  <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '2px solid #3b82f6' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', color: '#1e40af', textAlign: 'center' }}>
+                      🤖 Анализ запроса GPT-4o...
+                    </div>
+                    {/* Прогресс-бар */}
+                    <div style={{ 
+                      width: '100%', 
+                      height: '24px', 
+                      backgroundColor: '#e0f2fe', 
+                      borderRadius: '12px', 
+                      overflow: 'hidden',
+                      position: 'relative',
+                      border: '1px solid #bae6fd'
+                    }}>
+                      <div style={{ 
+                        width: `${Math.min(analysisProgress, 100)}%`, 
+                        height: '100%', 
+                        background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)',
+                        borderRadius: '12px',
+                        transition: 'width 0.5s ease-out',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}>
+                        {/* Анимированный блик */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: '-100%',
+                          width: '100%',
+                          height: '100%',
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                          animation: 'shimmer 1.5s infinite'
+                        }}></div>
+                      </div>
+                      {/* Текст процентов */}
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: '50%', 
+                        left: '50%', 
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: analysisProgress > 50 ? 'white' : '#1e40af',
+                        textShadow: analysisProgress > 50 ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
+                      }}>
+                        {Math.round(analysisProgress)}%
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px', textAlign: 'center' }}>
+                      Обработка текста, поиск контактов, анализ ролей...
+                    </div>
                   </div>
-                </div>
+                )}
+                
+                {/* Информация после успешного анализа */}
+                {hasBeenAnalyzed && !isAnalyzing && (
+                  <div style={{ 
+                    marginBottom: '16px', 
+                    padding: '12px', 
+                    backgroundColor: '#f0fdf4', 
+                    borderRadius: '6px', 
+                    border: '2px solid #10b981',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span style={{ fontSize: '18px' }}>✅</span>
+                    <span style={{ fontSize: '13px', color: '#166534', fontWeight: 'bold' }}>
+                      Анализ завершен! Форма предзаполнена данными.
+                    </span>
+                  </div>
+                )}
                 
                 <div style={{ marginBottom: '12px' }}><strong>Текст:</strong></div>
-                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>{selectedRequest.text}</div>
+                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{selectedRequest.text}</div>
                 
                 {/* Media Section */}
                 {((selectedRequest.images && selectedRequest.images.length > 0) || (selectedRequest.files && selectedRequest.files.length > 0)) && (
@@ -1014,10 +1119,10 @@ const RequestsTable: React.FC = () => {
                       {selectedRequest.images && selectedRequest.images.length > 0 && (
                         <div style={{ marginBottom: selectedRequest.files && selectedRequest.files.length > 0 ? '12px' : '0' }}>
                           <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Изображения ({selectedRequest.images.length})</div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '8px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {selectedRequest.images.map((image: any, index: number) => (
                               <img key={index} src={image.image} alt={`Изображение ${index + 1}`} 
-                                style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                                style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #e5e7eb', cursor: 'pointer', backgroundColor: '#f9fafb' }}
                                 onClick={(e) => { e.stopPropagation(); window.open(image.image, '_blank'); }}
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                             ))}

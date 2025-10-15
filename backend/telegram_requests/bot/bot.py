@@ -130,12 +130,10 @@ class CastingAgencyBot:
         # Проверяем наличие изображений
         if message.photo:
             has_images = True
-            message_text += f"\n\n[Прикреплено {len(message.photo)} изображений]"
         
         # Проверяем наличие документов
         if message.document:
             has_files = True
-            message_text += f"\n\n[Прикреплен файл: {message.document.file_name}]"
         
         # Подготавливаем данные для API
         request_data = {

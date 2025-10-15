@@ -92,6 +92,35 @@ class RequestCreateSerializer(serializers.ModelSerializer):
             'telegram_message_id', 'telegram_chat_id', 'media_group_id',
             'has_images', 'has_files', 'original_created_at'
         ]
+    
+    def validate_text(self, value):
+        """
+        Нормализация текста запроса перед сохранением:
+        - Убирает множественные пустые строки
+        - Убирает пробелы в конце строк
+        - Убирает пробелы в начале и конце текста
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        if not value:
+            return value
+        
+        logger.info(f"Нормализация текста. Исходная длина: {len(value)} символов, строк: {len(value.split(chr(10)))}")
+        
+        # Разбиваем на строки
+        lines = value.split('\n')
+        
+        # Убираем пробелы в конце каждой строки и фильтруем только непустые строки
+        normalized_lines = [line.rstrip() for line in lines if line.strip()]
+        
+        # Собираем обратно
+        normalized_text = '\n'.join(normalized_lines)
+        
+        logger.info(f"Текст нормализован. Новая длина: {len(normalized_text)} символов, строк: {len(normalized_lines)}")
+        logger.info(f"Удалено пустых строк: {len(lines) - len(normalized_lines)}")
+        
+        return normalized_text
 
 
 class RequestResponseSerializer(serializers.ModelSerializer):

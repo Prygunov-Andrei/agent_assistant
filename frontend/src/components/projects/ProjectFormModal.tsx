@@ -88,6 +88,27 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
 
+  // Функция очистки формы
+  const clearForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      project_type: 1,
+      genre: undefined,
+      premiere_date: '',
+      status: 'draft',
+      project_type_raw: ''
+    });
+    setRoles([]);
+    setCastingDirector(null);
+    setDirector(null);
+    setProducer(null);
+    setProductionCompany(null);
+    setProjectType(null);
+    setGenre(null);
+    setHasUnsavedChanges(false);
+  };
+
   // Инициализация при открытии
   useEffect(() => {
     if (isOpen) {
@@ -112,12 +133,17 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
           setSkillsList(skills);
           
           if (mode === 'create' && requestData) {
+            // ОЧИЩАЕМ форму перед анализом нового запроса
+            clearForm();
             // Автоматический LLM анализ для создания из запроса
             handleAutoAnalysis();
           } else if ((mode === 'edit' || mode === 'view') && projectData) {
             // Предзаполнение данных для редактирования/просмотра
             // Передаем загруженные списки напрямую
             prefillProjectData(roleTypes, shoeSizes, nationalities);
+          } else if (mode === 'create' && !requestData) {
+            // Создание проекта без запроса - очищаем форму
+            clearForm();
           }
         } catch (err) {
           ErrorHandler.logError(err, 'ProjectFormModal.initializeModal');
