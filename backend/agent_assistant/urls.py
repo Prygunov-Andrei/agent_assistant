@@ -49,9 +49,11 @@ urlpatterns = [
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
-# Обслуживание медиафайлов в режиме разработки
+# Обслуживание медиафайлов и статики в режиме разработки
 if settings.DEBUG:
     from telegram_requests.media_views import serve_media_file
     urlpatterns += [
         path('media/<path:path>', serve_media_file, name='serve_media'),
     ]
+    # Добавляем раздачу статических файлов для admin панели
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
