@@ -19,9 +19,9 @@ echo "[$(date)] Creating required directories..."
 mkdir -p backend/logs backend/staticfiles
 chmod 777 backend/logs backend/staticfiles
 
-# Перезапускаем контейнеры БЕЗ пересборки (используем существующие образы)
-echo "[$(date)] Restarting containers..."
-docker-compose -f docker-compose.prod.yml up -d
+# Пересобираем и перезапускаем контейнеры
+echo "[$(date)] Building and restarting containers..."
+docker-compose -f docker-compose.prod.yml up -d --build
 
 # Ждем запуска
 echo "[$(date)] Waiting for services to start..."
