@@ -9,9 +9,9 @@ class WebhookHandler(BaseHTTPRequestHandler):
         if self.path == '/deploy':
             # Запускаем деплой В ФОНЕ (асинхронно)
             try:
-                # Запускаем deploy.sh в фоновом процессе
+                # Запускаем deploy.sh в фоновом процессе через bash
                 subprocess.Popen(
-                    ['/opt/agent_assistant/deploy.sh'],
+                    ['bash', '/opt/agent_assistant/deploy.sh'],
                     stdout=open('/opt/agent_assistant/deploy_output.log', 'a'),
                     stderr=subprocess.STDOUT,
                     start_new_session=True
