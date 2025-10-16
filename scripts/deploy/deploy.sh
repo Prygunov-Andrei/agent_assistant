@@ -24,15 +24,6 @@ echo "[$(date)] Creating required directories..."
 mkdir -p backend/logs backend/staticfiles
 chmod 777 backend/logs backend/staticfiles
 
-# Обновляем webhook службу если она существует
-if [ -f /etc/systemd/system/webhook.service ]; then
-    echo "[$(date)] Updating webhook service..."
-    sed -i 's|ExecStart=.*webhook.py|ExecStart=/usr/bin/python3 /opt/agent_assistant/scripts/webhook.py|' /etc/systemd/system/webhook.service
-    systemctl daemon-reload
-    systemctl restart webhook
-    echo "[$(date)] Webhook service updated"
-fi
-
 # Останавливаем и удаляем старые контейнеры
 echo "[$(date)] Stopping and removing old containers..."
 docker-compose -f docker/docker-compose.prod.yml --env-file .env down
