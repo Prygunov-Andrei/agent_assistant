@@ -346,11 +346,19 @@ const RequestsTable: React.FC = () => {
     } catch (error) {
       console.error('Ошибка LLM анализа:', error);
       ErrorHandler.logError(error, 'RequestsTable.handleAutoAnalysis');
-      alert('Ошибка при анализе запроса. Попробуйте еще раз.');
       clearInterval(progressInterval);
       setAnalysisProgress(0);
+      setIsAnalyzing(false);
+      
+      // Показываем понятное сообщение об ошибке
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при анализе запроса';
+      alert(`Ошибка анализа: ${errorMessage}\n\nПопробуйте еще раз или заполните форму вручную.`);
+      return; // Выходим, НЕ устанавливая hasBeenAnalyzed
     } finally {
       clearInterval(progressInterval);
+      // Завершение только если не было ошибки
+      if (!isAnalyzing) return;
+      
       setAnalysisProgress(100);
       setTimeout(() => {
         setIsAnalyzing(false);
