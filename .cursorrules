@@ -15,3 +15,8 @@
 Unit тесты: в папках tests/ внутри каждого приложения
 Интеграционные тесты: в папке integration_tests/ в корне бекенда
 Запуск: pytest для всех тестов или python3 manage.py test app_name для конкретного приложения
+
+Быстрые команды проекта:
+При команде "Запусти проект" - выполнить: ./scripts/deploy/start_all.sh (запускает ВСЕ сервисы: DB, Backend, Frontend, Nginx, Telegram бот)
+При команде "Останови проект" - выполнить: ./scripts/deploy/stop_all.sh (останавливает все сервисы)
+При команде "Запусти тесты" - выполнить: ./scripts/test/test_all.sh (запускает все backend и frontend тесты)
