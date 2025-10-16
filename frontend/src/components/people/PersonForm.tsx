@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Person, PersonFormData } from '../../types/people';
+import { ContactsManager } from './ContactsManager';
 
 interface PersonFormProps {
   initialData?: Person;
@@ -23,9 +24,10 @@ export const PersonForm: React.FC<PersonFormProps> = ({
     first_name: initialData?.first_name || '',
     last_name: initialData?.last_name || '',
     middle_name: initialData?.middle_name || '',
-    phone: initialData?.phone || '',
-    email: initialData?.email || '',
-    telegram_username: initialData?.telegram_username || '',
+    // Множественные контакты
+    phones: initialData?.phones || [],
+    emails: initialData?.emails || [],
+    telegram_usernames: initialData?.telegram_usernames || [],
     bio: initialData?.bio || '',
     birth_date: initialData?.birth_date || '',
     nationality: initialData?.nationality || '',
@@ -147,41 +149,35 @@ export const PersonForm: React.FC<PersonFormProps> = ({
         </div>
       </div>
       
-      {/* Контакты */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-        <div className="form-group">
-          <label className="form-label">Телефон</label>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleInputChange}
-            placeholder="+7 (999) 123-45-67"
-            className="form-input"
-          />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            placeholder="email@example.com"
-            className="form-input"
-          />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Telegram</label>
-          <input
-            type="text"
-            name="telegram_username"
-            value={formData.telegram_username}
-            onChange={handleInputChange}
-            placeholder="@username"
-            className="form-input"
-          />
-        </div>
+      {/* Контакты - множественные */}
+      <div style={{ 
+        padding: '16px', 
+        backgroundColor: '#f9fafb', 
+        borderRadius: '8px',
+        border: '1px solid #e5e7eb',
+        marginBottom: '16px'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
+          Контактная информация
+        </h3>
+        
+        <ContactsManager
+          type="phone"
+          contacts={formData.phones || []}
+          onChange={(phones) => setFormData(prev => ({ ...prev, phones }))}
+        />
+        
+        <ContactsManager
+          type="email"
+          contacts={formData.emails || []}
+          onChange={(emails) => setFormData(prev => ({ ...prev, emails }))}
+        />
+        
+        <ContactsManager
+          type="telegram"
+          contacts={formData.telegram_usernames || []}
+          onChange={(telegram_usernames) => setFormData(prev => ({ ...prev, telegram_usernames }))}
+        />
       </div>
       
       {/* Дополнительные поля */}

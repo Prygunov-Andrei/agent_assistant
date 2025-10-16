@@ -186,9 +186,13 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
       </td>
       <td className="requests-table-cell">
         <PersonContacts
+          phones={person.phones}
+          emails={person.emails}
+          telegram_usernames={person.telegram_usernames}
           phone={person.phone}
           email={person.email}
           telegram={person.telegram_username}
+          compact={true}
         />
       </td>
       <td className="requests-table-cell" onClick={(e) => e.stopPropagation()}>

@@ -170,7 +170,23 @@ export const PersonModal: React.FC<PersonModalProps> = ({
       }
     } catch (err: any) {
       ErrorHandler.logError(err, 'PersonModal.handleSubmit');
-      setError(err.response?.data?.message || 'Ошибка сохранения');
+      
+      // Формируем читаемое сообщение об ошибке
+      let errorMessage = 'Ошибка сохранения';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (typeof errorData === 'object') {
+          // Собираем все ошибки в одно сообщение
+          const errors = Object.entries(errorData)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          errorMessage = errors || 'Ошибка валидации данных';
+        } else {
+          errorMessage = errorData.message || String(errorData);
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -363,9 +379,13 @@ export const PersonModal: React.FC<PersonModalProps> = ({
               <div>
                 <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>Контакты</h3>
                 <PersonContacts
+                  phones={person.phones}
+                  emails={person.emails}
+                  telegram_usernames={person.telegram_usernames}
                   phone={person.phone}
                   email={person.email}
                   telegram={person.telegram_username}
+                  compact={false}
                 />
               </div>
               

@@ -18,6 +18,19 @@ class PersonSerializer(serializers.ModelSerializer):
         help_text="Краткое имя персоны (Фамилия И.О.)"
     )
     
+    # Основные контакты для обратной совместимости и удобства
+    primary_phone = serializers.ReadOnlyField(
+        help_text="Основной телефон (первый в списке)"
+    )
+    
+    primary_email = serializers.ReadOnlyField(
+        help_text="Основной email (первый в списке)"
+    )
+    
+    primary_telegram = serializers.ReadOnlyField(
+        help_text="Основной Telegram (первый в списке)"
+    )
+    
     projects_count = serializers.IntegerField(
         read_only=True,
         help_text="Количество проектов персоны"
@@ -26,6 +39,42 @@ class PersonSerializer(serializers.ModelSerializer):
     recent_projects = serializers.SerializerMethodField(
         help_text="Последние 5 проектов персоны"
     )
+    
+    def to_internal_value(self, data):
+        """Переопределяем для парсинга JSON из FormData"""
+        import json
+        from django.http import QueryDict
+        
+        # Преобразуем QueryDict в обычный dict
+        if isinstance(data, QueryDict):
+            mutable_data = {}
+            for key in data.keys():
+                value = data.get(key)
+                
+                # Парсим JSON для массивов контактов и social_media
+                if key in ['phones', 'emails', 'telegram_usernames', 'social_media']:
+                    if isinstance(value, str):
+                        try:
+                            mutable_data[key] = json.loads(value)
+                        except (json.JSONDecodeError, TypeError):
+                            mutable_data[key] = value
+                    else:
+                        mutable_data[key] = value
+                else:
+                    mutable_data[key] = value
+        else:
+            # Обычный dict
+            mutable_data = dict(data)
+            for field in ['phones', 'emails', 'telegram_usernames', 'social_media']:
+                if field in mutable_data:
+                    value = mutable_data[field]
+                    if isinstance(value, str):
+                        try:
+                            mutable_data[field] = json.loads(value)
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+        
+        return super().to_internal_value(mutable_data)
     
     def get_recent_projects(self, obj):
         """Получить последние 5 проектов персоны"""
@@ -65,10 +114,19 @@ class PersonSerializer(serializers.ModelSerializer):
             'bio',
             'birth_date',
             'nationality',
+            # Новые поля для множественных контактов
+            'phones',
+            'emails',
+            'telegram_usernames',
+            # Основные контакты (вычисляемые)
+            'primary_phone',
+            'primary_email',
+            'primary_telegram',
+            # Старые поля (устаревшие, для обратной совместимости)
             'phone',
             'email',
-            'website',
             'telegram_username',
+            'website',
             'kinopoisk_url',
             'social_media',
             'awards',
@@ -84,6 +142,13 @@ class PersonSerializer(serializers.ModelSerializer):
             'created_by',
             'created_at',
             'updated_at',
+            'primary_phone',
+            'primary_email',
+            'primary_telegram',
+            # Старые поля только для чтения (не используем их для записи)
+            'phone',
+            'email',
+            'telegram_username',
         ]
         extra_kwargs = {
             'person_type': {
@@ -153,6 +218,19 @@ class PersonListSerializer(serializers.ModelSerializer):
         help_text="Краткое имя персоны (Фамилия И.О.)"
     )
     
+    # Основные контакты для обратной совместимости и удобства
+    primary_phone = serializers.ReadOnlyField(
+        help_text="Основной телефон (первый в списке)"
+    )
+    
+    primary_email = serializers.ReadOnlyField(
+        help_text="Основной email (первый в списке)"
+    )
+    
+    primary_telegram = serializers.ReadOnlyField(
+        help_text="Основной Telegram (первый в списке)"
+    )
+    
     projects_count = serializers.IntegerField(
         read_only=True,
         help_text="Количество проектов персоны"
@@ -196,6 +274,15 @@ class PersonListSerializer(serializers.ModelSerializer):
             'full_name',
             'short_name',
             'photo',
+            # Множественные контакты
+            'phones',
+            'emails',
+            'telegram_usernames',
+            # Основные контакты
+            'primary_phone',
+            'primary_email',
+            'primary_telegram',
+            # Старые поля для обратной совместимости
             'phone',
             'email',
             'telegram_username',

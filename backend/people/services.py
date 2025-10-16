@@ -68,20 +68,44 @@ class PersonMatchingService:
         total_score = 0.0
         total_weight = 0.0
         
+        # Маппинг старых полей на новые множественные поля
+        field_mapping = {
+            'phone': 'phones',
+            'email': 'emails',
+            'telegram_username': 'telegram_usernames'
+        }
+        
         # Проверяем каждое поле поиска
         for field_name, search_value in search_data.items():
             if not search_value:
                 continue
-                
+            
+            # Проверяем, есть ли маппинг на множественное поле
+            target_field = field_mapping.get(field_name, field_name)
+            
             # Получаем значение поля из модели
-            target_value = getattr(person, field_name, None)
-            if not target_value:
-                continue
+            target_value = getattr(person, target_field, None)
             
-            # Вычисляем оценку для поля
-            field_score = self._calculate_field_score(field_name, search_value, str(target_value))
+            # Если это массив контактов - проверяем каждый элемент
+            if isinstance(target_value, list):
+                if not target_value:
+                    continue
+                
+                # Находим максимальную оценку среди всех контактов
+                max_field_score = 0.0
+                for contact in target_value:
+                    if contact:
+                        score = self._calculate_field_score(field_name, search_value, str(contact))
+                        max_field_score = max(max_field_score, score)
+                
+                field_score = max_field_score
+            else:
+                # Обычное поле (не массив)
+                if not target_value:
+                    continue
+                field_score = self._calculate_field_score(field_name, search_value, str(target_value))
+            
             field_weight = self.field_weights.get(field_name, 1.0)
-            
             total_score += field_score * field_weight
             total_weight += field_weight
         

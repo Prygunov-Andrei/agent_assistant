@@ -17,10 +17,19 @@ export interface Person {
   bio?: string;
   birth_date?: string;
   nationality?: string;
+  // Новые поля для множественных контактов
+  phones: string[];
+  emails: string[];
+  telegram_usernames: string[];
+  // Основные контакты (первый в списке)
+  primary_phone?: string;
+  primary_email?: string;
+  primary_telegram?: string;
+  // Старые поля (устаревшие, для обратной совместимости)
   phone?: string;
   email?: string;
-  website?: string;
   telegram_username?: string;
+  website?: string;
   kinopoisk_url?: string;
   social_media?: Record<string, any>;
   awards?: string;
@@ -98,10 +107,15 @@ export interface PersonFormData {
   bio?: string;
   birth_date?: string;
   nationality?: string;
+  // Новые поля для множественных контактов
+  phones?: string[];
+  emails?: string[];
+  telegram_usernames?: string[];
+  // Старые поля (оставляем для обратной совместимости, но не используем)
   phone?: string;
   email?: string;
-  website?: string;
   telegram_username?: string;
+  website?: string;
   kinopoisk_url?: string;
   social_media?: Record<string, any>;
   awards?: string;

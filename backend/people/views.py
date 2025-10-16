@@ -196,14 +196,23 @@ class PersonViewSet(viewsets.ModelViewSet):
             has_search = True
         
         if phone:
+            # Поиск в массиве телефонов (JSONField)
+            search_filters |= Q(phones__icontains=phone)
+            # Также поиск в старом поле для обратной совместимости
             search_filters |= Q(phone__icontains=phone)
             has_search = True
         
         if email:
+            # Поиск в массиве email (JSONField)
+            search_filters |= Q(emails__icontains=email)
+            # Также поиск в старом поле для обратной совместимости
             search_filters |= Q(email__icontains=email)
             has_search = True
         
         if telegram:
+            # Поиск в массиве Telegram (JSONField)
+            search_filters |= Q(telegram_usernames__icontains=telegram)
+            # Также поиск в старом поле для обратной совместимости
             search_filters |= Q(telegram_username__icontains=telegram)
             has_search = True
         

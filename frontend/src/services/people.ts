@@ -98,14 +98,23 @@ class PeopleService {
     const formData = new FormData();
     
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (key === 'photo' && value instanceof File) {
-          formData.append(key, value);
-        } else if (key === 'social_media') {
-          formData.append(key, JSON.stringify(value));
-        } else {
-          formData.append(key, String(value));
-        }
+      // Пропускаем undefined и null
+      if (value === undefined || value === null) {
+        return;
+      }
+      
+      // Пропускаем пустые строки для необязательных полей
+      if (typeof value === 'string' && value.trim() === '') {
+        return;
+      }
+      
+      if (key === 'photo' && value instanceof File) {
+        formData.append(key, value);
+      } else if (key === 'social_media' || key === 'phones' || key === 'emails' || key === 'telegram_usernames') {
+        // Массивы и объекты сериализуем в JSON
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, String(value));
       }
     });
     
@@ -122,14 +131,23 @@ class PeopleService {
     const formData = new FormData();
     
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (key === 'photo' && value instanceof File) {
-          formData.append(key, value);
-        } else if (key === 'social_media') {
-          formData.append(key, JSON.stringify(value));
-        } else {
-          formData.append(key, String(value));
-        }
+      // Пропускаем undefined и null
+      if (value === undefined || value === null) {
+        return;
+      }
+      
+      // Пропускаем пустые строки для необязательных полей
+      if (typeof value === 'string' && value.trim() === '') {
+        return;
+      }
+      
+      if (key === 'photo' && value instanceof File) {
+        formData.append(key, value);
+      } else if (key === 'social_media' || key === 'phones' || key === 'emails' || key === 'telegram_usernames') {
+        // Массивы и объекты сериализуем в JSON
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, String(value));
       }
     });
     
