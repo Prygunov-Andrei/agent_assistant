@@ -13,20 +13,21 @@
 
 ## 📈 Текущий статус проекта
 
-**✅ День 1: Подготовка инфраструктуры и моделей данных** - ЗАВЕРШЕН
-- Обновлены модели данных для LLM интеграции
-- Созданы миграции и обновлена админ-панель
-- Настроена инфраструктура и конфигурационные файлы
+**Фаза 1: MVP для Агентов** - 85% завершено ✅
+- Полностью функциональный LLM эмулятор + подключение к OpenAI GPT-4o
+- Модальное рабочее место с автоматическим анализом запросов
+- Подбор артистов с фильтрацией и поиском совпадений
+- Управление персонами (КД, режиссёры, продюсеры)
+- 750+ тестов (backend + frontend) - все проходят
+- Оптимизация производительности (улучшение на 83.7%)
 
-**✅ День 2: Создание эмулятора LLM** - ЗАВЕРШЕН
-- Создан полнофункциональный LLM эмулятор с 8 сценариями
-- Реализована система валидации JSON ответов
-- Созданы TypeScript типы и сервисы для фронтенда
-- Написано 30 unit-тестов (все проходят успешно)
+**Следующие этапы:**
+- Фаза 2: Функционал для Кастинг-директоров (0%)
+- Фаза 3: Функционал для Артистов (10%)
+- Фаза 4: Интеграции и улучшения (20%)
+- Фаза 5: Production Ready (5%)
 
-**🔄 День 3: API для анализа запросов** - В РАЗРАБОТКЕ
-- Создание API endpoints для работы с анализом запросов
-- Интеграция эмулятора с Django REST Framework
+📋 **Детальный план:** [docs/planning/module_plan_layer5.md](docs/planning/module_plan_layer5.md)
 
 ## 🏗️ Архитектура
 
@@ -170,24 +171,34 @@ class Artist(models.Model):
 - Python 3.9+ (для разработки бэкенда)
 
 ### Запуск через Docker
+
+**Быстрый старт:**
 ```bash
 # Клонирование репозитория
 git clone <repository-url>
-
-# Настройка переменных окружения
-cp env.example .env
-# Отредактируйте .env файл, добавив ваши токены
 cd agent_assistant
 
+# Настройка переменных окружения
+cp .env.example .env
+# Отредактируйте .env файл, добавив ваши токены
+
+# Запуск через скрипт (рекомендуется)
+./scripts/deploy/start.sh
+```
+
+**Ручной запуск:**
+```bash
 # Запуск всех сервисов
-docker-compose up -d
+docker-compose -f docker/docker-compose.yml up -d
 
 # Применение миграций
-docker-compose exec backend python manage.py migrate
+docker-compose -f docker/docker-compose.yml exec backend python manage.py migrate
 
 # Создание суперпользователя
-docker-compose exec backend python manage.py createsuperuser
+docker-compose -f docker/docker-compose.yml exec backend python manage.py createsuperuser
 ```
+
+📚 **Подробная инструкция:** [docs/deployment/QUICK_DEPLOY_CHECKLIST.md](docs/deployment/QUICK_DEPLOY_CHECKLIST.md)
 
 ### Разработка
 
@@ -215,63 +226,63 @@ npm run dev
 
 ```
 agent_assistant/
-├── backend/                 # Django бэкенд
-│   ├── agent_assistant/    # Основные настройки Django
-│   ├── api/                # API endpoints
-│   ├── artists/            # Приложение артистов
-│   ├── companies/          # Приложение компаний
-│   ├── core/               # Общие компоненты
-│   ├── llm/                # LLM сервисы
-│   │   ├── services.py     # LLM эмулятор и сервисы
-│   │   ├── validators.py   # Валидация JSON ответов
-│   │   └── tests.py        # Тесты LLM компонентов
-│   ├── people/             # Приложение персон
-│   ├── projects/           # Приложение проектов
-│   ├── telegram_requests/  # Приложение запросов из Telegram
-│   ├── users/              # Приложение пользователей
-│   ├── llm_config.yaml     # Конфигурация LLM
-│   └── search_config.yaml  # Конфигурация поиска
-├── frontend/               # React фронтенд
-│   ├── src/
-│   │   ├── components/     # React компоненты
-│   │   │   ├── llm/        # LLM компоненты
-│   │   │   ├── projects/   # Компоненты проектов
-│   │   │   ├── matching/   # Компоненты поиска совпадений
-│   │   │   └── media/      # Медиа компоненты
-│   │   ├── services/       # API сервисы
-│   │   │   ├── llm.ts      # LLM сервис
-│   │   │   └── matching.ts # Сервис поиска совпадений
-│   │   ├── types/          # TypeScript типы
-│   │   │   ├── llm.ts      # LLM типы
-│   │   │   ├── matching.ts # Типы поиска совпадений
-│   │   │   └── projects.ts # Типы проектов
-│   │   └── utils/          # Утилиты
-│   └── package.json
-├── docker-compose.yml      # Docker конфигурация
-└── README.md
+├── backend/                # Django бэкенд
+│   ├── agent_assistant/   # Настройки Django
+│   ├── api/               # API endpoints
+│   ├── artists/           # Артисты
+│   ├── companies/         # Компании
+│   ├── core/              # Общие компоненты
+│   ├── llm/               # LLM интеграция
+│   ├── people/            # Персоны (КД, режиссёры, продюсеры)
+│   ├── projects/          # Проекты и роли
+│   ├── telegram_requests/ # Telegram бот
+│   └── users/             # Пользователи
+├── frontend/              # React фронтенд
+│   └── src/
+│       ├── components/    # React компоненты
+│       ├── services/      # API сервисы
+│       ├── types/         # TypeScript типы
+│       └── pages/         # Страницы
+├── docs/                  # 📚 Документация
+│   ├── planning/          # Планирование проекта
+│   ├── technical/         # Техническая документация
+│   ├── deployment/        # Инструкции по деплою
+│   └── bot/               # Документация бота
+├── docker/                # 🐳 Docker конфигурации
+│   ├── docker-compose.yml
+│   ├── docker-compose.prod.yml
+│   └── docker-compose.bot.yml
+├── scripts/               # 🔧 Скрипты
+│   ├── deploy/            # Скрипты деплоя
+│   ├── bot/               # Управление ботом
+│   └── test/              # Тестовые скрипты
+├── nginx/                 # Nginx конфигурация
+├── .env.example           # Пример переменных окружения
+└── README.md              # Этот файл
 ```
 
 ## 🧪 Тестирование
 
+### Запуск всех тестов
+```bash
+./scripts/test/test_all.sh
+```
+
 ### Backend тесты
 ```bash
-cd backend
-python manage.py test
-# или
-pytest
-
-# Тесты LLM компонентов
-pytest llm/tests.py -v
+./scripts/test/test_backend.sh
+# или напрямую
+cd backend && pytest
 ```
 
 ### Frontend тесты
 ```bash
-cd frontend
-npm test
-
-# Тесты LLM сервиса
-npm test -- --testPathPattern=llm
+./scripts/test/test_frontend.sh
+# или напрямую
+cd frontend && npm test
 ```
+
+**Результаты:** 750+ тестов проходят успешно (450 backend + 299 frontend)
 
 ## 📚 API документация
 

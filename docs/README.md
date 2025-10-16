@@ -1,60 +1,69 @@
 # 📚 Документация Agent Assistant
 
-Папка с документацией проекта.
+Центральный репозиторий всей документации проекта.
 
-## 📄 Файлы
+---
 
-### Деплой и инфраструктура:
-- **[QUICK_DEPLOY_CHECKLIST.md](QUICK_DEPLOY_CHECKLIST.md)** - Быстрый чеклист для деплоя (⭐ начните с этого!)
-- **[../DEPLOYMENT.md](../DEPLOYMENT.md)** - Полная инструкция по развёртыванию в Docker
-- **[../backend/telegram_requests/bot/README.md](../backend/telegram_requests/bot/README.md)** - Документация Telegram бота
+## 🗂️ Структура документации
 
-### Планирование:
-- **[module_planning_checklist.md](module_planning_checklist.md)** - Чеклист планирования модулей
+### 📋 Планирование (`planning/`)
+- **[module_plan_layer5.md](planning/module_plan_layer5.md)** - Главный план разработки проекта (110 дней)
+- **[module_planning_checklist.md](planning/module_planning_checklist.md)** - Чек-лист для планирования модулей
+
+### 🔧 Техническая документация (`technical/`)
+- **[LLM_Integration_Concept.md](technical/LLM_Integration_Concept.md)** - Концепция интеграции LLM для анализа запросов
+- **[module_podbora.md](technical/module_podbora.md)** - Модуль подбора артистов по ролям
+- **[OPENAI_SETUP.md](technical/OPENAI_SETUP.md)** - Настройка OpenAI API
+
+### 🚀 Развёртывание (`deployment/`)
+- **[QUICK_DEPLOY_CHECKLIST.md](deployment/QUICK_DEPLOY_CHECKLIST.md)** - Быстрый чек-лист для деплоя ⭐ (начните с этого!)
+- **[DEPLOYMENT.md](deployment/DEPLOYMENT.md)** - Полная инструкция по развёртыванию
+- **[DEPLOYMENT_PRODUCTION.md](deployment/DEPLOYMENT_PRODUCTION.md)** - Деплой на production
+- **[GITHUB_WEBHOOK_SETUP.md](deployment/GITHUB_WEBHOOK_SETUP.md)** - Настройка GitHub webhooks
+
+### 🤖 Telegram Bot (`bot/`)
+- **[BOT_SWITCH_GUIDE.md](bot/BOT_SWITCH_GUIDE.md)** - Руководство по переключению бота между локальным и production режимами
 
 ---
 
 ## 🚀 Быстрый старт
 
 ### Для первого запуска:
-1. Прочитайте [DEPLOYMENT.md](../DEPLOYMENT.md) - полная инструкция
-2. Создайте `.env` из `env.example`
-3. Запустите `./start.sh`
+1. Прочитайте [deployment/DEPLOYMENT.md](deployment/DEPLOYMENT.md)
+2. Создайте `.env` из `.env.example` в корне проекта
+3. Запустите `./scripts/deploy/start.sh`
 
-### Для последующих деплоев:
-1. Откройте [QUICK_DEPLOY_CHECKLIST.md](QUICK_DEPLOY_CHECKLIST.md)
-2. Следуйте чеклисту
-3. Готово! 🎉
+### Для разработки:
+1. Ознакомьтесь с [planning/module_plan_layer5.md](planning/module_plan_layer5.md)
+2. Изучите [technical/LLM_Integration_Concept.md](technical/LLM_Integration_Concept.md)
+3. Настройте LLM по [technical/OPENAI_SETUP.md](technical/OPENAI_SETUP.md)
+
+### Для деплоя:
+1. Следуйте [deployment/QUICK_DEPLOY_CHECKLIST.md](deployment/QUICK_DEPLOY_CHECKLIST.md)
 
 ---
 
-## 🔑 Ключевые моменты
+## 🔗 Дополнительные ресурсы
 
-### Docker Networking (ВАЖНО!)
-**Используйте имена СЕРВИСОВ из docker-compose.yml:**
-- ✅ `backend` (правильно)
-- ❌ `agent_assistant_backend` (неправильно)
-- ❌ `localhost` (для контейнеров неправильно)
+### Backend:
+- `backend/llm/README.md` - Документация LLM модуля
+- `backend/tests/README.md` - Документация по тестированию
 
-### .env конфигурация
-```bash
-API_BASE_URL=http://backend:8000/api
-DB_HOST=db
-REDIS_URL=redis://redis:6379/1
-ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,backend,yourdomain.com
-```
+### Frontend:
+- `frontend/README.md` - Документация фронтенда
+
+### Корневая документация:
+- `../README.md` - Главный README проекта
 
 ---
 
 ## 📞 Поддержка
 
 Если что-то не работает:
-1. Проверьте [QUICK_DEPLOY_CHECKLIST.md](QUICK_DEPLOY_CHECKLIST.md) - раздел Troubleshooting
-2. Посмотрите логи: `docker-compose logs -f`
-3. Проверьте статус: `docker-compose ps`
+1. Проверьте [deployment/QUICK_DEPLOY_CHECKLIST.md](deployment/QUICK_DEPLOY_CHECKLIST.md) - раздел Troubleshooting
+2. Посмотрите логи: `docker-compose -f docker/docker-compose.yml logs -f`
+3. Проверьте статус: `docker-compose -f docker/docker-compose.yml ps`
 
 ---
 
-Подробнее в [DEPLOYMENT.md](../DEPLOYMENT.md)
-
-
+**Последнее обновление:** 16 октября 2025
