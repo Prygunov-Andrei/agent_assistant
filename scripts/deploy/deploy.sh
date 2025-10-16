@@ -53,6 +53,29 @@ docker-compose -f docker/docker-compose.prod.yml --env-file .env exec -T backend
 echo "[$(date)] Collecting static files..."
 docker-compose -f docker/docker-compose.prod.yml --env-file .env exec -T backend python manage.py collectstatic --noinput || true
 
+# Копируем статику в директорию доступную системному Nginx
+echo "[$(date)] Copying static files for system Nginx..."
+STATIC_VOLUME=$(docker volume inspect docker_static_files --format '{{.Mountpoint}}')
+mkdir -p /var/www/agent_assistant/static
+cp -r $STATIC_VOLUME/* /var/www/agent_assistant/static/ 2>/dev/null || true
+chmod -R 755 /var/www/agent_assistant/static
+
+# Копируем медиа файлы
+MEDIA_VOLUME=$(docker volume inspect docker_media_files --format '{{.Mountpoint}}')
+mkdir -p /var/www/agent_assistant/media
+cp -r $MEDIA_VOLUME/* /var/www/agent_assistant/media/ 2>/dev/null || true
+chmod -R 755 /var/www/agent_assistant/media
+
+echo "[$(date)] Static and media files copied"
+
+# Обновляем конфигурацию системного Nginx
+echo "[$(date)] Updating system Nginx configuration..."
+cp nginx/production.conf /etc/nginx/sites-available/agent_assistant
+ln -sf /etc/nginx/sites-available/agent_assistant /etc/nginx/sites-enabled/agent_assistant
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+nginx -t && systemctl reload nginx
+echo "[$(date)] Nginx configuration updated"
+
 # Проверяем статус
 echo "[$(date)] Checking container status..."
 docker-compose -f docker/docker-compose.prod.yml --env-file .env ps
