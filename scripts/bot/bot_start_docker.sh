@@ -19,7 +19,7 @@ fi
 echo "Проверяем основные сервисы..."
 if ! docker ps | grep -q "agent_assistant_backend"; then
     echo "⚠️  Предупреждение: backend не запущен!"
-    echo "Запустите сначала основные сервисы: docker-compose up -d"
+    echo "Запустите сначала основные сервисы: docker-compose -f docker/docker-compose.yml --env-file .env up -d"
     read -p "Продолжить запуск бота? (y/n) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -40,7 +40,8 @@ docker network inspect agent_network >/dev/null 2>&1 || \
 
 # Запускаем бота
 echo "Запускаем нового бота..."
-docker-compose -f docker-compose.bot.yml up -d --build
+cd "$(dirname "$0")/../.." || exit 1
+docker-compose -f docker/docker-compose.bot.yml --env-file .env up -d --build
 
 # Ждем немного
 sleep 3

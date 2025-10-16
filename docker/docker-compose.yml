@@ -1,11 +1,11 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   db:
-    image: postgres:14-alpine
+    image: postgres:15-alpine
     container_name: agent_assistant_db
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
       POSTGRES_DB: ${DB_NAME:-agent_assistant_db}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -28,6 +28,8 @@ services:
     image: redis:7-alpine
     container_name: agent_assistant_redis
     restart: unless-stopped
+    env_file:
+      - ../.env
     ports:
       - "6379:6379"
     networks:
@@ -41,7 +43,7 @@ services:
   # Django Backend
   backend:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: Dockerfile
     container_name: agent_assistant_backend
     restart: unless-stopped
@@ -51,6 +53,8 @@ services:
         python manage.py collectstatic --noinput &&
         gunicorn agent_assistant.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
       "
+    env_file:
+      - ../.env
     environment:
       - DEBUG=${DEBUG:-False}
       - SECRET_KEY=${SECRET_KEY}
@@ -66,7 +70,7 @@ services:
       - BOT_TOKEN=${BOT_TOKEN}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
     volumes:
-      - ./backend:/app
+      - ../backend:/app
       - media_files:/app/media
       - static_files:/app/static
     ports:
@@ -82,14 +86,16 @@ services:
   # Frontend (React)
   frontend:
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: Dockerfile
     container_name: agent_assistant_frontend
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000}
     volumes:
-      - ./frontend:/app
+      - ../frontend:/app
       - /app/node_modules
     ports:
       - "3000:3000"
@@ -103,15 +109,17 @@ services:
     image: nginx:alpine
     container_name: agent_assistant_nginx
     restart: unless-stopped
+    env_file:
+      - ../.env
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/conf.d:/etc/nginx/conf.d:ro
       - media_files:/var/www/media:ro
       - static_files:/var/www/static:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ../nginx/ssl:/etc/nginx/ssl:ro
     networks:
       - agent_network
     depends_on:

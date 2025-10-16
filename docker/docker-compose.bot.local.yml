@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   telegram-bot:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: telegram_requests/bot/Dockerfile
     container_name: agent_assistant_telegram_bot_local
     restart: unless-stopped
@@ -13,7 +11,7 @@ services:
       - API_BASE_URL=http://backend:8000/api
       - WEBHOOK_URL=${WEBHOOK_URL:-}
     env_file:
-      - .env
+      - ../.env
     networks:
       - agent_assistant_agent_network
     # Логи

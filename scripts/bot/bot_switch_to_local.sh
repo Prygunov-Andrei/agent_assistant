@@ -68,7 +68,8 @@ fi
 
 # Запускаем локального бота
 echo "Запускаем локального бота..."
-docker-compose -f docker-compose.bot.local.yml up -d --build
+cd "$(dirname "$0")/../.." || exit 1
+docker-compose -f docker/docker-compose.bot.local.yml --env-file .env up -d --build
 
 # Ждем запуска
 sleep 3
@@ -86,8 +87,8 @@ if docker ps | grep -q "agent_assistant_telegram_bot_local"; then
     echo ""
     echo "📋 Полезные команды:"
     echo "  Логи бота:           docker logs -f agent_assistant_telegram_bot_local"
-    echo "  Остановить бота:     docker-compose -f docker-compose.bot.local.yml down"
-    echo "  Вернуть на сервер:   ./bot_switch_to_remote.sh"
+    echo "  Остановить бота:     docker-compose -f docker/docker-compose.bot.local.yml --env-file .env down"
+    echo "  Вернуть на сервер:   ./scripts/bot/bot_switch_to_remote.sh"
     echo ""
     echo "💡 Для просмотра логов выполните:"
     echo "   docker logs -f agent_assistant_telegram_bot_local"

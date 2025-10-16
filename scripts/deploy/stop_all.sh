@@ -10,14 +10,21 @@ echo ""
 
 # Останавливаем Telegram бота
 echo "1️⃣  Остановка Telegram бота..."
-docker-compose -f docker/docker-compose.bot.yml down
+docker-compose -f docker/docker-compose.bot.yml --env-file .env down --remove-orphans 2>/dev/null
 echo "✅ Telegram бот остановлен"
 echo ""
 
 # Останавливаем основные сервисы
 echo "2️⃣  Остановка основных сервисов..."
-docker-compose -f docker/docker-compose.yml down
+docker-compose -f docker/docker-compose.yml --env-file .env down --remove-orphans 2>/dev/null
 echo "✅ Основные сервисы остановлены"
+echo ""
+
+# Останавливаем контейнеры напрямую (на случай если остались)
+echo "3️⃣  Проверка оставшихся контейнеров..."
+docker stop $(docker ps -q --filter "name=agent_assistant") 2>/dev/null
+docker rm $(docker ps -aq --filter "name=agent_assistant") 2>/dev/null
+echo "✅ Все контейнеры очищены"
 echo ""
 
 # Показываем статус

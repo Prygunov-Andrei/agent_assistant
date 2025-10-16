@@ -2,8 +2,11 @@
 
 echo "🛑 Остановка Telegram бота..."
 
+# Переходим в корень проекта
+cd "$(dirname "$0")/../.." || exit 1
+
 # Останавливаем контейнер через docker-compose
-docker-compose -f docker-compose.bot.yml down
+docker-compose -f docker/docker-compose.bot.yml --env-file .env down
 
 # Проверяем что контейнер остановлен
 if docker ps | grep -q "agent_assistant_telegram_bot"; then

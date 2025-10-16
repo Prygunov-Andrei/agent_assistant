@@ -26,11 +26,11 @@ chmod 777 backend/logs backend/staticfiles
 
 # Останавливаем и удаляем старые контейнеры
 echo "[$(date)] Stopping and removing old containers..."
-docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker/docker-compose.prod.yml --env-file .env down
 
 # Пересобираем и запускаем контейнеры
 echo "[$(date)] Building and starting containers..."
-docker-compose -f docker-compose.prod.yml up -d --build
+docker-compose -f docker/docker-compose.prod.yml --env-file .env up -d --build
 
 # Ждем запуска
 echo "[$(date)] Waiting for services to start..."
@@ -38,15 +38,15 @@ sleep 15
 
 # Выполняем миграции
 echo "[$(date)] Running database migrations..."
-docker-compose -f docker-compose.prod.yml exec -T backend python manage.py migrate || true
+docker-compose -f docker/docker-compose.prod.yml --env-file .env exec -T backend python manage.py migrate || true
 
 # Собираем статические файлы
 echo "[$(date)] Collecting static files..."
-docker-compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput || true
+docker-compose -f docker/docker-compose.prod.yml --env-file .env exec -T backend python manage.py collectstatic --noinput || true
 
 # Проверяем статус
 echo "[$(date)] Checking container status..."
-docker-compose -f docker-compose.prod.yml ps
+docker-compose -f docker/docker-compose.prod.yml --env-file .env ps
 
 echo "[$(date)] ✅ Deployment completed!"
 echo "[$(date)] Services available at http://YOUR_SERVER_IP/"

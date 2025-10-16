@@ -14,7 +14,8 @@ echo "💻 Шаг 1/2: Остановка локального бота..."
 
 if docker ps | grep -q "agent_assistant_telegram_bot_local"; then
     echo "Останавливаем локального бота..."
-    docker-compose -f docker-compose.bot.local.yml down
+    cd "$(dirname "$0")/../.." || exit 1
+    docker-compose -f docker/docker-compose.bot.local.yml --env-file .env down
     echo "✅ Локальный бот остановлен"
 else
     echo "ℹ️  Локальный бот не запущен"

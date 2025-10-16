@@ -1,9 +1,9 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   db:
-    image: postgres:14-alpine
+    image: postgres:15-alpine
+    env_file:
+      - ../.env
     container_name: agent_assistant_db
     restart: unless-stopped
     environment:
@@ -31,6 +31,8 @@ services:
     image: redis:7-alpine
     container_name: agent_assistant_redis
     restart: unless-stopped
+    env_file:
+      - ../.env
     ports:
       - "127.0.0.1:6379:6379"
     networks:
@@ -47,10 +49,12 @@ services:
   # Django Backend
   backend:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: Dockerfile.prod
     container_name: agent_assistant_backend
     restart: unless-stopped
+    env_file:
+      - ../.env
     command: >
       sh -c "
         python manage.py migrate &&
@@ -89,12 +93,14 @@ services:
   # Frontend (React) - Production build
   frontend:
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     container_name: agent_assistant_frontend
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     ports:
@@ -110,10 +116,12 @@ services:
   # Telegram Bot
   telegram-bot:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: telegram_requests/bot/Dockerfile
     container_name: agent_assistant_telegram_bot
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - API_BASE_URL=http://backend:8000/api

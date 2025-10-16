@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Скрипт полного запуска Agent Assistant (все сервисы + Telegram бот)
+# Полностью автоматический, без интерактивных вопросов
 
 # Переходим в корневую директорию проекта
 cd "$(dirname "$0")/../.." || exit 1
@@ -21,83 +22,42 @@ echo ""
 # Проверяем .env файл
 echo "2️⃣  Проверка .env файла..."
 if [ ! -f .env ]; then
-    echo "⚠️  Файл .env не найден!"
-    echo "   Создаем из .env.example..."
-    if [ -f .env.example ]; then
-        cp .env.example .env
-        echo "✅ Файл .env создан. ОБЯЗАТЕЛЬНО ДОБАВЬТЕ API КЛЮЧИ!"
-        echo "⚠️  Требуются: BOT_TOKEN, OPENAI_API_KEY, SECRET_KEY"
-        read -p "Нажмите Enter после редактирования .env или Ctrl+C для выхода..."
-    else
-        echo "❌ .env.example не найден!"
-        exit 1
-    fi
-else
-    echo "✅ Файл .env существует"
+    echo "❌ Файл .env не найден!"
+    echo "   Создайте .env из .env.example и добавьте необходимые ключи"
+    exit 1
 fi
+echo "✅ Файл .env существует"
 echo ""
 
 # Останавливаем старые контейнеры
 echo "3️⃣  Остановка старых контейнеров..."
-docker-compose -f docker/docker-compose.yml down > /dev/null 2>&1
-docker-compose -f docker/docker-compose.bot.yml down > /dev/null 2>&1
+docker-compose -f docker/docker-compose.bot.yml --env-file .env down 2>/dev/null
+docker-compose -f docker/docker-compose.yml --env-file .env down 2>/dev/null
 echo "✅ Старые контейнеры остановлены"
 echo ""
 
-# Запускаем базу данных и Redis
-echo "4️⃣  Запуск PostgreSQL и Redis..."
-docker-compose -f docker/docker-compose.yml up -d db redis
-echo "⏳ Ожидание готовности базы данных..."
-sleep 5
-
-# Проверяем готовность БД
-until docker-compose -f docker/docker-compose.yml exec -T db pg_isready -U postgres > /dev/null 2>&1; do
-    echo "   Ожидание PostgreSQL..."
-    sleep 2
-done
-echo "✅ PostgreSQL готов"
-echo ""
-
-# Применяем миграции
-echo "5️⃣  Применение миграций..."
-docker-compose -f docker/docker-compose.yml run --rm backend python manage.py migrate
-echo "✅ Миграции применены"
-echo ""
-
-# Загружаем тестовые данные (опционально)
-read -p "6️⃣  Загрузить тестовые данные? (y/n) " -n 1 -r
-echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    docker-compose -f docker/docker-compose.yml run --rm backend python manage.py load_test_data --clear
-    echo "✅ Тестовые данные загружены"
-fi
-echo ""
-
-# Запускаем основные сервисы
-echo "7️⃣  Запуск основных сервисов (Backend, Frontend, Nginx)..."
-docker-compose -f docker/docker-compose.yml up -d
+# Запускаем все основные сервисы сразу
+echo "4️⃣  Запуск всех основных сервисов..."
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
 echo "✅ Основные сервисы запущены"
 echo ""
 
-# Ожидаем готовности backend
-echo "⏳ Ожидание готовности Backend..."
-sleep 10
+# Ждём готовности сервисов
+echo "5️⃣  Ожидание готовности сервисов (30 сек)..."
+sleep 30
+echo "✅ Сервисы готовы"
+echo ""
 
 # Запускаем Telegram бота
-echo "8️⃣  Запуск Telegram бота..."
-docker-compose -f docker/docker-compose.bot.yml up -d
-sleep 3
+echo "6️⃣  Запуск Telegram бота..."
+docker-compose -f docker/docker-compose.bot.yml --env-file .env up -d
 echo "✅ Telegram бот запущен"
 echo ""
 
 # Показываем статус всех сервисов
-echo "9️⃣  Статус всех сервисов:"
+echo "7️⃣  Статус всех сервисов:"
 echo ""
-echo "Основные сервисы:"
-docker-compose -f docker/docker-compose.yml ps
-echo ""
-echo "Telegram бот:"
-docker-compose -f docker/docker-compose.bot.yml ps
+docker ps --filter "name=agent_assistant" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 echo ""
 
 echo "✅ Agent Assistant полностью запущен!"
