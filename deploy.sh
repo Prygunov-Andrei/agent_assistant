@@ -24,8 +24,12 @@ echo "[$(date)] Creating required directories..."
 mkdir -p backend/logs backend/staticfiles
 chmod 777 backend/logs backend/staticfiles
 
-# Пересобираем и перезапускаем контейнеры
-echo "[$(date)] Building and restarting containers..."
+# Останавливаем и удаляем старые контейнеры
+echo "[$(date)] Stopping and removing old containers..."
+docker-compose -f docker-compose.prod.yml down
+
+# Пересобираем и запускаем контейнеры
+echo "[$(date)] Building and starting containers..."
 docker-compose -f docker-compose.prod.yml up -d --build
 
 # Ждем запуска
