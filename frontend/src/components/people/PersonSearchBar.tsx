@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { PersonSearchParams } from '../../types/people';
 
 interface PersonSearchBarProps {
@@ -9,11 +9,54 @@ interface PersonSearchBarProps {
 export const PersonSearchBar: React.FC<PersonSearchBarProps> = ({ personType, onSearch }) => {
   const [searchText, setSearchText] = useState('');
   const [sort, setSort] = useState<string>('-created_at');
-  
+  const onSearchRef = useRef(onSearch);
+  const previousParamsRef = useRef({
+    searchText: '',
+    sort: '-created_at',
+    personType
+  });
+
+  // Обновляем ref при изменении onSearch
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
+
+  // Сбрасываем поисковые значения при смене типа персоны
+  useEffect(() => {
+    if (previousParamsRef.current.personType === personType) {
+      return;
+    }
+
+    previousParamsRef.current = {
+      searchText: '',
+      sort: '-created_at',
+      personType
+    };
+
+    setSearchText('');
+    setSort('-created_at');
+  }, [personType]);
+
   // Живой поиск с debounce
   useEffect(() => {
+    const previousParams = previousParamsRef.current;
+    const hasChanged =
+      previousParams.searchText !== searchText ||
+      previousParams.sort !== sort ||
+      previousParams.personType !== personType;
+
+    if (!hasChanged) {
+      return;
+    }
+
+    previousParamsRef.current = {
+      searchText,
+      sort,
+      personType
+    };
+
     const timer = setTimeout(() => {
-      onSearch({
+      onSearchRef.current({
         person_type: personType,
         name: searchText,
         phone: searchText,
@@ -22,9 +65,13 @@ export const PersonSearchBar: React.FC<PersonSearchBarProps> = ({ personType, on
         sort
       });
     }, 300); // Задержка 300ms
-    
-    return () => clearTimeout(timer);
-  }, [searchText, sort, personType, onSearch]);
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [searchText, sort, personType]);
   
   return (
     <div style={{ 

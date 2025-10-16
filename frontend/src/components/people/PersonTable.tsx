@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { Person, PersonSearchParams } from '../../types/people';
 import { PersonAvatar } from './PersonAvatar';
 import { PersonContacts } from './PersonContacts';
@@ -17,6 +17,29 @@ interface PersonTableProps {
   personType: 'director' | 'producer' | 'casting_director';
 }
 
+const normalizeSearchParams = (params?: PersonSearchParams) => ({
+  person_type: params?.person_type ?? '',
+  name: params?.name ?? '',
+  phone: params?.phone ?? '',
+  email: params?.email ?? '',
+  telegram: params?.telegram ?? '',
+  sort: params?.sort ?? ''
+});
+
+const areSearchParamsEqual = (a?: PersonSearchParams, b?: PersonSearchParams) => {
+  const normalizedA = normalizeSearchParams(a);
+  const normalizedB = normalizeSearchParams(b);
+
+  return (
+    normalizedA.person_type === normalizedB.person_type &&
+    normalizedA.name === normalizedB.name &&
+    normalizedA.phone === normalizedB.phone &&
+    normalizedA.email === normalizedB.email &&
+    normalizedA.telegram === normalizedB.telegram &&
+    normalizedA.sort === normalizedB.sort
+  );
+};
+
 export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,49 +57,64 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize] = useState(20);
+  const currentPageRef = useRef(1);
   
-  // Текущие параметры поиска
-  const [searchParams, setSearchParamsState] = useState<PersonSearchParams>({
+  // Синхронизируем ref с состоянием
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+  
+  // Текущие параметры поиска - используем ref для избежания пересоздания useCallback
+  const searchParamsRef = useRef<PersonSearchParams>({
     person_type: personType,
     sort: '-created_at'
   });
   
+  // Обновляем personType в searchParamsRef при изменении prop
   useEffect(() => {
-    loadPeople(searchParams);
-  }, [personType, currentPage]);
+    searchParamsRef.current.person_type = personType;
+  }, [personType]);
   
-  const loadPeople = async (newSearchParams?: PersonSearchParams) => {
+  const loadPeople = useCallback(async (params?: PersonSearchParams, page?: number) => {
     setLoading(true);
     setError(null);
     try {
-      const params = newSearchParams || searchParams;
-      console.log('PersonTable.loadPeople с параметрами:', params);
+      const searchParams = params || searchParamsRef.current;
+      const pageToLoad = page !== undefined ? page : currentPageRef.current;
       
       const response = await peopleService.searchWithPagination({
-        ...params,
+        ...searchParams,
         person_type: personType,
-        page: currentPage,
+        page: pageToLoad,
         page_size: pageSize
       });
       
-      console.log('PersonTable.loadPeople результат:', response.count, 'записей');
       setPeople(response.results);
       setTotalCount(response.count);
       setTotalPages(Math.ceil(response.count / pageSize));
-      setSearchParamsState(params);
+      if (params) {
+        searchParamsRef.current = params;
+      }
     } catch (err) {
       ErrorHandler.logError(err, 'PersonTable.loadPeople');
       setError('Ошибка загрузки персон');
     } finally {
       setLoading(false);
     }
-  };
+  }, [personType, pageSize]);
   
-  const handleSearch = (params: PersonSearchParams) => {
-    console.log('PersonTable.handleSearch вызван с:', params);
+  const handleSearch = useCallback((params: PersonSearchParams) => {
+    if (areSearchParamsEqual(params, searchParamsRef.current)) {
+      return;
+    }
+
     setCurrentPage(1);
-    loadPeople(params);
-  };
+    loadPeople(params, 1);
+  }, [loadPeople]);
+  
+  useEffect(() => {
+    loadPeople();
+  }, [loadPeople]);
   
   const handleRowClick = (person: Person) => {
     setSelectedPersonId(person.id);
@@ -90,12 +128,11 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
     setModalOpen(true);
   };
   
-  const handleModalSuccess = (person: Person | null) => {
-    console.log('PersonTable.handleModalSuccess вызван', person ? `для персоны ${person.id}` : 'для удаления');
+  const handleModalSuccess = useCallback((person: Person | null) => {
     // После успешного создания/обновления/удаления - перезагружаем с текущими параметрами
     setCurrentPage(1); // Возвращаемся на первую страницу
-    loadPeople(searchParams); // Используем текущие параметры поиска
-  };
+    loadPeople(searchParamsRef.current, 1); // Используем текущие параметры поиска
+  }, [loadPeople]);
   
   const getPersonTypeLabel = () => {
     const labels = {
@@ -106,10 +143,11 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
     return labels[personType];
   };
   
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     setCurrentPage(newPage);
+    loadPeople(undefined, newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [loadPeople]);
   
   const handleProjectClick = async (projectId: number) => {
     try {
