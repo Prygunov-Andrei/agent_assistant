@@ -172,7 +172,7 @@ class Artist(models.Model):
 
 ### Запуск через Docker
 
-**Быстрый старт:**
+**Полный запуск (ВСЕ сервисы + Telegram бот):**
 ```bash
 # Клонирование репозитория
 git clone <repository-url>
@@ -182,7 +182,15 @@ cd agent_assistant
 cp .env.example .env
 # Отредактируйте .env файл, добавив ваши токены
 
-# Запуск через скрипт (рекомендуется)
+# Запуск ВСЕГО проекта (рекомендуется)
+./scripts/deploy/start_all.sh
+
+# Остановка всех сервисов
+./scripts/deploy/stop_all.sh
+```
+
+**Запуск БЕЗ Telegram бота (для разработки):**
+```bash
 ./scripts/deploy/start.sh
 ```
 
