@@ -10,6 +10,11 @@ echo "[$(date)] Starting deployment..."
 # Переходим в директорию проекта
 cd /opt/agent_assistant
 
+# Сбрасываем все локальные изменения (чтобы избежать конфликтов)
+echo "[$(date)] Resetting local changes..."
+git reset --hard HEAD
+git clean -fd
+
 # Получаем последние изменения из GitHub
 echo "[$(date)] Pulling latest changes from GitHub..."
 git pull origin main
