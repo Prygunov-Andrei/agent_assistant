@@ -133,7 +133,7 @@ class PeopleService {
       }
     });
     
-    const response = await apiClient.put(`${this.baseUrl}${id}/`, formData, {
+    const response = await apiClient.patch(`${this.baseUrl}${id}/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
