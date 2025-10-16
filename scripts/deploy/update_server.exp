@@ -1,0 +1,72 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set server "217.151.231.96"
+set password "j7EF^1u+V?Zpz9"
+
+# Подключаемся к серверу
+spawn ssh -o StrictHostKeyChecking=no root@$server
+
+# Ожидаем запрос пароля
+expect {
+    "password:" {
+        send "$password\r"
+    }
+    timeout {
+        puts "Timeout waiting for password prompt"
+        exit 1
+    }
+}
+
+# Ожидаем приглашение командной строки
+expect {
+    "#" {
+        puts "\n✅ Подключено к серверу\n"
+    }
+    timeout {
+        puts "Timeout waiting for shell prompt"
+        exit 1
+    }
+}
+
+# Переходим в директорию проекта
+send "cd /opt/agent_assistant\r"
+expect "#"
+
+puts "\n📋 Проверка текущей структуры...\n"
+send "ls -la | head -20\r"
+expect "#"
+
+puts "\n🔍 Проверка .env файла...\n"
+send "grep SECRET_KEY .env\r"
+expect "#"
+
+puts "\n⚠️ Если SECRET_KEY содержит спецсимволы - нужно заменить!\n"
+puts "Продолжить? (yes для продолжения, no для выхода)\r"
+
+# Ждём подтверждения от пользователя
+interact {
+    "yes\r" {
+        send "cd /opt/agent_assistant\r"
+        expect "#"
+        
+        puts "\n🛑 Останавливаем все старые контейнеры...\n"
+        send "docker stop \$(docker ps -q --filter \"name=agent_assistant\") 2>/dev/null; docker rm \$(docker ps -aq --filter \"name=agent_assistant\") 2>/dev/null\r"
+        expect "#"
+        
+        puts "\n🚀 Запускаем через обновлённый скрипт...\n"
+        send "docker-compose -f docker/docker-compose.prod.yml --env-file .env up -d --build\r"
+        expect "#"
+        
+        puts "\n✅ Готово! Проверяем статус...\n"
+        send "docker ps --filter \"name=agent_assistant\"\r"
+        expect "#"
+        
+        puts "\n\nСервер обновлён!\n"
+    }
+    "no\r" {
+        puts "\nОтменено. Выход...\n"
+        send "exit\r"
+    }
+}
+
