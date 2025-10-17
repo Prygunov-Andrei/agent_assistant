@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Person, PersonContactAddition
+from .models import Person, PersonContactAddition, ImportSession
 
 
 @admin.register(Person)
@@ -137,3 +137,98 @@ class PersonContactAdditionAdmin(admin.ModelAdmin):
             addition.reject(request.user)
         self.message_user(request, f"Отклонено {queryset.count()} добавлений контактов")
     reject_additions.short_description = "Отклонить выбранные добавления"
+
+
+@admin.register(ImportSession)
+class ImportSessionAdmin(admin.ModelAdmin):
+    """Админ для сессий импорта персон"""
+    
+    list_display = (
+        'id',
+        'user',
+        'original_filename',
+        'status',
+        'total_rows',
+        'valid_rows',
+        'invalid_rows',
+        'created_count',
+        'updated_count',
+        'created_at',
+    )
+    
+    list_filter = (
+        'status',
+        'created_at',
+        'user',
+    )
+    
+    search_fields = (
+        'id',
+        'original_filename',
+        'user__username',
+    )
+    
+    readonly_fields = (
+        'id',
+        'user',
+        'file',
+        'original_filename',
+        'records_data',
+        'total_rows',
+        'valid_rows',
+        'invalid_rows',
+        'created_count',
+        'updated_count',
+        'skipped_count',
+        'error_count',
+        'error_message',
+        'created_at',
+        'updated_at',
+        'completed_at',
+    )
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': (
+                'id',
+                'user',
+                'original_filename',
+                'file',
+                'status',
+            )
+        }),
+        ('Статистика', {
+            'fields': (
+                'total_rows',
+                'valid_rows',
+                'invalid_rows',
+                'created_count',
+                'updated_count',
+                'skipped_count',
+                'error_count',
+            )
+        }),
+        ('Данные импорта', {
+            'fields': ('records_data',),
+            'classes': ('collapse',)
+        }),
+        ('Ошибки', {
+            'fields': ('error_message',),
+            'classes': ('collapse',)
+        }),
+        ('Временные метки', {
+            'fields': (
+                'created_at',
+                'updated_at',
+                'completed_at'
+            )
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        """Запретить создание через админку (только через API)"""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Запретить изменение (только просмотр)"""
+        return False

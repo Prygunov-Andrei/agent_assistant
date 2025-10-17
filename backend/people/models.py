@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+import uuid
 
 
 class Person(models.Model):
@@ -408,3 +409,145 @@ class PersonContactAddition(models.Model):
                 contact_list.remove(self.contact_value)
                 setattr(self.person, field_name, contact_list)
                 self.person.save()
+
+
+class ImportSession(models.Model):
+    """Сессия импорта персон для отслеживания процесса"""
+    
+    STATUS_CHOICES = [
+        ('uploaded', 'Загружен'),
+        ('processing', 'Обработка'),
+        ('pending', 'Ожидает подтверждения'),
+        ('completed', 'Завершен'),
+        ('failed', 'Ошибка'),
+    ]
+    
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='import_sessions',
+        verbose_name="Пользователь"
+    )
+    
+    file = models.FileField(
+        upload_to='imports/people/',
+        verbose_name="Файл импорта"
+    )
+    
+    original_filename = models.CharField(
+        max_length=255,
+        verbose_name="Оригинальное имя файла"
+    )
+    
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='uploaded',
+        verbose_name="Статус"
+    )
+    
+    records_data = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Данные записей",
+        help_text="Хранение обработанных записей из файла"
+    )
+    
+    total_rows = models.IntegerField(
+        default=0,
+        verbose_name="Всего строк"
+    )
+    
+    valid_rows = models.IntegerField(
+        default=0,
+        verbose_name="Валидных строк"
+    )
+    
+    invalid_rows = models.IntegerField(
+        default=0,
+        verbose_name="Невалидных строк"
+    )
+    
+    created_count = models.IntegerField(
+        default=0,
+        verbose_name="Создано персон"
+    )
+    
+    updated_count = models.IntegerField(
+        default=0,
+        verbose_name="Обновлено персон"
+    )
+    
+    skipped_count = models.IntegerField(
+        default=0,
+        verbose_name="Пропущено"
+    )
+    
+    error_count = models.IntegerField(
+        default=0,
+        verbose_name="Ошибок"
+    )
+    
+    error_message = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Сообщение об ошибке"
+    )
+    
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Дата создания"
+    )
+    
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Дата обновления"
+    )
+    
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата завершения"
+    )
+    
+    class Meta:
+        verbose_name = "Сессия импорта персон"
+        verbose_name_plural = "Сессии импорта персон"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"Import {self.id} - {self.get_status_display()} - {self.user.username}"
+    
+    def get_record(self, row_number):
+        """Получить запись по номеру строки"""
+        if not self.records_data or 'preview' not in self.records_data:
+            return None
+        
+        for record in self.records_data.get('preview', []):
+            if record.get('row_number') == row_number:
+                return record
+        return None
+    
+    def mark_completed(self):
+        """Отметить импорт как завершенный"""
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        self.save()
+    
+    def mark_failed(self, error_message):
+        """Отметить импорт как ошибочный"""
+        self.status = 'failed'
+        self.error_message = error_message
+        self.completed_at = timezone.now()
+        self.save()

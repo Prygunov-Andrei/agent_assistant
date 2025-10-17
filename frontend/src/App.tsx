@@ -10,6 +10,7 @@ import ProjectCreationPage from './pages/ProjectCreationPage';
 import CastingDirectors from './pages/CastingDirectors';
 import Producers from './pages/Producers';
 import Directors from './pages/Directors';
+import SettingsPage from './pages/Settings/SettingsPage';
 import LoadingSpinner from './components/LoadingSpinner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -147,19 +148,16 @@ const App: React.FC = () => {
                  }
                />
 
-               <Route
-                 path="/settings"
-                 element={
-                   <ProtectedRoute>
-                     <Layout>
-                       <div className="text-center py-12">
-                         <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
-                         <p className="text-gray-600 mt-2">Страница в разработке</p>
-                       </div>
-                     </Layout>
-                   </ProtectedRoute>
-                 }
-               />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <SettingsPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
 
                {/* Тестовая страница для поиска персон */}
                <Route

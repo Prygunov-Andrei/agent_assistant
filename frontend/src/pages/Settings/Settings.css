@@ -1,0 +1,89 @@
+/* Страница настроек - стили */
+
+.settings-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.settings-header {
+  margin-bottom: 2rem;
+}
+
+.settings-header h1 {
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 2rem;
+}
+
+.settings-tab {
+  padding: 1rem 2rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #666;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.settings-tab:hover {
+  color: #4472C4;
+}
+
+.settings-tab.active {
+  color: #4472C4;
+  font-weight: 600;
+}
+
+.settings-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #4472C4;
+}
+
+.settings-content {
+  background: white;
+}
+
+.settings-section {
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.settings-section h2 {
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+}
+
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 1rem;
+  }
+
+  .settings-tabs {
+    flex-direction: column;
+    border-bottom: none;
+  }
+
+  .settings-tab {
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .settings-tab.active::after {
+    display: none;
+  }
+}
+

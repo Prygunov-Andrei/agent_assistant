@@ -476,3 +476,173 @@ class PersonViewSet(viewsets.ModelViewSet):
         
         serializer = ProjectListSerializer(projects, many=True)
         return Response(serializer.data)
+
+
+# Views для массового импорта персон
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.http import FileResponse
+from .bulk_import import BulkImportService
+from .serializers import ImportSessionSerializer, BulkImportConfirmSerializer
+from .models import ImportSession
+import os
+
+
+bulk_import_service = BulkImportService()
+
+
+@extend_schema(
+    summary="Загрузка файла для импорта персон",
+    description="Загружает XLSX файл с персонами, парсит его и ищет дубликаты",
+    request={
+        'multipart/form-data': {
+            'type': 'object',
+            'properties': {
+                'file': {
+                    'type': 'string',
+                    'format': 'binary',
+                    'description': 'XLSX файл с персонами'
+                }
+            }
+        }
+    },
+    responses={
+        200: ImportSessionSerializer,
+        400: {'description': 'Ошибка валидации файла'}
+    },
+    tags=["Импорт персон"]
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bulk_import_upload(request):
+    """Загрузка и предварительная обработка файла"""
+    if 'file' not in request.FILES:
+        return Response(
+            {'error': 'Файл не предоставлен'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    file = request.FILES['file']
+    
+    # Валидация файла
+    if not file.name.endswith('.xlsx'):
+        return Response(
+            {'error': 'Неверный формат файла. Требуется XLSX'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Проверка размера (максимум 5MB)
+    if file.size > 5 * 1024 * 1024:
+        return Response(
+            {'error': 'Размер файла превышает 5 МБ'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Обработка
+    try:
+        import_session = bulk_import_service.process_upload(file, request.user)
+        serializer = ImportSessionSerializer(import_session)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@extend_schema(
+    summary="Подтверждение и выполнение импорта",
+    description="Выполняет импорт персон с учетом решений пользователя по каждой строке",
+    request=BulkImportConfirmSerializer,
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'status': {'type': 'string'},
+                'statistics': {
+                    'type': 'object',
+                    'properties': {
+                        'created': {'type': 'integer'},
+                        'updated': {'type': 'integer'},
+                        'skipped': {'type': 'integer'},
+                        'errors': {'type': 'integer'}
+                    }
+                },
+                'details': {'type': 'array'}
+            }
+        },
+        400: {'description': 'Ошибка валидации данных'},
+        404: {'description': 'Сессия импорта не найдена'}
+    },
+    tags=["Импорт персон"]
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bulk_import_confirm(request):
+    """Выполнение импорта с учетом решений пользователя"""
+    serializer = BulkImportConfirmSerializer(data=request.data)
+    
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    import_id = serializer.validated_data['import_id']
+    decisions = serializer.validated_data['decisions']
+    
+    # Получить сессию импорта
+    try:
+        import_session = ImportSession.objects.get(id=import_id, user=request.user)
+    except ImportSession.DoesNotExist:
+        return Response(
+            {'error': 'Сессия импорта не найдена'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Выполнить импорт
+    try:
+        results = bulk_import_service.execute_import(import_session, decisions)
+        return Response(results)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@extend_schema(
+    summary="Скачать шаблон для импорта",
+    description="Возвращает XLSX файл-шаблон для заполнения данными персон",
+    responses={
+        200: {
+            'type': 'string',
+            'format': 'binary',
+            'description': 'XLSX файл шаблона'
+        }
+    },
+    tags=["Импорт персон"]
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def bulk_import_template(request):
+    """Скачивание шаблона Excel"""
+    from django.conf import settings
+    
+    template_path = os.path.join(
+        settings.BASE_DIR, 
+        'people', 
+        'templates', 
+        'person_import_template.xlsx'
+    )
+    
+    if not os.path.exists(template_path):
+        return Response(
+            {'error': 'Файл шаблона не найден'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    return FileResponse(
+        open(template_path, 'rb'),
+        as_attachment=True,
+        filename='шаблон_импорта_персон.xlsx',
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )

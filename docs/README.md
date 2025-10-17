@@ -8,6 +8,8 @@
 
 ### 📋 Планирование (`planning/`)
 - **[module_plan_layer5.md](planning/module_plan_layer5.md)** - Главный план разработки проекта (110 дней)
+- **[bulk_import_persons.md](planning/bulk_import_persons.md)** - План реализации массового импорта персон
+- **[multiple_contacts_for_persons.md](planning/multiple_contacts_for_persons.md)** - План множественных контактов для персон
 - **[module_planning_checklist.md](planning/module_planning_checklist.md)** - Чек-лист для планирования модулей
 
 ### 🔧 Техническая документация (`technical/`)
@@ -16,10 +18,13 @@
 - **[OPENAI_SETUP.md](technical/OPENAI_SETUP.md)** - Настройка OpenAI API
 
 ### 🚀 Развёртывание (`deployment/`)
-- **[QUICK_DEPLOY_CHECKLIST.md](deployment/QUICK_DEPLOY_CHECKLIST.md)** - Быстрый чек-лист для деплоя ⭐ (начните с этого!)
+- **[DEPLOYMENT_IMPORTANT_NOTES.md](deployment/DEPLOYMENT_IMPORTANT_NOTES.md)** - ⚠️ ВАЖНО! Прочитать в первую очередь
+- **[QUICK_DEPLOY_CHECKLIST.md](deployment/QUICK_DEPLOY_CHECKLIST.md)** - Быстрый чек-лист для деплоя ⭐
 - **[DEPLOYMENT.md](deployment/DEPLOYMENT.md)** - Полная инструкция по развёртыванию
-- **[DEPLOYMENT_PRODUCTION.md](deployment/DEPLOYMENT_PRODUCTION.md)** - Деплой на production
+- **[CACHE_BUSTING_GUIDE.md](deployment/CACHE_BUSTING_GUIDE.md)** - Решение проблем с кэшированием frontend
+- **[DEPLOYMENT_PRODUCTION.md](deployment/DEPLOYMENT_PRODUCTION.md)** - Деплой на production сервер
 - **[GITHUB_WEBHOOK_SETUP.md](deployment/GITHUB_WEBHOOK_SETUP.md)** - Настройка GitHub webhooks
+- **[UPDATE_SERVER_AFTER_REORGANIZATION.md](deployment/UPDATE_SERVER_AFTER_REORGANIZATION.md)** - Обновление сервера после реорганизации
 
 ### 🤖 Telegram Bot (`bot/`)
 - **[BOT_SWITCH_GUIDE.md](bot/BOT_SWITCH_GUIDE.md)** - Руководство по переключению бота между локальным и production режимами
@@ -66,4 +71,4 @@
 
 ---
 
-**Последнее обновление:** 16 октября 2025
+**Последнее обновление:** 17 октября 2025

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Person
+from .models import Person, ImportSession
 
 
 class PersonSerializer(serializers.ModelSerializer):
@@ -357,3 +357,70 @@ class PersonTypeSerializer(serializers.Serializer):
     
     value = serializers.CharField(help_text="Значение типа персоны")
     label = serializers.CharField(help_text="Отображаемое название типа персоны")
+
+
+class ImportSessionSerializer(serializers.ModelSerializer):
+    """Сериализатор для сессии импорта персон"""
+    
+    user = serializers.ReadOnlyField(source='user.username')
+    
+    class Meta:
+        model = ImportSession
+        fields = [
+            'id',
+            'user',
+            'file',
+            'original_filename',
+            'status',
+            'records_data',
+            'total_rows',
+            'valid_rows',
+            'invalid_rows',
+            'created_count',
+            'updated_count',
+            'skipped_count',
+            'error_count',
+            'error_message',
+            'created_at',
+            'updated_at',
+            'completed_at',
+        ]
+        read_only_fields = fields
+
+
+class BulkImportDecisionSerializer(serializers.Serializer):
+    """Сериализатор для решения пользователя по строке импорта"""
+    
+    row_number = serializers.IntegerField(
+        min_value=1,
+        help_text="Номер строки в файле"
+    )
+    action = serializers.ChoiceField(
+        choices=['create', 'update', 'skip'],
+        help_text="Действие: create - создать новую, update - обновить существующую, skip - пропустить"
+    )
+    person_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="ID персоны для обновления (обязательно для action=update)"
+    )
+    
+    def validate(self, data):
+        """Валидация: если action=update, то person_id обязателен"""
+        if data['action'] == 'update' and not data.get('person_id'):
+            raise serializers.ValidationError({
+                'person_id': 'Поле person_id обязательно для action=update'
+            })
+        return data
+
+
+class BulkImportConfirmSerializer(serializers.Serializer):
+    """Сериализатор для подтверждения импорта"""
+    
+    import_id = serializers.UUIDField(
+        help_text="ID сессии импорта"
+    )
+    decisions = BulkImportDecisionSerializer(
+        many=True,
+        help_text="Список решений для каждой строки"
+    )

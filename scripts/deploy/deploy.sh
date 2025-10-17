@@ -44,6 +44,10 @@ docker-compose -f docker/docker-compose.prod.yml --env-file .env exec -T backend
 echo "[$(date)] Collecting static files..."
 docker-compose -f docker/docker-compose.prod.yml --env-file .env exec -T backend python manage.py collectstatic --noinput || true
 
+# Создаем шаблон Excel для импорта персон (если не существует)
+echo "[$(date)] Creating Excel import template..."
+docker-compose -f docker/docker-compose.prod.yml --env-file .env exec -T backend python people/create_template.py || true
+
 # Копируем статику в директорию доступную системному Nginx
 echo "[$(date)] Copying static files for system Nginx..."
 STATIC_VOLUME=$(docker volume inspect docker_static_files --format '{{.Mountpoint}}')
