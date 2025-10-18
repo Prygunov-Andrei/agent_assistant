@@ -4,6 +4,9 @@ from rest_framework.response import Response
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
 from .permissions import OwnerPermission
+from .models import BackupRecord
+from .serializers import BackupRecordSerializer, BackupStatisticsSerializer, BackupCreateSerializer
+from .backup_manager import BackupManager
 
 
 class BaseReferenceViewSet(viewsets.ModelViewSet):
@@ -202,3 +205,146 @@ class BaseModelViewSet(viewsets.ModelViewSet):
         if hasattr(self.queryset.model, 'name'):
             return queryset.filter(name__icontains=search_query)
         return queryset
+
+
+class BackupViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet для управления резервными копиями базы данных.
+    
+    Предоставляет операции для просмотра истории бэкапов,
+    создания новых бэкапов и получения статистики.
+    """
+    
+    queryset = BackupRecord.objects.all()
+    serializer_class = BackupRecordSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Возвращает queryset с сортировкой по дате создания"""
+        return BackupRecord.objects.all().order_by('-created_at')
+    
+    @extend_schema(
+        summary="Список бэкапов",
+        description="Получить список всех резервных копий",
+        tags=["Резервные копии"]
+    )
+    def list(self, request, *args, **kwargs):
+        """Получение списка всех бэкапов."""
+        return super().list(request, *args, **kwargs)
+    
+    @extend_schema(
+        summary="Получить бэкап",
+        description="Получить информацию о конкретном бэкапе",
+        tags=["Резервные копии"]
+    )
+    def retrieve(self, request, *args, **kwargs):
+        """Получение информации о конкретном бэкапе."""
+        return super().retrieve(request, *args, **kwargs)
+    
+    @extend_schema(
+        summary="Создать новый бэкап",
+        description="Создать новую резервную копию базы данных",
+        request=BackupCreateSerializer,
+        responses={201: BackupRecordSerializer},
+        tags=["Резервные копии"]
+    )
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def create_backup(self, request):
+        """
+        Создание новой резервной копии базы данных.
+        
+        Требует права администратора (is_staff=True).
+        
+        Returns:
+            Response: информация о созданном бэкапе
+        """
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'Только администраторы могут создавать бэкапы'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            backup_manager = BackupManager()
+            backup_record = backup_manager.create_backup(user=request.user)
+            
+            serializer = BackupRecordSerializer(backup_record)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Ошибка создания бэкапа: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @extend_schema(
+        summary="Статистика бэкапов",
+        description="Получить статистику по резервным копиям",
+        responses={200: BackupStatisticsSerializer},
+        tags=["Резервные копии"]
+    )
+    @action(detail=False, methods=['get'])
+    def statistics(self, request):
+        """
+        Получение статистики по бэкапам.
+        
+        Returns:
+            Response: статистика бэкапов
+        """
+        try:
+            backup_manager = BackupManager()
+            stats = backup_manager.get_backup_statistics()
+            
+            serializer = BackupStatisticsSerializer(stats)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Ошибка получения статистики: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @extend_schema(
+        summary="Удалить бэкап",
+        description="Удалить резервную копию с Google Drive",
+        tags=["Резервные копии"]
+    )
+    @action(detail=True, methods=['delete'], permission_classes=[permissions.IsAuthenticated])
+    def delete_backup(self, request, pk=None):
+        """
+        Удаление резервной копии.
+        
+        Требует права администратора (is_staff=True).
+        
+        Args:
+            pk: ID записи о бэкапе
+            
+        Returns:
+            Response: результат операции
+        """
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'Только администраторы могут удалять бэкапы'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            backup_manager = BackupManager()
+            success = backup_manager.delete_backup(pk, user=request.user)
+            
+            if success:
+                return Response(
+                    {'message': 'Бэкап успешно удален'},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {'error': 'Ошибка удаления бэкапа'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
+        except Exception as e:
+            return Response(
+                {'error': f'Ошибка удаления бэкапа: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

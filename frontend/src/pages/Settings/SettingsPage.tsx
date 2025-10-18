@@ -3,9 +3,10 @@
  */
 import React, { useState } from 'react';
 import BulkImportPage from './BulkImport/BulkImportPage';
+import { BackupPage } from './Backup/BackupPage';
 import './Settings.css';
 
-type SettingsTab = 'general' | 'import' | 'profile';
+type SettingsTab = 'general' | 'import' | 'backup' | 'profile';
 
 const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('import');
@@ -32,6 +33,13 @@ const SettingsPage: React.FC = () => {
           Импорт персон
         </button>
         <button
+          className={`settings-tab ${activeTab === 'backup' ? 'active' : ''}`}
+          onClick={() => setActiveTab('backup')}
+          type="button"
+        >
+          Резервные копии
+        </button>
+        <button
           className={`settings-tab ${activeTab === 'profile' ? 'active' : ''}`}
           onClick={() => setActiveTab('profile')}
           type="button"
@@ -50,6 +58,10 @@ const SettingsPage: React.FC = () => {
 
         {activeTab === 'import' && (
           <BulkImportPage />
+        )}
+
+        {activeTab === 'backup' && (
+          <BackupPage />
         )}
 
         {activeTab === 'profile' && (

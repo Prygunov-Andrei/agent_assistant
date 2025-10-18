@@ -88,21 +88,25 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:8000/api
     container_name: agent_assistant_frontend
     restart: unless-stopped
     env_file:
       - ../.env
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000}
-    volumes:
-      - ../frontend:/app
-      - /app/node_modules
     ports:
       - "3000:3000"
     networks:
       - agent_network
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   # Nginx Reverse Proxy (для продакшена)
   nginx:

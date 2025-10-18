@@ -40,6 +40,7 @@ urlpatterns = [
     path('api/', include('people.urls')),
     path('api/', include('projects.urls')),
     path('api/', include('artists.urls')),
+    path('api/', include('core.urls')),  # Core endpoints (backups)
     path('api/', include('llm.urls')),  # LLM должен быть ПЕРЕД telegram_requests для приоритета /requests/<id>/analyze/
     path('api/', include('telegram_requests.urls')),
     

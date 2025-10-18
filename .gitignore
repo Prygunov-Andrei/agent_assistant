@@ -44,6 +44,10 @@ media/
 # Environment variables
 .env
 
+# Google Drive credentials
+backend/credentials/
+credentials/
+
 # IDE
 .vscode/
 .idea/

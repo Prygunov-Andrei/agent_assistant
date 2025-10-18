@@ -24,6 +24,8 @@ class AgentSerializer(serializers.ModelSerializer):
             'birth_date',
             'telegram_username',
             'is_active',
+            'is_staff',
+            'is_superuser',
             'date_joined',
             'last_login',
             'created_at',
@@ -31,6 +33,8 @@ class AgentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id',
+            'is_staff',
+            'is_superuser',
             'date_joined',
             'last_login',
             'created_at',

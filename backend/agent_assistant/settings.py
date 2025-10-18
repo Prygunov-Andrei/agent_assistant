@@ -279,6 +279,34 @@ OPENAI_MAX_RETRIES = config('OPENAI_MAX_RETRIES', default=3, cast=int)
 OPENAI_TIMEOUT = config('OPENAI_TIMEOUT', default=60, cast=int)
 
 # ==============================
+# EMAIL CONFIGURATION
+# ==============================
+
+# SMTP Configuration
+EMAIL_HOST = config('EMAIL_HOST', default='localhost')
+EMAIL_PORT = config('EMAIL_PORT', default=25, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@localhost')
+
+# ==============================
+# EMAIL BACKUP SETTINGS
+# ==============================
+
+# Email Configuration for Backup
+EMAIL_BACKUP_ENABLED = config('EMAIL_BACKUP_ENABLED', default=True, cast=bool)
+EMAIL_BACKUP_RECIPIENT = config('EMAIL_BACKUP_RECIPIENT', default=None)
+EMAIL_BACKUP_SUBJECT_PREFIX = config('EMAIL_BACKUP_SUBJECT_PREFIX', default='[AgentAssistant] Backup')
+
+# Local Backup Settings
+LOCAL_BACKUP_DIR = config('LOCAL_BACKUP_DIR', default='/app/backups')
+LOCAL_BACKUP_FILENAME = config('LOCAL_BACKUP_FILENAME', default='latest_backup.sql.gz')
+
+# Database backup timeout (seconds)
+DB_BACKUP_TIMEOUT = config('DB_BACKUP_TIMEOUT', default=300, cast=int)
+
+# ==============================
 # LOGGING
 # ==============================
 
