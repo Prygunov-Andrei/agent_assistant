@@ -76,6 +76,36 @@ const RequestsTable: React.FC = () => {
     newContacts: {},
     differentContacts: []
   });
+
+  // Состояние для модалки создания персоны/компании
+  const [createEntityModal, setCreateEntityModal] = useState<{
+    isOpen: boolean;
+    type: 'casting_director' | 'director' | 'producer' | 'company' | null;
+    formData: {
+      first_name: string;
+      last_name: string;
+      middle_name: string;
+      phone: string;
+      email: string;
+      telegram: string;
+      // Для компании
+      name: string;
+      website: string;
+    };
+  }>({
+    isOpen: false,
+    type: null,
+    formData: {
+      first_name: '',
+      last_name: '',
+      middle_name: '',
+      phone: '',
+      email: '',
+      telegram: '',
+      name: '',
+      website: ''
+    }
+  });
   
   // Состояния для типа проекта и жанра
   const [projectType, setProjectType] = useState<any>(null);
@@ -689,11 +719,147 @@ const RequestsTable: React.FC = () => {
   };
 
   const createNewPerson = (type: 'casting_director' | 'director' | 'producer' | 'company') => {
-    alert(`Создание новой ${type === 'casting_director' ? 'кастинг-директора' : type === 'director' ? 'режиссера' : type === 'producer' ? 'продюсера' : 'кинокомпании'}`);
+    // Закрываем dropdown
     if (type === 'casting_director') setShowCastingDirectorDropdown(false);
     else if (type === 'director') setShowDirectorDropdown(false);
     else if (type === 'producer') setShowProducerDropdown(false);
     else setShowCompanyDropdown(false);
+
+    // Извлекаем данные от LLM если есть
+    let llmData: any = null;
+    
+    if (type === 'company') {
+      llmData = analysisData?.contacts?.production_company;
+    } else if (type === 'casting_director') {
+      llmData = analysisData?.contacts?.casting_director;
+    } else if (type === 'director') {
+      llmData = analysisData?.contacts?.director;
+    } else if (type === 'producer') {
+      llmData = analysisData?.contacts?.producers?.[0];
+    }
+
+    // Предзаполняем форму данными от LLM если есть
+    const initialFormData = {
+      first_name: '',
+      last_name: '',
+      middle_name: '',
+      phone: '',
+      email: '',
+      telegram: '',
+      name: '',
+      website: ''
+    };
+
+    if (llmData && type === 'company') {
+      if (llmData.name && llmData.name !== 'Не определен') initialFormData.name = llmData.name;
+      if (llmData.phone && llmData.phone !== 'Не определен') initialFormData.phone = llmData.phone;
+      if (llmData.email && llmData.email !== 'Не определен') initialFormData.email = llmData.email;
+      if (llmData.website && llmData.website !== 'Не определен') initialFormData.website = llmData.website;
+    } else if (llmData && llmData.name && llmData.name !== 'Не определен') {
+      // Разбираем ФИО для персоны
+      const nameParts = llmData.name.trim().split(/\s+/);
+      initialFormData.last_name = nameParts[0] || '';
+      initialFormData.first_name = nameParts[1] || '';
+      initialFormData.middle_name = nameParts.length > 2 ? nameParts[2] : '';
+      
+      if (llmData.phone && llmData.phone !== 'Не определен') initialFormData.phone = llmData.phone;
+      if (llmData.email && llmData.email !== 'Не определен') initialFormData.email = llmData.email;
+      if (llmData.telegram && llmData.telegram !== 'Не определен') initialFormData.telegram = llmData.telegram;
+    }
+
+    // Открываем модалку создания
+    setCreateEntityModal({
+      isOpen: true,
+      type,
+      formData: initialFormData
+    });
+  };
+
+  const handleCreateEntity = async () => {
+    try {
+      const { type, formData } = createEntityModal;
+      
+      if (!type) return;
+
+      if (type === 'company') {
+        // Создание кинокомпании
+        if (!formData.name.trim()) {
+          alert('Укажите название кинокомпании');
+          return;
+        }
+
+        // Создаем новую компанию без проверки дубликатов
+        // (это быстрое создание, дубликаты можно объединить позже)
+        const newCompany = await companiesService.createCompany({
+          name: formData.name,
+          company_type: 'production',
+          phone: formData.phone || undefined,
+          email: formData.email || undefined,
+          website: formData.website || undefined
+        });
+
+        // Автоматически выбираем созданную компанию
+        setProductionCompany(newCompany);
+        setHasUnsavedChanges(true);
+
+      } else {
+        // Создание персоны
+        if (!formData.last_name.trim()) {
+          alert('Укажите фамилию');
+          return;
+        }
+
+        // Подготавливаем массивы контактов
+        const phones = formData.phone.trim() ? [formData.phone.trim()] : [];
+        const emails = formData.email.trim() ? [formData.email.trim()] : [];
+        const telegram_usernames = formData.telegram.trim() ? [formData.telegram.trim()] : [];
+
+        // Создаем новую персону без проверки дубликатов
+        // (это быстрое создание, дубликаты можно объединить позже)
+        const newPerson = await peopleService.createPerson({
+          person_type: type as 'casting_director' | 'director' | 'producer',
+          first_name: formData.first_name.trim() || undefined,
+          last_name: formData.last_name.trim(),
+          middle_name: formData.middle_name.trim() || undefined,
+          phones,
+          emails,
+          telegram_usernames
+        });
+
+        // Автоматически выбираем созданную персону
+        const personWithName = {
+          ...newPerson,
+          name: newPerson.full_name
+        };
+
+        if (type === 'casting_director') setCastingDirector(personWithName);
+        else if (type === 'director') setDirector(personWithName);
+        else if (type === 'producer') setProducer(personWithName);
+        
+        setHasUnsavedChanges(true);
+      }
+
+      // Закрываем модалку
+      setCreateEntityModal({
+        isOpen: false,
+        type: null,
+        formData: {
+          first_name: '',
+          last_name: '',
+          middle_name: '',
+          phone: '',
+          email: '',
+          telegram: '',
+          name: '',
+          website: ''
+        }
+      });
+
+    } catch (error) {
+      console.error('Ошибка при создании:', error);
+      ErrorHandler.logError(error, 'RequestsTable.handleCreateEntity');
+      alert(`Ошибка при создании записи: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+    }
   };
 
   const [showAllProjectTypes, setShowAllProjectTypes] = useState(false);
@@ -1917,6 +2083,328 @@ const RequestsTable: React.FC = () => {
           });
         }}
       />
+
+      {/* Модалка создания новой персоны/компании */}
+      {createEntityModal.isOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999999
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: '600', color: '#1f2937' }}>
+              {createEntityModal.type === 'company' ? '🏢 Создать кинокомпанию' : 
+               createEntityModal.type === 'casting_director' ? '👤 Создать кастинг-директора' :
+               createEntityModal.type === 'director' ? '🎬 Создать режиссера' : '🎥 Создать продюсера'}
+            </h3>
+
+            {createEntityModal.type === 'company' ? (
+              // Форма для кинокомпании
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Название компании <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={createEntityModal.formData.name}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, name: e.target.value }
+                    }))}
+                    placeholder="Например: Мосфильм"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Телефон
+                  </label>
+                  <input
+                    type="text"
+                    value={createEntityModal.formData.phone}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, phone: e.target.value }
+                    }))}
+                    placeholder="+7 (900) 123-45-67"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={createEntityModal.formData.email}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, email: e.target.value }
+                    }))}
+                    placeholder="info@company.ru"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Сайт
+                  </label>
+                  <input
+                    type="url"
+                    value={createEntityModal.formData.website}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, website: e.target.value }
+                    }))}
+                    placeholder="https://company.ru"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              // Форма для персоны
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Фамилия <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={createEntityModal.formData.last_name}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, last_name: e.target.value }
+                    }))}
+                    placeholder="Иванов"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Имя
+                  </label>
+                  <input
+                    type="text"
+                    value={createEntityModal.formData.first_name}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, first_name: e.target.value }
+                    }))}
+                    placeholder="Иван"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Отчество
+                  </label>
+                  <input
+                    type="text"
+                    value={createEntityModal.formData.middle_name}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, middle_name: e.target.value }
+                    }))}
+                    placeholder="Иванович"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Телефон
+                  </label>
+                  <input
+                    type="text"
+                    value={createEntityModal.formData.phone}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, phone: e.target.value }
+                    }))}
+                    placeholder="+7 (900) 123-45-67"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={createEntityModal.formData.email}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, email: e.target.value }
+                    }))}
+                    placeholder="ivan@example.com"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Telegram
+                  </label>
+                  <input
+                    type="text"
+                    value={createEntityModal.formData.telegram}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, telegram: e.target.value }
+                    }))}
+                    placeholder="@username"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Кнопки действий */}
+            <div style={{
+              marginTop: '24px',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => {
+                  setCreateEntityModal({
+                    isOpen: false,
+                    type: null,
+                    formData: {
+                      first_name: '',
+                      last_name: '',
+                      middle_name: '',
+                      phone: '',
+                      email: '',
+                      telegram: '',
+                      name: '',
+                      website: ''
+                    }
+                  });
+                }}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5e7eb'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+              >
+                Отмена
+              </button>
+
+              <button
+                onClick={handleCreateEntity}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+              >
+                Создать
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
