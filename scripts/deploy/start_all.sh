@@ -36,26 +36,36 @@ docker-compose -f docker/docker-compose.yml --env-file .env down 2>/dev/null
 echo "✅ Старые контейнеры остановлены"
 echo ""
 
+# Проверяем сеть для Telegram бота
+echo "4️⃣  Проверка сети для Telegram бота..."
+if ! docker network inspect agent_assistant_agent_network > /dev/null 2>&1; then
+    docker network create agent_assistant_agent_network
+    echo "✅ Сеть agent_assistant_agent_network создана"
+else
+    echo "✅ Сеть agent_assistant_agent_network уже существует"
+fi
+echo ""
+
 # Запускаем все основные сервисы сразу
-echo "4️⃣  Запуск всех основных сервисов..."
+echo "5️⃣  Запуск всех основных сервисов..."
 docker-compose -f docker/docker-compose.yml --env-file .env up -d
 echo "✅ Основные сервисы запущены"
 echo ""
 
 # Ждём готовности сервисов
-echo "5️⃣  Ожидание готовности сервисов (30 сек)..."
+echo "6️⃣  Ожидание готовности сервисов (30 сек)..."
 sleep 30
 echo "✅ Сервисы готовы"
 echo ""
 
 # Запускаем Telegram бота
-echo "6️⃣  Запуск Telegram бота..."
+echo "7️⃣  Запуск Telegram бота..."
 docker-compose -f docker/docker-compose.bot.yml --env-file .env up -d
 echo "✅ Telegram бот запущен"
 echo ""
 
 # Показываем статус всех сервисов
-echo "7️⃣  Статус всех сервисов:"
+echo "8️⃣  Статус всех сервисов:"
 echo ""
 docker ps --filter "name=agent_assistant" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 echo ""
