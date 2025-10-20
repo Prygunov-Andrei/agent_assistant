@@ -1039,16 +1039,21 @@ const RequestsTable: React.FC = () => {
 
   const handleProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) { alert('Пожалуйста, введите название проекта'); return; }
-    if (!projectType?.id) { alert('Пожалуйста, выберите тип проекта из справочника'); return; }
-    if (!genre?.id) { alert('Пожалуйста, выберите жанр из справочника'); return; }
-    if (!castingDirector?.id || castingDirector.id === null) { alert('Пожалуйста, выберите кастинг-директора или отметьте как "Не определено"'); return; }
-    if (!director?.id || director.id === null) { alert('Пожалуйста, выберите режиссера или отметьте как "Не определено"'); return; }
-    if (!producer?.id || producer.id === null) { alert('Пожалуйста, выберите продюсера или отметьте как "Не определено"'); return; }
-    if (!productionCompany?.id || productionCompany.id === null) { alert('Пожалуйста, выберите кинокомпанию или отметьте как "Не определено"'); return; }
-    if (roles.length === 0) { alert('Пожалуйста, добавьте хотя бы одну роль'); return; }
-    const incompleteRoles = roles.filter(role => !role.name?.trim() || !role.description?.trim());
-    if (incompleteRoles.length > 0) { alert('Пожалуйста, заполните название и описание для всех ролей'); return; }
+    
+    // Требуется только название проекта
+    if (!formData.title.trim()) { 
+      alert('Пожалуйста, введите название проекта'); 
+      return; 
+    }
+    
+    // Если есть роли - проверяем что они заполнены
+    if (roles.length > 0) {
+      const incompleteRoles = roles.filter(role => !role.name?.trim() || !role.description?.trim());
+      if (incompleteRoles.length > 0) { 
+        alert('Пожалуйста, заполните название и описание для всех добавленных ролей'); 
+        return; 
+      }
+    }
     
     try {
       // Подготовка данных для API
@@ -1057,14 +1062,14 @@ const RequestsTable: React.FC = () => {
       const projectPayload: any = {
         title: formData.title,
         description: formData.description,
-        project_type: projectType.id === -1 ? null : projectType.id,
-        genre: genre.id === -1 ? null : genre.id,
+        project_type: projectType?.id === -1 ? null : (projectType?.id || null),
+        genre: genre?.id === -1 ? null : (genre?.id || null),
         premiere_date: formData.premiere_date || null, // Пустая строка → null
         status: 'in_production',
-        casting_director: castingDirector.id === -1 ? null : castingDirector.id,
-        director: director.id === -1 ? null : director.id,
-        producers: producer.id === -1 ? [] : [producer.id], // ManyToMany - передаем массив или пустой массив
-        production_company: productionCompany.id === -1 ? null : productionCompany.id
+        casting_director: castingDirector?.id === -1 ? null : (castingDirector?.id || null),
+        director: director?.id === -1 ? null : (director?.id || null),
+        producers: producer?.id === -1 ? [] : (producer?.id ? [producer.id] : []), // ManyToMany - передаем массив или пустой массив
+        production_company: productionCompany?.id === -1 ? null : (productionCompany?.id || null)
       };
       
       console.log('Создание проекта:', projectPayload);
@@ -1608,7 +1613,7 @@ const RequestsTable: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     {/* Кастинг-директор */}
                     <div style={{ position: 'relative' }} className="dropdown-container">
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кастинг-директор *</label>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кастинг-директор</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={castingDirector?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'casting_director'); setCastingDirector({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
                           onFocus={() => { searchPerson(castingDirector?.name || '', 'casting_director'); }}
@@ -1638,7 +1643,7 @@ const RequestsTable: React.FC = () => {
 
                     {/* Режиссер */}
                     <div style={{ position: 'relative' }} className="dropdown-container">
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Режиссер *</label>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Режиссер</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={director?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'director'); setDirector({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
                           onFocus={() => { searchPerson(director?.name || '', 'director'); }}
@@ -1668,7 +1673,7 @@ const RequestsTable: React.FC = () => {
 
                     {/* Продюсер */}
                     <div style={{ position: 'relative' }} className="dropdown-container">
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Продюсер *</label>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Продюсер</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={producer?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'producer'); setProducer({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
                           onFocus={() => { searchPerson(producer?.name || '', 'producer'); }}
@@ -1698,7 +1703,7 @@ const RequestsTable: React.FC = () => {
 
                     {/* Кинокомпания */}
                     <div style={{ position: 'relative' }} className="dropdown-container">
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кинокомпания *</label>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кинокомпания</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={productionCompany?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'company'); setProductionCompany({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
                           onFocus={() => { 
@@ -1751,10 +1756,18 @@ const RequestsTable: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     {/* Тип проекта - с подбором из справочника */}
                     <div style={{ position: 'relative' }} className="dropdown-container">
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Тип проекта *</label>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Тип проекта</label>
                       <input type="text" value={projectType?.name || ''} 
                         onChange={(e) => { setProjectType({ id: null, name: e.target.value }); searchProjectType(e.target.value); setHasUnsavedChanges(true); }}
-                        onFocus={() => { if (projectType?.name) searchProjectType(projectType.name); }}
+                        onFocus={() => { 
+                          // Показываем dropdown всегда при клике
+                          if (projectType?.id === -1) {
+                            // Если выбрано "Не определено" - очищаем
+                            setProjectType(null);
+                          }
+                          setShowProjectTypeDropdown(true);
+                          if (projectType?.name) searchProjectType(projectType.name);
+                        }}
                         style={{ width: '100%', padding: '8px 12px', border: projectType?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} 
                         placeholder="Введите тип проекта" />
                       {showProjectTypeDropdown && (
@@ -1795,10 +1808,18 @@ const RequestsTable: React.FC = () => {
 
                     {/* Жанр - с подбором из справочника */}
                     <div style={{ position: 'relative' }} className="dropdown-container">
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Жанр *</label>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Жанр</label>
                       <input type="text" value={genre?.name || ''} 
                         onChange={(e) => { setGenre({ id: null, name: e.target.value }); searchGenre(e.target.value); setHasUnsavedChanges(true); }}
-                        onFocus={() => { if (genre?.name) searchGenre(genre.name); }}
+                        onFocus={() => { 
+                          // Показываем dropdown всегда при клике
+                          if (genre?.id === -1) {
+                            // Если выбрано "Не определено" - очищаем
+                            setGenre(null);
+                          }
+                          setShowGenreDropdown(true);
+                          if (genre?.name) searchGenre(genre.name);
+                        }}
                         style={{ width: '100%', padding: '8px 12px', border: genre?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} 
                         placeholder="Введите жанр" />
                       {showGenreDropdown && (
