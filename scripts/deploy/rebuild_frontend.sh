@@ -1,44 +1,68 @@
 #!/bin/bash
+
+# Скрипт для правильной пересборки и обновления frontend
+# Использовать когда изменились файлы в frontend/src/
+
 set -e
 
-echo "🔄 Пересборка и перезапуск Frontend..."
+echo "🔄 Пересборка и обновление Frontend..."
 echo ""
 
 cd "$(dirname "$0")/../.."
 
-echo "1️⃣  Останавливаем frontend и nginx..."
-docker-compose -f docker/docker-compose.yml --env-file .env stop frontend nginx
-echo "✅ Контейнеры остановлены"
+# 1. Очистка кэша Vite и TypeScript
+echo "1️⃣  Очистка кэша сборки..."
+rm -rf frontend/node_modules/.vite
+rm -rf frontend/dist
+find frontend -name "*.tsbuildinfo" -delete 2>/dev/null || true
+echo "✅ Кэш очищен"
 echo ""
 
-echo "2️⃣  Пересобираем frontend образ..."
-docker-compose -f docker/docker-compose.yml --env-file .env build --no-cache frontend
-echo "✅ Frontend пересобран"
+# 2. Сборка frontend
+echo "2️⃣  Сборка frontend..."
+cd frontend
+npm run build
+cd ..
+echo "✅ Frontend собран"
 echo ""
 
-echo "3️⃣  Перезапускаем nginx..."
-docker-compose -f docker/docker-compose.yml --env-file .env up -d nginx
-echo "✅ Nginx перезапущен"
+# 3. Пересборка Docker образа
+echo "3️⃣  Пересборка Docker образа..."
+docker-compose -f docker/docker-compose.yml build --no-cache frontend
+echo "✅ Образ пересобран"
 echo ""
 
-echo "4️⃣  Запускаем frontend..."
-docker-compose -f docker/docker-compose.yml --env-file .env up -d frontend
-echo "✅ Frontend запущен"
+# 4. Остановка старого контейнера
+echo "4️⃣  Остановка frontend контейнера..."
+docker-compose -f docker/docker-compose.yml stop frontend
+echo "✅ Контейнер остановлен"
 echo ""
 
-echo "5️⃣  Ожидание готовности (10 сек)..."
-sleep 10
+# 5. Удаление старого контейнера
+echo "5️⃣  Удаление старого контейнера..."
+docker-compose -f docker/docker-compose.yml rm -f frontend
+echo "✅ Контейнер удалён"
 echo ""
 
-echo "6️⃣  Статус сервисов:"
-docker-compose -f docker/docker-compose.yml --env-file .env ps frontend nginx
+# 6. Создание и запуск ТОЛЬКО frontend (без --recreate зависимостей)
+echo "6️⃣  Запуск нового frontend контейнера..."
+docker-compose -f docker/docker-compose.yml up -d --no-deps frontend
+echo "✅ Frontend контейнер запущен"
 echo ""
 
-echo "✅ Готово!"
+# 7. Проверка статуса
+echo "7️⃣  Проверка статуса frontend..."
+docker-compose -f docker/docker-compose.yml ps frontend
 echo ""
-echo "📱 Frontend доступен:"
-echo "   http://localhost:3000"
-echo "   http://localhost (через Nginx)"
-echo ""
-echo "💡 Очистите кэш браузера (Ctrl+Shift+R) для загрузки новой версии"
 
+echo "✅ Frontend успешно пересобран и обновлён!"
+echo ""
+echo "📝 Следующие шаги:"
+echo "   1. Обнови страницу в браузере (Cmd+Shift+R или Ctrl+Shift+F5)"
+echo "   2. Проверь в DevTools → Network что загрузился новый JS файл"
+echo ""
+echo "💡 Если браузер всё ещё показывает старый код:"
+echo "   - Очисти кэш браузера полностью"
+echo "   - Открой в приватном окне (Cmd+Shift+P или Ctrl+Shift+N)"
+echo "   - Открой напрямую http://localhost:3000 (минуя Nginx)"
+echo ""

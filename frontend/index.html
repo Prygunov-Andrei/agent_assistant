@@ -5,12 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Запрещаем кэширование HTML -->
+    <!-- Запрещаем кэширование HTML и JS -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     
     <title>Система подбора Артистов - Апрель</title>
+    
+    <!-- Force reload JS by appending timestamp -->
+    <script>
+      if (performance.navigation.type !== 1) {
+        location.reload(true);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

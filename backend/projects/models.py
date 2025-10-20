@@ -91,6 +91,8 @@ class Project(BaseModel):
     project_type = models.ForeignKey(
         ProjectType,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         verbose_name="Тип проекта",
         help_text="Тип проекта (фильм, сериал и т.д.)"
     )
@@ -114,6 +116,8 @@ class Project(BaseModel):
     genre = models.ForeignKey(
         Genre,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         verbose_name="Жанр",
         help_text="Жанр проекта"
     )

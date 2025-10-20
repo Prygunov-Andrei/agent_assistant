@@ -1057,8 +1057,8 @@ const RequestsTable: React.FC = () => {
       const projectPayload: any = {
         title: formData.title,
         description: formData.description,
-        project_type: projectType.id,
-        genre: genre.id,
+        project_type: projectType.id === -1 ? null : projectType.id,
+        genre: genre.id === -1 ? null : genre.id,
         premiere_date: formData.premiere_date || null, // Пустая строка → null
         status: 'in_production',
         casting_director: castingDirector.id === -1 ? null : castingDirector.id,
