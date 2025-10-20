@@ -213,6 +213,8 @@ const RequestsTable: React.FC = () => {
       });
     }, 500);
     
+    let hasError = false;
+    
     try {
       // Вызываем LLM сервис (реальный анализ GPT-4o)
       const analysisData = await LLMService.analyzeRequest(request.id, false);
@@ -344,6 +346,7 @@ const RequestsTable: React.FC = () => {
       }
       
     } catch (error) {
+      hasError = true;
       console.error('Ошибка LLM анализа:', error);
       ErrorHandler.logError(error, 'RequestsTable.handleAutoAnalysis');
       clearInterval(progressInterval);
@@ -353,19 +356,20 @@ const RequestsTable: React.FC = () => {
       // Показываем понятное сообщение об ошибке
       const errorMessage = error instanceof Error ? error.message : 'Ошибка при анализе запроса';
       alert(`Ошибка анализа: ${errorMessage}\n\nПопробуйте еще раз или заполните форму вручную.`);
-      return; // Выходим, НЕ устанавливая hasBeenAnalyzed
     } finally {
+      // Очищаем интервал
       clearInterval(progressInterval);
-      // Завершение только если не было ошибки
-      if (!isAnalyzing) return;
       
-      setAnalysisProgress(100);
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setAnalysisProgress(0);
-        setHasBeenAnalyzed(true);
-        setHasUnsavedChanges(true); // Отмечаем что есть несохраненные изменения после анализа
-      }, 500);
+      // Завершение анализа только если не было ошибки
+      if (!hasError) {
+        setAnalysisProgress(100);
+        setTimeout(() => {
+          setIsAnalyzing(false);
+          setAnalysisProgress(0);
+          setHasBeenAnalyzed(true);
+          setHasUnsavedChanges(true); // Отмечаем что есть несохраненные изменения после анализа
+        }, 500);
+      }
     }
   };
 
