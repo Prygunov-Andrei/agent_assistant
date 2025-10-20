@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from .models import Person, ImportSession
 
 
@@ -424,3 +425,64 @@ class BulkImportConfirmSerializer(serializers.Serializer):
         many=True,
         help_text="Список решений для каждой строки"
     )
+
+
+class MergeContactsSerializer(serializers.Serializer):
+    """Сериализатор для объединения/перезаписи контактов персоны"""
+    
+    ACTION_ADD = 'add'
+    ACTION_REPLACE = 'replace'
+    
+    ACTION_CHOICES = (
+        (ACTION_ADD, 'Добавить новые контакты'),
+        (ACTION_REPLACE, 'Перезаписать контакты'),
+    )
+    
+    action = serializers.ChoiceField(
+        choices=ACTION_CHOICES,
+        required=True,
+        help_text="Действие: 'add' - добавить новые контакты, 'replace' - перезаписать"
+    )
+    
+    phone = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=20,
+        help_text="Новый телефон"
+    )
+    
+    email = serializers.EmailField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Новый email"
+    )
+    
+    telegram = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=50,
+        help_text="Новый Telegram username"
+    )
+    
+    def validate(self, data):
+        """Проверка что хотя бы один контакт указан"""
+        phone = data.get('phone', '').strip() if data.get('phone') else ''
+        email = data.get('email', '').strip() if data.get('email') else ''
+        telegram = data.get('telegram', '').strip() if data.get('telegram') else ''
+        
+        if not phone and not email and not telegram:
+            raise DRFValidationError({
+                'contacts': 'Необходимо указать хотя бы один контакт (phone, email или telegram)'
+            })
+        
+        return data
+    
+    def validate_telegram(self, value):
+        """Валидация Telegram username"""
+        if value and not value.startswith('@'):
+            # Добавляем @ если отсутствует
+            return f'@{value}'
+        return value

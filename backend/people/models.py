@@ -204,8 +204,25 @@ class Person(models.Model):
             self.telegram_usernames = [t for t in self.telegram_usernames if t and str(t).strip()]
     
     def save(self, *args, **kwargs):
-        """Переопределяем save для вызова clean()"""
+        """Переопределяем save для вызова clean() и синхронизации старых полей"""
         self.full_clean()
+        
+        # Синхронизируем старые поля с новыми массивами для обратной совместимости
+        if isinstance(self.phones, list) and len(self.phones) > 0:
+            self.phone = self.phones[0]
+        else:
+            self.phone = None
+        
+        if isinstance(self.emails, list) and len(self.emails) > 0:
+            self.email = self.emails[0]
+        else:
+            self.email = None
+        
+        if isinstance(self.telegram_usernames, list) and len(self.telegram_usernames) > 0:
+            self.telegram_username = self.telegram_usernames[0]
+        else:
+            self.telegram_username = None
+        
         super().save(*args, **kwargs)
     
     @property

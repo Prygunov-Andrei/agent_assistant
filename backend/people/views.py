@@ -11,7 +11,8 @@ from .serializers import (
     PersonMatchSerializer,
     PersonSearchRequestSerializer,
     PersonNameSearchRequestSerializer,
-    PersonTypeSerializer
+    PersonTypeSerializer,
+    MergeContactsSerializer
 )
 from .services import person_matching_service
 
@@ -476,6 +477,71 @@ class PersonViewSet(viewsets.ModelViewSet):
         
         serializer = ProjectListSerializer(projects, many=True)
         return Response(serializer.data)
+    
+    @extend_schema(
+        summary="Объединить или перезаписать контакты персоны",
+        description="""
+        Объединить новые контакты с существующими или полностью перезаписать контакты персоны.
+        
+        **Действия:**
+        - `add`: Добавить новые контакты к существующим (если их еще нет в массиве)
+        - `replace`: Полностью заменить контакты на новые (старые контакты удаляются)
+        
+        **Примечания:**
+        - Максимум 5 контактов каждого типа (phone, email, telegram)
+        - При добавлении дубликаты игнорируются
+        - Telegram username автоматически получает @ если отсутствует
+        """,
+        request=MergeContactsSerializer,
+        responses={
+            200: PersonSerializer,
+            400: {'description': 'Ошибка валидации данных'},
+            404: {'description': 'Персона не найдена'}
+        },
+        tags=["Персоны"]
+    )
+    @action(detail=True, methods=['patch'], url_path='merge-contacts')
+    def merge_contacts(self, request, pk=None):
+        """Объединить или перезаписать контакты персоны"""
+        person = self.get_object()
+        serializer = MergeContactsSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        action_type = serializer.validated_data['action']
+        new_phone = serializer.validated_data.get('phone', '').strip() if serializer.validated_data.get('phone') else ''
+        new_email = serializer.validated_data.get('email', '').strip() if serializer.validated_data.get('email') else ''
+        new_telegram = serializer.validated_data.get('telegram', '').strip() if serializer.validated_data.get('telegram') else ''
+        
+        if action_type == MergeContactsSerializer.ACTION_REPLACE:
+            # Перезаписываем ТОЛЬКО те контакты, которые пришли (остальные оставляем как есть)
+            if new_phone:
+                person.phones = [new_phone]
+                person.phone = new_phone
+            
+            if new_email:
+                person.emails = [new_email]
+                person.email = new_email
+            
+            if new_telegram:
+                person.telegram_usernames = [new_telegram]
+                person.telegram_username = new_telegram
+            
+        elif action_type == MergeContactsSerializer.ACTION_ADD:
+            # Добавляем новые контакты
+            if new_phone:
+                person.add_contact('phone', new_phone)
+            if new_email:
+                person.add_contact('email', new_email)
+            if new_telegram:
+                person.add_contact('telegram', new_telegram)
+        
+        person.save()
+        
+        # Возвращаем обновленную персону
+        response_serializer = PersonSerializer(person)
+        return Response(response_serializer.data)
 
 
 # Views для массового импорта персон

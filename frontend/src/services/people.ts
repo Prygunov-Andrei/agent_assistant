@@ -187,6 +187,29 @@ class PeopleService {
     });
     return response.data;
   }
+
+  /**
+   * Объединить или перезаписать контакты персоны
+   * 
+   * @param id - ID персоны
+   * @param action - Действие: 'add' (добавить новые) или 'replace' (перезаписать)
+   * @param contacts - Новые контакты { phone?, email?, telegram? }
+   */
+  async mergeContacts(
+    id: number, 
+    action: 'add' | 'replace',
+    contacts: {
+      phone?: string;
+      email?: string;
+      telegram?: string;
+    }
+  ): Promise<Person> {
+    const response = await apiClient.patch(`${this.baseUrl}${id}/merge-contacts/`, {
+      action,
+      ...contacts
+    });
+    return response.data;
+  }
 }
 
 export const peopleService = new PeopleService();

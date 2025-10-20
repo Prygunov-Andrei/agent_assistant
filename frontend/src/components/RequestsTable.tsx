@@ -10,6 +10,7 @@ import { ErrorHandler } from '../utils/errorHandler';
 import VirtualizedList from './common/VirtualizedList';
 import { TableSkeleton } from './common/SkeletonLoader';
 import AnimatedContainer from './common/AnimatedContainer';
+import ContactsMergeModal from './ContactsMergeModal';
 import type { RequestListItem } from '../types';
 
 const RequestsTable: React.FC = () => {
@@ -34,6 +35,7 @@ const RequestsTable: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [hasBeenAnalyzed, setHasBeenAnalyzed] = useState(false);
+  const [analysisData, setAnalysisData] = useState<any>(null); // Данные от LLM для проверки контактов
   const [roles, setRoles] = useState<any[]>([]);
   
   // Состояния для модального окна удаления
@@ -59,6 +61,21 @@ const RequestsTable: React.FC = () => {
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [showProjectTypeDropdown, setShowProjectTypeDropdown] = useState(false);
   const [showGenreDropdown, setShowGenreDropdown] = useState(false);
+  
+  // Состояние для модалки объединения контактов
+  const [contactsMergeModal, setContactsMergeModal] = useState<{
+    isOpen: boolean;
+    person: any;
+    oldContacts: { phone?: string | null; email?: string | null; telegram?: string | null };
+    newContacts: { phone?: string; email?: string; telegram?: string };
+    differentContacts: string[];
+  }>({
+    isOpen: false,
+    person: null,
+    oldContacts: {},
+    newContacts: {},
+    differentContacts: []
+  });
   
   // Состояния для типа проекта и жанра
   const [projectType, setProjectType] = useState<any>(null);
@@ -174,6 +191,7 @@ const RequestsTable: React.FC = () => {
     setCollapsedRoles(new Set());
     setHasBeenAnalyzed(false); // Сбрасываем флаг анализа
     setAnalysisProgress(0);
+    setAnalysisData(null); // Сбрасываем данные LLM анализа
     setCastingDirector(null);
     setDirector(null);
     setProducer(null);
@@ -217,13 +235,16 @@ const RequestsTable: React.FC = () => {
     
     try {
       // Вызываем LLM сервис (реальный анализ GPT-4o)
-      const analysisData = await LLMService.analyzeRequest(request.id, false);
+      const analysisResult = await LLMService.analyzeRequest(request.id, false);
       
-      console.log('Analysis Data Full:', JSON.stringify(analysisData, null, 2));
+      // Сохраняем данные анализа для проверки контактов
+      setAnalysisData(analysisResult);
+      
+      console.log('Analysis Data Full:', JSON.stringify(analysisResult, null, 2));
       
       // Предзаполняем форму данными из анализа
-      if (analysisData.project_analysis) {
-        const pa = analysisData.project_analysis;
+      if (analysisResult.project_analysis) {
+        const pa = analysisResult.project_analysis;
         
         // Сохраняем сырой тип проекта для поиска
         const rawProjectType = pa.project_type_raw || pa.project_type || '';
@@ -323,11 +344,19 @@ const RequestsTable: React.FC = () => {
         }
       }
       
-      // Предзаполняем контакты (используем объекты с name/email/phone)
-      if ((analysisData as any).contacts) {
-        const contacts = (analysisData as any).contacts;
+      // Предзаполняем контакты (сохраняем полные данные от LLM для проверки позже)
+      if ((analysisResult as any).contacts) {
+        const contacts = (analysisResult as any).contacts;
         if (contacts.casting_director && contacts.casting_director.name && contacts.casting_director.name !== 'Не определен') {
-          setCastingDirector({ id: null, name: contacts.casting_director.name, match: 0 });
+          setCastingDirector({ 
+            id: null, 
+            name: contacts.casting_director.name, 
+            match: 0,
+            // Сохраняем контакты от LLM для последующего сравнения
+            llm_phone: contacts.casting_director.phone,
+            llm_email: contacts.casting_director.email,
+            llm_telegram: contacts.casting_director.telegram
+          });
         }
         if (contacts.director && contacts.director.name && contacts.director.name !== 'Не определен') {
           setDirector({ id: null, name: contacts.director.name, match: 0 });
@@ -554,6 +583,47 @@ const RequestsTable: React.FC = () => {
   };
 
   const selectPerson = (person: any, type: 'casting_director' | 'director' | 'producer' | 'company') => {
+    // Проверка контактов только для кастинг-директоров
+    if (type === 'casting_director' && castingDirector) {
+      // Получаем контакты от LLM (сохраненные ранее в castingDirector)
+      const newContacts = {
+        phone: castingDirector.llm_phone && castingDirector.llm_phone !== 'Не определен' && castingDirector.llm_phone !== 'null' ? castingDirector.llm_phone : undefined,
+        email: castingDirector.llm_email && castingDirector.llm_email !== 'Не определен' && castingDirector.llm_email !== 'null' ? castingDirector.llm_email : undefined,
+        telegram: castingDirector.llm_telegram && castingDirector.llm_telegram !== 'Не определен' && castingDirector.llm_telegram !== 'null' ? castingDirector.llm_telegram : undefined
+      };
+      
+      // Проверяем какие контакты отличаются
+      const differentContacts: string[] = [];
+      
+      if (newContacts.phone && person.primary_phone !== newContacts.phone) {
+        differentContacts.push('phone');
+      }
+      if (newContacts.email && person.primary_email !== newContacts.email) {
+        differentContacts.push('email');
+      }
+      if (newContacts.telegram && person.primary_telegram !== newContacts.telegram) {
+        differentContacts.push('telegram');
+      }
+      
+      // Если есть хотя бы один новый контакт - показываем модалку
+      if (differentContacts.length > 0) {
+        setContactsMergeModal({
+          isOpen: true,
+          person,
+          oldContacts: {
+            phone: person.primary_phone,
+            email: person.primary_email,
+            telegram: person.primary_telegram
+          },
+          newContacts,
+          differentContacts
+        });
+        setShowCastingDirectorDropdown(false);
+        return; // Не выбираем персону сразу, ждем решения пользователя
+      }
+    }
+    
+    // Обычный выбор персоны (если нет новых контактов или не КД)
     if (type === 'casting_director') { setCastingDirector(person); setShowCastingDirectorDropdown(false); }
     else if (type === 'director') { setDirector(person); setShowDirectorDropdown(false); }
     else if (type === 'producer') { setProducer(person); setShowProducerDropdown(false); }
@@ -561,6 +631,52 @@ const RequestsTable: React.FC = () => {
     setHasUnsavedChanges(true);
   };
 
+  // Обработчик модалки объединения контактов
+  const handleContactsMerge = async (action: 'add' | 'replace') => {
+    try {
+      const { person, newContacts } = contactsMergeModal;
+      
+      console.log('🔧 Обновление контактов:', { person, newContacts, action });
+      console.log('🔧 castingDirector ДО обновления:', castingDirector);
+      
+      // Вызываем API для обновления контактов
+      const updatedPerson = await peopleService.mergeContacts(person.id, action, newContacts);
+      
+      console.log('✅ Обновленная персона с бэка:', updatedPerson);
+      
+      // Устанавливаем обновленную персону как КД
+      // Важно: сохраняем llm_* поля из текущего castingDirector для возможности повторного обновления
+      // И добавляем поле name для отображения в инпуте
+      const newCastingDirector = {
+        ...updatedPerson,
+        name: updatedPerson.full_name, // Добавляем name для отображения в инпуте
+        llm_phone: castingDirector?.llm_phone,
+        llm_email: castingDirector?.llm_email,
+        llm_telegram: castingDirector?.llm_telegram
+      };
+      
+      console.log('🔧 Устанавливаем нового КД:', newCastingDirector);
+      
+      setCastingDirector(newCastingDirector);
+      setHasUnsavedChanges(true);
+      
+      // Закрываем модалку
+      setContactsMergeModal({
+        isOpen: false,
+        person: null,
+        oldContacts: {},
+        newContacts: {},
+        differentContacts: []
+      });
+      
+      console.log(`✅ Контакты ${action === 'add' ? 'добавлены' : 'перезаписаны'} для ${updatedPerson.full_name}`);
+    } catch (error) {
+      console.error('Ошибка при обновлении контактов:', error);
+      ErrorHandler.logError(error, 'RequestsTable.handleContactsMerge');
+      alert('Ошибка при обновлении контактов. Попробуйте еще раз.');
+    }
+  };
+  
   const setUndefined = (type: 'casting_director' | 'director' | 'producer' | 'company') => {
     // Устанавливаем специальное значение для "не определено"
     const undefinedValue = { id: -1, name: 'Не определено', match: 1 };
@@ -1781,6 +1897,26 @@ const RequestsTable: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Модалка объединения контактов */}
+      <ContactsMergeModal
+        isOpen={contactsMergeModal.isOpen}
+        personName={contactsMergeModal.person?.full_name || contactsMergeModal.person?.name || ''}
+        oldContacts={contactsMergeModal.oldContacts}
+        newContacts={contactsMergeModal.newContacts}
+        differentContacts={contactsMergeModal.differentContacts}
+        onMerge={handleContactsMerge}
+        onCancel={() => {
+          // Закрываем модалку без изменений
+          setContactsMergeModal({
+            isOpen: false,
+            person: null,
+            oldContacts: {},
+            newContacts: {},
+            differentContacts: []
+          });
+        }}
+      />
     </>
   );
 };
