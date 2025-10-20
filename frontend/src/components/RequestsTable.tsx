@@ -443,53 +443,100 @@ const RequestsTable: React.FC = () => {
     setCollapsedRoles(prev => new Set(prev).add(index));
   };
 
-  const searchPerson = async (query: string, type: 'casting_director' | 'director' | 'producer' | 'company') => {
-    if (!query.trim()) return;
-    
+  // Загрузка последних персон по типу (для пустых полей)
+  const loadRecentPersons = async (type: 'casting_director' | 'director' | 'producer' | 'company') => {
     try {
       let results: any[] = [];
       
       if (type === 'company') {
-        // Поиск компаний через API
-        console.log('Searching companies with query:', query);
-        const response = await companiesService.searchCompanies({ name: query, limit: 10 });
-        console.log('Companies response:', response);
+        // Загружаем все компании и берем последние 10
+        const response = await companiesService.getCompanies();
+        // Проверяем формат ответа - может быть массив или объект с results
+        const allCompanies = Array.isArray(response) ? response : (response as any).results || [];
+        const recentCompanies = allCompanies.slice(0, 10);
         
-        // API возвращает объект { matches: [...], total: N }
-        const companies = (response as any).matches || [];
-        console.log('Companies array:', companies);
-        
-        results = companies.map((company: any) => ({
+        results = recentCompanies.map((company: any) => ({
           id: company.id,
           name: company.name,
           phone: company.phone,
           email: company.email,
           website: company.website,
-          match: company.score || 0.5 // Используем score из API или дефолтное значение
+          match: 0.5
         }));
-        console.log('Mapped results:', results);
+        
         setCompanySearch(results);
         setShowCompanyDropdown(true);
       } else {
-        // Поиск персон через API с фильтром по типу
-        const people = await peopleService.searchPeople({ name: query, limit: 10 });
-        // Фильтруем по типу персоны
-        const personTypeMap: any = {
-          'casting_director': 'casting_director',
-          'director': 'director',
-          'producer': 'producer'
-        };
+        // Загружаем последних персон по типу через расширенный поиск
+        const response = await peopleService.getByTypeWithPagination(type, { page: 1, page_size: 10, sort: '-created_at' });
+        const people = response.results || [];
         
-        results = people
-          .filter((person: any) => person.person_type === personTypeMap[type])
-          .map((person: any) => ({
-            id: person.id,
-            name: person.full_name || `${person.first_name} ${person.last_name}`,
-            phone: person.phone,
-            email: person.email,
-            telegram: person.telegram_username,
-            match: person.score || 0.5 // Используем score из API
-          }));
+        results = people.map((person: any) => ({
+          id: person.id,
+          name: person.full_name || `${person.first_name} ${person.last_name}`,
+          phone: person.phone,
+          email: person.email,
+          telegram: person.telegram_username,
+          match: 0.5
+        }));
+        
+        if (type === 'casting_director') { setCastingDirectorSearch(results); setShowCastingDirectorDropdown(true); }
+        else if (type === 'director') { setDirectorSearch(results); setShowDirectorDropdown(true); }
+        else if (type === 'producer') { setProducerSearch(results); setShowProducerDropdown(true); }
+      }
+    } catch (error) {
+      console.error(`Ошибка загрузки последних ${type}:`, error);
+      ErrorHandler.logError(error, `RequestsTable.loadRecentPersons.${type}`);
+    }
+  };
+
+  const searchPerson = async (query: string, type: 'casting_director' | 'director' | 'producer' | 'company') => {
+    if (!query.trim()) {
+      // Если запрос пустой, загружаем последние персоны
+      await loadRecentPersons(type);
+      return;
+    }
+    
+    try {
+      let results: any[] = [];
+      
+      if (type === 'company') {
+        // Поиск компаний через API - используем встроенный поиск
+        console.log('Searching companies with query:', query);
+        const allCompanies = await companiesService.getCompanies();
+        
+        // Фильтруем компании по имени на клиенте
+        const filteredCompanies = Array.isArray(allCompanies) 
+          ? allCompanies.filter((c: any) => c.name.toLowerCase().includes(query.toLowerCase()))
+          : ((allCompanies as any).results || []).filter((c: any) => c.name.toLowerCase().includes(query.toLowerCase()));
+        
+        results = filteredCompanies.slice(0, 10).map((company: any) => ({
+          id: company.id,
+          name: company.name,
+          phone: company.phone,
+          email: company.email,
+          website: company.website,
+          match: 0.7 // Базовый score для найденных компаний
+        }));
+        
+        console.log('Filtered companies:', results);
+        setCompanySearch(results);
+        setShowCompanyDropdown(true);
+      } else {
+        // Поиск персон через улучшенный API поиска (с фильтром по имени в БД)
+        console.log('Searching persons with query:', query, 'type:', type);
+        const people = await peopleService.searchPersonsByName({ name: query, person_type: type, limit: 10 });
+        
+        results = people.map((person: any) => ({
+          id: person.id,
+          name: person.full_name || `${person.first_name} ${person.last_name}`,
+          phone: person.phone,
+          email: person.email,
+          telegram: person.telegram_username,
+          match: person.score || 0.7 // Используем score из API
+        }));
+        
+        console.log('Found persons:', results);
         
         if (type === 'casting_director') { setCastingDirectorSearch(results); setShowCastingDirectorDropdown(true); }
         else if (type === 'director') { setDirectorSearch(results); setShowDirectorDropdown(true); }
@@ -511,6 +558,17 @@ const RequestsTable: React.FC = () => {
     else if (type === 'director') { setDirector(person); setShowDirectorDropdown(false); }
     else if (type === 'producer') { setProducer(person); setShowProducerDropdown(false); }
     else { setProductionCompany(person); setShowCompanyDropdown(false); }
+    setHasUnsavedChanges(true);
+  };
+
+  const setUndefined = (type: 'casting_director' | 'director' | 'producer' | 'company') => {
+    // Устанавливаем специальное значение для "не определено"
+    const undefinedValue = { id: -1, name: 'Не определено', match: 1 };
+    
+    if (type === 'casting_director') { setCastingDirector(undefinedValue); setShowCastingDirectorDropdown(false); }
+    else if (type === 'director') { setDirector(undefinedValue); setShowDirectorDropdown(false); }
+    else if (type === 'producer') { setProducer(undefinedValue); setShowProducerDropdown(false); }
+    else { setProductionCompany(undefinedValue); setShowCompanyDropdown(false); }
     setHasUnsavedChanges(true);
   };
 
@@ -603,10 +661,10 @@ const RequestsTable: React.FC = () => {
     if (!formData.title.trim()) { alert('Пожалуйста, введите название проекта'); return; }
     if (!projectType?.id) { alert('Пожалуйста, выберите тип проекта из справочника'); return; }
     if (!genre?.id) { alert('Пожалуйста, выберите жанр из справочника'); return; }
-    if (!castingDirector?.id) { alert('Пожалуйста, выберите кастинг-директора'); return; }
-    if (!director?.id) { alert('Пожалуйста, выберите режиссера'); return; }
-    if (!producer?.id) { alert('Пожалуйста, выберите продюсера'); return; }
-    if (!productionCompany?.id) { alert('Пожалуйста, выберите кинокомпанию'); return; }
+    if (!castingDirector?.id || castingDirector.id === null) { alert('Пожалуйста, выберите кастинг-директора или отметьте как "Не определено"'); return; }
+    if (!director?.id || director.id === null) { alert('Пожалуйста, выберите режиссера или отметьте как "Не определено"'); return; }
+    if (!producer?.id || producer.id === null) { alert('Пожалуйста, выберите продюсера или отметьте как "Не определено"'); return; }
+    if (!productionCompany?.id || productionCompany.id === null) { alert('Пожалуйста, выберите кинокомпанию или отметьте как "Не определено"'); return; }
     if (roles.length === 0) { alert('Пожалуйста, добавьте хотя бы одну роль'); return; }
     const incompleteRoles = roles.filter(role => !role.name?.trim() || !role.description?.trim());
     if (incompleteRoles.length > 0) { alert('Пожалуйста, заполните название и описание для всех ролей'); return; }
@@ -622,10 +680,10 @@ const RequestsTable: React.FC = () => {
         genre: genre.id,
         premiere_date: formData.premiere_date || null, // Пустая строка → null
         status: 'in_production',
-        casting_director: castingDirector.id,
-        director: director.id,
-        producers: [producer.id], // ManyToMany - передаем массив
-        production_company: productionCompany.id
+        casting_director: castingDirector.id === -1 ? null : castingDirector.id,
+        director: director.id === -1 ? null : director.id,
+        producers: producer.id === -1 ? [] : [producer.id], // ManyToMany - передаем массив или пустой массив
+        production_company: productionCompany.id === -1 ? null : productionCompany.id
       };
       
       console.log('Создание проекта:', projectPayload);
@@ -1172,8 +1230,8 @@ const RequestsTable: React.FC = () => {
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кастинг-директор *</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={castingDirector?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'casting_director'); setCastingDirector({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
-                          onFocus={() => { if (castingDirector?.name) searchPerson(castingDirector.name, 'casting_director'); }}
-                          style={{ flex: 1, padding: '8px 12px', border: castingDirector?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя кастинг-директора" />
+                          onFocus={() => { searchPerson(castingDirector?.name || '', 'casting_director'); }}
+                          style={{ flex: 1, padding: '8px 12px', border: castingDirector?.id && castingDirector.id > 0 ? '1px solid #10b981' : castingDirector?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя кастинг-директора" />
                         {castingDirector?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: castingDirector.match > 0.8 ? '#dcfce7' : '#fef3c7', color: castingDirector.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(castingDirector.match * 100)}%</span>}
                       </div>
                       {showCastingDirectorDropdown && castingDirectorSearch.length > 0 && (
@@ -1189,6 +1247,8 @@ const RequestsTable: React.FC = () => {
                               </div>
                             );
                           })}
+                          <div onClick={() => setUndefined('casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#fef3c7', borderTop: '1px solid #fde68a', color: '#92400e', fontWeight: 'bold', fontSize: '14px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fde68a'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}>⊘ Оставить неопределенным</div>
                           <div onClick={() => createNewPerson('casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>+ Добавить нового кастинг-директора</div>
                         </div>
@@ -1200,8 +1260,8 @@ const RequestsTable: React.FC = () => {
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Режиссер *</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={director?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'director'); setDirector({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
-                          onFocus={() => { if (director?.name) searchPerson(director.name, 'director'); }}
-                          style={{ flex: 1, padding: '8px 12px', border: director?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя режиссера" />
+                          onFocus={() => { searchPerson(director?.name || '', 'director'); }}
+                          style={{ flex: 1, padding: '8px 12px', border: director?.id && director.id > 0 ? '1px solid #10b981' : director?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя режиссера" />
                         {director?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: director.match > 0.8 ? '#dcfce7' : '#fef3c7', color: director.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(director.match * 100)}%</span>}
                       </div>
                       {showDirectorDropdown && directorSearch.length > 0 && (
@@ -1217,6 +1277,8 @@ const RequestsTable: React.FC = () => {
                               </div>
                             );
                           })}
+                          <div onClick={() => setUndefined('director')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#fef3c7', borderTop: '1px solid #fde68a', color: '#92400e', fontWeight: 'bold', fontSize: '14px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fde68a'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}>⊘ Оставить неопределенным</div>
                           <div onClick={() => createNewPerson('director')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>+ Добавить нового режиссера</div>
                         </div>
@@ -1228,8 +1290,8 @@ const RequestsTable: React.FC = () => {
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Продюсер *</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={producer?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'producer'); setProducer({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
-                          onFocus={() => { if (producer?.name) searchPerson(producer.name, 'producer'); }}
-                          style={{ flex: 1, padding: '8px 12px', border: producer?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя продюсера" />
+                          onFocus={() => { searchPerson(producer?.name || '', 'producer'); }}
+                          style={{ flex: 1, padding: '8px 12px', border: producer?.id && producer.id > 0 ? '1px solid #10b981' : producer?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя продюсера" />
                         {producer?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: producer.match > 0.8 ? '#dcfce7' : '#fef3c7', color: producer.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(producer.match * 100)}%</span>}
                       </div>
                       {showProducerDropdown && producerSearch.length > 0 && (
@@ -1245,6 +1307,8 @@ const RequestsTable: React.FC = () => {
                               </div>
                             );
                           })}
+                          <div onClick={() => setUndefined('producer')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#fef3c7', borderTop: '1px solid #fde68a', color: '#92400e', fontWeight: 'bold', fontSize: '14px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fde68a'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}>⊘ Оставить неопределенным</div>
                           <div onClick={() => createNewPerson('producer')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>+ Добавить нового продюсера</div>
                         </div>
@@ -1256,20 +1320,25 @@ const RequestsTable: React.FC = () => {
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кинокомпания *</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={productionCompany?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'company'); setProductionCompany({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
-                          onFocus={() => { if (productionCompany?.name) searchPerson(productionCompany.name, 'company'); }}
-                          style={{ flex: 1, padding: '8px 12px', border: productionCompany?.id ? '1px solid #10b981' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите название кинокомпании" />
+                          onFocus={() => { searchPerson(productionCompany?.name || '', 'company'); }}
+                          style={{ flex: 1, padding: '8px 12px', border: productionCompany?.id && productionCompany.id > 0 ? '1px solid #10b981' : productionCompany?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите название кинокомпании" />
                         {productionCompany?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: productionCompany.match > 0.8 ? '#dcfce7' : '#fef3c7', color: productionCompany.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(productionCompany.match * 100)}%</span>}
                       </div>
                       {showCompanyDropdown && companySearch.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                          {companySearch.map((company, index) => (
-                            <div key={index} onClick={() => selectPerson(company, 'company')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < companySearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
-                              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{company.name}</div>
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{company.phone} • {company.email}</div>
-                              <div style={{ fontSize: '11px', color: '#9ca3af' }}>{company.website}</div>
-                            </div>
-                          ))}
+                          {companySearch.map((company, index) => {
+                            const contacts = [company.phone, company.email].filter(Boolean).join(' • ');
+                            return (
+                              <div key={index} onClick={() => selectPerson(company, 'company')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < companySearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{company.name}</div>
+                                {contacts && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{contacts}</div>}
+                                {company.website && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{company.website}</div>}
+                              </div>
+                            );
+                          })}
+                          <div onClick={() => setUndefined('company')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#fef3c7', borderTop: '1px solid #fde68a', color: '#92400e', fontWeight: 'bold', fontSize: '14px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fde68a'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}>⊘ Оставить неопределенным</div>
                           <div onClick={() => createNewPerson('company')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>+ Добавить новую кинокомпанию</div>
                         </div>

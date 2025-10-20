@@ -70,7 +70,7 @@ search:
   fuzzy_matching:
     # Настройки для rapidfuzz
     rapidfuzz:
-      scorer: "fuzz.ratio"  # fuzz.ratio, fuzz.partial_ratio, fuzz.token_sort_ratio
+      scorer: "fuzz.partial_ratio"  # fuzz.ratio, fuzz.partial_ratio, fuzz.token_sort_ratio (partial_ratio лучше для поиска подстрок)
       limit: 10
       
     # Настройки для fuzzywuzzy

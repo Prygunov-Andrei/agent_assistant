@@ -11,67 +11,67 @@ import type {
 export const companiesService = {
   // Получить список всех компаний
   async getCompanies(): Promise<Company[]> {
-    const response = await apiClient.get('/api/companies/');
+    const response = await apiClient.get('/companies/');
     return response.data;
   },
 
   // Получить компанию по ID
   async getCompany(id: number): Promise<Company> {
-    const response = await apiClient.get(`/api/companies/${id}/`);
+    const response = await apiClient.get(`/companies/${id}/`);
     return response.data;
   },
 
   // Создать новую компанию
   async createCompany(data: CompanyCreateRequest): Promise<Company> {
-    const response = await apiClient.post('/api/companies/', data);
+    const response = await apiClient.post('/companies/', data);
     return response.data;
   },
 
   // Обновить компанию
   async updateCompany(data: CompanyUpdateRequest): Promise<Company> {
     const { id, ...updateData } = data;
-    const response = await apiClient.put(`/api/companies/${id}/`, updateData);
+    const response = await apiClient.put(`/companies/${id}/`, updateData);
     return response.data;
   },
 
   // Удалить компанию
   async deleteCompany(id: number): Promise<void> {
-    await apiClient.delete(`/api/companies/${id}/`);
+    await apiClient.delete(`/companies/${id}/`);
   },
 
   // Поиск совпадений компаний
   async searchCompanyMatches(searchData: CompanySearchRequest): Promise<CompanyMatch[]> {
-    const response = await apiClient.post('/api/companies/search-matches/', searchData);
+    const response = await apiClient.post('/companies/search-matches/', searchData);
     return response.data;
   },
 
   // Поиск компаний по названию
   async searchCompaniesByName(name: string): Promise<CompanyMatch[]> {
-    const response = await apiClient.post('/api/companies/search-by-name/', { name });
+    const response = await apiClient.post('/companies/search-by-name/', { name });
     return response.data;
   },
 
   // Получить компании по типу
   async getCompaniesByType(type: string): Promise<Company[]> {
-    const response = await apiClient.get(`/api/companies/by-type/?type=${type}`);
+    const response = await apiClient.get(`/companies/by-type/?type=${type}`);
     return response.data;
   },
 
   // Получить типы компаний
   async getCompanyTypes(): Promise<CompanyType[]> {
-    const response = await apiClient.get('/api/companies/company-types/');
+    const response = await apiClient.get('/companies/company-types/');
     return response.data;
   },
 
   // Получить мои компании (созданные текущим агентом)
   async getMyCompanies(): Promise<Company[]> {
-    const response = await apiClient.get('/api/companies/my-companies/');
+    const response = await apiClient.get('/companies/my-companies/');
     return response.data;
   },
 
   // Поиск компаний по имени (для MatchingSuggestionsPanel)
   async searchCompanies(params: { name: string; limit?: number }): Promise<CompanyMatch[]> {
-    const response = await apiClient.post('/api/companies/search-by-name/', {
+    const response = await apiClient.post('/companies/search-by-name/', {
       name: params.name,
       limit: params.limit || 3
     });
