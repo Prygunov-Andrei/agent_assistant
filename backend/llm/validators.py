@@ -165,11 +165,10 @@ class LLMResponseValidator:
         if len(description) > self.max_description_length:
             raise ValidationError(f"description must be no more than {self.max_description_length} characters long")
         
-        # Валидация допустимых типов проектов
-        valid_project_types = ['фильм', 'сериал', 'реклама', 'клип', 'театр', 'другое']
-        project_type = project_analysis.get('project_type', '').lower()
-        if project_type not in valid_project_types:
-            raise ValidationError(f"project_type must be one of: {', '.join(valid_project_types)}")
+        # Валидация типа проекта - проверяем только наличие, не список (пользователь может создавать свои типы)
+        project_type = project_analysis.get('project_type', '').strip()
+        if not project_type:
+            raise ValidationError("project_type is required and cannot be empty")
         
         # Проверяем confidence если есть
         if 'confidence' in project_analysis:

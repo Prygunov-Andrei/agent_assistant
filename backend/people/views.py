@@ -339,6 +339,15 @@ class PersonViewSet(viewsets.ModelViewSet):
                 'full_name': person.full_name,
                 'short_name': person.short_name,
                 'photo': person.photo.url if person.photo else None,
+                # Новые поля для множественных контактов
+                'phones': person.phones if isinstance(person.phones, list) else [],
+                'emails': person.emails if isinstance(person.emails, list) else [],
+                'telegram_usernames': person.telegram_usernames if isinstance(person.telegram_usernames, list) else [],
+                # Основные контакты (первые из массивов)
+                'primary_phone': person.primary_phone,
+                'primary_email': person.primary_email,
+                'primary_telegram': person.primary_telegram,
+                # Старые поля для обратной совместимости
                 'email': person.email,
                 'phone': person.phone,
                 'telegram_username': person.telegram_username,
@@ -389,6 +398,15 @@ class PersonViewSet(viewsets.ModelViewSet):
                 'full_name': person.full_name,
                 'short_name': person.short_name,
                 'photo': person.photo.url if person.photo else None,
+                # Новые поля для множественных контактов
+                'phones': person.phones if isinstance(person.phones, list) else [],
+                'emails': person.emails if isinstance(person.emails, list) else [],
+                'telegram_usernames': person.telegram_usernames if isinstance(person.telegram_usernames, list) else [],
+                # Основные контакты (первые из массивов)
+                'primary_phone': person.primary_phone,
+                'primary_email': person.primary_email,
+                'primary_telegram': person.primary_telegram,
+                # Старые поля для обратной совместимости
                 'email': person.email,
                 'phone': person.phone,
                 'telegram_username': person.telegram_username,

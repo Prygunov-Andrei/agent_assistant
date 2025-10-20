@@ -309,9 +309,22 @@ class PersonMatchSerializer(serializers.Serializer):
     full_name = serializers.CharField()
     short_name = serializers.CharField()
     photo = serializers.URLField(allow_null=True)
-    email = serializers.EmailField(allow_null=True)
-    phone = serializers.CharField(allow_null=True)
-    telegram_username = serializers.CharField(allow_null=True)
+    
+    # Новые поля для множественных контактов
+    phones = serializers.ListField(child=serializers.CharField(), allow_null=True, required=False)
+    emails = serializers.ListField(child=serializers.EmailField(), allow_null=True, required=False)
+    telegram_usernames = serializers.ListField(child=serializers.CharField(), allow_null=True, required=False)
+    
+    # Основные контакты (первые из массивов)
+    primary_phone = serializers.CharField(allow_null=True, required=False)
+    primary_email = serializers.EmailField(allow_null=True, required=False)
+    primary_telegram = serializers.CharField(allow_null=True, required=False)
+    
+    # Старые поля для обратной совместимости
+    email = serializers.EmailField(allow_null=True, required=False)
+    phone = serializers.CharField(allow_null=True, required=False)
+    telegram_username = serializers.CharField(allow_null=True, required=False)
+    
     score = serializers.FloatField(help_text="Оценка схожести (0-1)")
     confidence = serializers.CharField(help_text="Уровень уверенности (high/medium/low)")
 

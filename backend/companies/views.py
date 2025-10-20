@@ -77,7 +77,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
         description="Получить список кинокомпаний, созданных текущим агентом",
         tags=["Кинокомпании"]
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='my-companies')
     def my_companies(self, request):
         """Получить кинокомпании, созданные текущим агентом"""
         companies = self.get_queryset().filter(created_by=request.user)
@@ -113,7 +113,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
         request=CompanySearchRequestSerializer,
         responses={200: CompanyMatchSerializer(many=True)}
     )
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='search-matches')
     def search_matches(self, request):
         """Поиск совпадений кинокомпаний"""
         serializer = CompanySearchRequestSerializer(data=request.data)
@@ -142,7 +142,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
         request=CompanyNameSearchRequestSerializer,
         responses={200: CompanyMatchSerializer(many=True)}
     )
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='search-by-name')
     def search_by_name(self, request):
         """Поиск кинокомпаний по названию"""
         serializer = CompanyNameSearchRequestSerializer(data=request.data)
@@ -185,7 +185,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
         tags=["Кинокомпании"],
         responses={200: CompanyTypeSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='company-types')
     def company_types(self, request):
         """Получить типы кинокомпаний"""
         types = company_matching_service.get_company_types()

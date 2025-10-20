@@ -45,10 +45,13 @@ export const companiesService = {
     return response.data;
   },
 
-  // Поиск компаний по названию
+  // Поиск компаний по названию (с извлечением matches из ответа)
   async searchCompaniesByName(name: string): Promise<CompanyMatch[]> {
     const response = await apiClient.post('/companies/search-by-name/', { name });
-    return response.data;
+    // Backend API возвращает объект { matches: [...], total: N, search_name: "..." }
+    // Извлекаем массив matches из ответа
+    const result = response.data.matches || response.data;
+    return result;
   },
 
   // Получить компании по типу

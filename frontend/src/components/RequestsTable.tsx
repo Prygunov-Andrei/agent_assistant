@@ -77,10 +77,10 @@ const RequestsTable: React.FC = () => {
     differentContacts: []
   });
 
-  // Состояние для модалки создания персоны/компании
+  // Состояние для модалки создания персоны/компании/типа/жанра
   const [createEntityModal, setCreateEntityModal] = useState<{
     isOpen: boolean;
-    type: 'casting_director' | 'director' | 'producer' | 'company' | null;
+    type: 'casting_director' | 'director' | 'producer' | 'company' | 'project_type' | 'genre' | null;
     formData: {
       first_name: string;
       last_name: string;
@@ -88,9 +88,10 @@ const RequestsTable: React.FC = () => {
       phone: string;
       email: string;
       telegram: string;
-      // Для компании
+      // Для компании / типа проекта / жанра
       name: string;
       website: string;
+      description: string;
     };
   }>({
     isOpen: false,
@@ -103,7 +104,8 @@ const RequestsTable: React.FC = () => {
       email: '',
       telegram: '',
       name: '',
-      website: ''
+      website: '',
+      description: ''
     }
   });
   
@@ -531,11 +533,26 @@ const RequestsTable: React.FC = () => {
         const people = response.results || [];
         
         results = people.map((person: any) => ({
+          // Базовые поля
           id: person.id,
           name: person.full_name || `${person.first_name} ${person.last_name}`,
+          full_name: person.full_name,
+          first_name: person.first_name,
+          last_name: person.last_name,
+          middle_name: person.middle_name,
+          // Новые поля для множественных контактов
+          phones: person.phones,
+          emails: person.emails,
+          telegram_usernames: person.telegram_usernames,
+          // Основные контакты (первые из массивов)
+          primary_phone: person.primary_phone,
+          primary_email: person.primary_email,
+          primary_telegram: person.primary_telegram,
+          // Старые поля для обратной совместимости
           phone: person.phone,
           email: person.email,
           telegram: person.telegram_username,
+          telegram_username: person.telegram_username,
           match: 0.5
         }));
         
@@ -560,25 +577,20 @@ const RequestsTable: React.FC = () => {
       let results: any[] = [];
       
       if (type === 'company') {
-        // Поиск компаний через API - используем встроенный поиск
+        // Поиск компаний через fuzzy matching API
         console.log('Searching companies with query:', query);
-        const allCompanies = await companiesService.getCompanies();
+        const searchResults = await companiesService.searchCompaniesByName(query);
         
-        // Фильтруем компании по имени на клиенте
-        const filteredCompanies = Array.isArray(allCompanies) 
-          ? allCompanies.filter((c: any) => c.name.toLowerCase().includes(query.toLowerCase()))
-          : ((allCompanies as any).results || []).filter((c: any) => c.name.toLowerCase().includes(query.toLowerCase()));
-        
-        results = filteredCompanies.slice(0, 10).map((company: any) => ({
+        results = searchResults.map((company: any) => ({
           id: company.id,
           name: company.name,
           phone: company.phone,
           email: company.email,
           website: company.website,
-          match: 0.7 // Базовый score для найденных компаний
+          match: company.match || 0.7
         }));
         
-        console.log('Filtered companies:', results);
+        console.log('Found companies:', results);
         setCompanySearch(results);
         setShowCompanyDropdown(true);
       } else {
@@ -587,11 +599,26 @@ const RequestsTable: React.FC = () => {
         const people = await peopleService.searchPersonsByName({ name: query, person_type: type, limit: 10 });
         
         results = people.map((person: any) => ({
+          // Базовые поля
           id: person.id,
           name: person.full_name || `${person.first_name} ${person.last_name}`,
+          full_name: person.full_name,
+          first_name: person.first_name,
+          last_name: person.last_name,
+          middle_name: person.middle_name,
+          // Новые поля для множественных контактов
+          phones: person.phones,
+          emails: person.emails,
+          telegram_usernames: person.telegram_usernames,
+          // Основные контакты (первые из массивов)
+          primary_phone: person.primary_phone,
+          primary_email: person.primary_email,
+          primary_telegram: person.primary_telegram,
+          // Старые поля для обратной совместимости
           phone: person.phone,
           email: person.email,
           telegram: person.telegram_username,
+          telegram_username: person.telegram_username,
           match: person.score || 0.7 // Используем score из API
         }));
         
@@ -615,6 +642,17 @@ const RequestsTable: React.FC = () => {
   const selectPerson = (person: any, type: 'casting_director' | 'director' | 'producer' | 'company') => {
     // Проверка контактов только для кастинг-директоров
     if (type === 'casting_director' && castingDirector) {
+      // Логируем данные персоны из API
+      console.log('🔍 Person from API:', {
+        name: person.full_name,
+        primary_phone: person.primary_phone,
+        primary_email: person.primary_email,
+        primary_telegram: person.primary_telegram,
+        phones: person.phones,
+        emails: person.emails,
+        telegram_usernames: person.telegram_usernames
+      });
+      
       // Получаем контакты от LLM (сохраненные ранее в castingDirector)
       const newContacts = {
         phone: castingDirector.llm_phone && castingDirector.llm_phone !== 'Не определен' && castingDirector.llm_phone !== 'null' ? castingDirector.llm_phone : undefined,
@@ -622,18 +660,25 @@ const RequestsTable: React.FC = () => {
         telegram: castingDirector.llm_telegram && castingDirector.llm_telegram !== 'Не определен' && castingDirector.llm_telegram !== 'null' ? castingDirector.llm_telegram : undefined
       };
       
+      console.log('🔍 LLM contacts:', newContacts);
+      
       // Проверяем какие контакты отличаются
       const differentContacts: string[] = [];
       
       if (newContacts.phone && person.primary_phone !== newContacts.phone) {
+        console.log('❌ Phone different:', person.primary_phone, '!=', newContacts.phone);
         differentContacts.push('phone');
       }
       if (newContacts.email && person.primary_email !== newContacts.email) {
+        console.log('❌ Email different:', person.primary_email, '!=', newContacts.email);
         differentContacts.push('email');
       }
       if (newContacts.telegram && person.primary_telegram !== newContacts.telegram) {
+        console.log('❌ Telegram different:', person.primary_telegram, '!=', newContacts.telegram);
         differentContacts.push('telegram');
       }
+      
+      console.log('📊 Different contacts:', differentContacts);
       
       // Если есть хотя бы один новый контакт - показываем модалку
       if (differentContacts.length > 0) {
@@ -707,14 +752,24 @@ const RequestsTable: React.FC = () => {
     }
   };
   
-  const setUndefined = (type: 'casting_director' | 'director' | 'producer' | 'company') => {
+  const setUndefined = (type: 'casting_director' | 'director' | 'producer' | 'company' | 'project_type' | 'genre') => {
     // Устанавливаем специальное значение для "не определено"
     const undefinedValue = { id: -1, name: 'Не определено', match: 1 };
     
     if (type === 'casting_director') { setCastingDirector(undefinedValue); setShowCastingDirectorDropdown(false); }
     else if (type === 'director') { setDirector(undefinedValue); setShowDirectorDropdown(false); }
     else if (type === 'producer') { setProducer(undefinedValue); setShowProducerDropdown(false); }
-    else { setProductionCompany(undefinedValue); setShowCompanyDropdown(false); }
+    else if (type === 'company') { setProductionCompany(undefinedValue); setShowCompanyDropdown(false); }
+    else if (type === 'project_type') { 
+      setProjectType(undefinedValue); 
+      setFormData(prev => ({ ...prev, project_type: -1 }));
+      setShowProjectTypeDropdown(false); 
+    }
+    else if (type === 'genre') { 
+      setGenre(undefinedValue); 
+      setFormData(prev => ({ ...prev, genre: -1 }));
+      setShowGenreDropdown(false); 
+    }
     setHasUnsavedChanges(true);
   };
 
@@ -747,7 +802,8 @@ const RequestsTable: React.FC = () => {
       email: '',
       telegram: '',
       name: '',
-      website: ''
+      website: '',
+      description: ''
     };
 
     if (llmData && type === 'company') {
@@ -781,7 +837,49 @@ const RequestsTable: React.FC = () => {
       
       if (!type) return;
 
-      if (type === 'company') {
+      if (type === 'project_type') {
+        // Создание типа проекта
+        if (!formData.name.trim()) {
+          alert('Укажите название типа проекта');
+          return;
+        }
+
+        const newProjectType = await projectsService.createProjectType({
+          name: formData.name,
+          description: formData.description || undefined
+        });
+
+        // Автоматически выбираем созданный тип
+        setProjectType(newProjectType);
+        setFormData(prev => ({ ...prev, project_type: newProjectType.id }));
+        setHasUnsavedChanges(true);
+
+        // Обновляем список типов
+        const updatedTypes = await projectsService.getProjectTypes();
+        setProjectTypesList(updatedTypes);
+
+      } else if (type === 'genre') {
+        // Создание жанра
+        if (!formData.name.trim()) {
+          alert('Укажите название жанра');
+          return;
+        }
+
+        const newGenre = await projectsService.createGenre({
+          name: formData.name,
+          description: formData.description || undefined
+        });
+
+        // Автоматически выбираем созданный жанр
+        setGenre(newGenre);
+        setFormData(prev => ({ ...prev, genre: newGenre.id }));
+        setHasUnsavedChanges(true);
+
+        // Обновляем список жанров
+        const updatedGenres = await projectsService.getGenres();
+        setGenresList(updatedGenres);
+
+      } else if (type === 'company') {
         // Создание кинокомпании
         if (!formData.name.trim()) {
           alert('Укажите название кинокомпании');
@@ -851,7 +949,8 @@ const RequestsTable: React.FC = () => {
           email: '',
           telegram: '',
           name: '',
-          website: ''
+          website: '',
+          description: ''
         }
       });
 
@@ -1602,7 +1701,15 @@ const RequestsTable: React.FC = () => {
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>Кинокомпания *</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="text" value={productionCompany?.name || ''} onChange={(e) => { searchPerson(e.target.value, 'company'); setProductionCompany({ id: null, name: e.target.value, match: 0 }); setHasUnsavedChanges(true); }}
-                          onFocus={() => { searchPerson(productionCompany?.name || '', 'company'); }}
+                          onFocus={() => { 
+                            // Если выбрано "Не определено" - очищаем и загружаем последние
+                            if (productionCompany?.id === -1) {
+                              setProductionCompany(null);
+                              loadRecentPersons('company');
+                            } else {
+                              searchPerson(productionCompany?.name || '', 'company');
+                            }
+                          }}
                           style={{ flex: 1, padding: '8px 12px', border: productionCompany?.id && productionCompany.id > 0 ? '1px solid #10b981' : productionCompany?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите название кинокомпании" />
                         {productionCompany?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: productionCompany.match > 0.8 ? '#dcfce7' : '#fef3c7', color: productionCompany.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(productionCompany.match * 100)}%</span>}
                       </div>
@@ -1665,7 +1772,20 @@ const RequestsTable: React.FC = () => {
                               📋 Показать все варианты ({projectTypesList.length})
                             </div>
                           )}
-                          <div onClick={(e) => { e.stopPropagation(); alert('Создание нового типа проекта'); setShowProjectTypeDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                          <div onClick={() => setUndefined('project_type')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#fef3c7', borderTop: '1px solid #fde68a', color: '#92400e', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fde68a'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}>⊘ Оставить неопределенным</div>
+                          <div onClick={() => { 
+                            setShowProjectTypeDropdown(false); 
+                            setCreateEntityModal({ 
+                              isOpen: true, 
+                              type: 'project_type', 
+                              formData: { 
+                                ...createEntityModal.formData, 
+                                name: projectType?.name || '', 
+                                description: '' 
+                              } 
+                            }); 
+                          }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
                             + Создать новый тип проекта
                           </div>
@@ -1696,7 +1816,20 @@ const RequestsTable: React.FC = () => {
                               📋 Показать все варианты ({genresList.length})
                             </div>
                           )}
-                          <div onClick={(e) => { e.stopPropagation(); alert('Создание нового жанра'); setShowGenreDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                          <div onClick={() => setUndefined('genre')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#fef3c7', borderTop: '1px solid #fde68a', color: '#92400e', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fde68a'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}>⊘ Оставить неопределенным</div>
+                          <div onClick={() => { 
+                            setShowGenreDropdown(false); 
+                            setCreateEntityModal({ 
+                              isOpen: true, 
+                              type: 'genre', 
+                              formData: { 
+                                ...createEntityModal.formData, 
+                                name: genre?.name || '', 
+                                description: '' 
+                              } 
+                            }); 
+                          }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
                             + Создать новый жанр
                           </div>
@@ -2109,12 +2242,62 @@ const RequestsTable: React.FC = () => {
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
           }}>
             <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: '600', color: '#1f2937' }}>
-              {createEntityModal.type === 'company' ? '🏢 Создать кинокомпанию' : 
+              {createEntityModal.type === 'project_type' ? '📁 Создать тип проекта' :
+               createEntityModal.type === 'genre' ? '🎭 Создать жанр' :
+               createEntityModal.type === 'company' ? '🏢 Создать кинокомпанию' : 
                createEntityModal.type === 'casting_director' ? '👤 Создать кастинг-директора' :
                createEntityModal.type === 'director' ? '🎬 Создать режиссера' : '🎥 Создать продюсера'}
             </h3>
 
-            {createEntityModal.type === 'company' ? (
+            {createEntityModal.type === 'project_type' || createEntityModal.type === 'genre' ? (
+              // Форма для типа проекта или жанра
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Название <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={createEntityModal.formData.name}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, name: e.target.value }
+                    }))}
+                    placeholder={createEntityModal.type === 'project_type' ? "Например: Сериал" : "Например: Драма"}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                    Описание
+                  </label>
+                  <textarea
+                    value={createEntityModal.formData.description}
+                    onChange={(e) => setCreateEntityModal(prev => ({
+                      ...prev,
+                      formData: { ...prev.formData, description: e.target.value }
+                    }))}
+                    placeholder="Краткое описание"
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+              </div>
+            ) : createEntityModal.type === 'company' ? (
               // Форма для кинокомпании
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
@@ -2362,7 +2545,8 @@ const RequestsTable: React.FC = () => {
                       email: '',
                       telegram: '',
                       name: '',
-                      website: ''
+                      website: '',
+                      description: ''
                     }
                   });
                 }}

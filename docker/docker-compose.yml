@@ -96,9 +96,9 @@ services:
       - ../.env
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000}
-    volumes:
+    # volumes:
       # Volume mapping для разработки - изменения в dist/ сразу попадают в контейнер
-      - ../frontend/dist:/app/dist
+      # - ../frontend/dist:/app/dist
     ports:
       - "3000:3000"
     networks:

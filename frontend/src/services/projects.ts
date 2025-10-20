@@ -50,10 +50,22 @@ export const projectsService = {
     return response.data.results || response.data;
   },
 
+  // Создать тип проекта
+  async createProjectType(data: { name: string; description?: string }): Promise<ProjectType> {
+    const response = await apiClient.post('/project-types/', data);
+    return response.data;
+  },
+
   // Получить список жанров
   async getGenres(): Promise<Genre[]> {
     const response = await apiClient.get('/genres/');
     return response.data.results || response.data;
+  },
+
+  // Создать жанр
+  async createGenre(data: { name: string; description?: string }): Promise<Genre> {
+    const response = await apiClient.post('/genres/', data);
+    return response.data;
   },
 
   // Получить список типов ролей

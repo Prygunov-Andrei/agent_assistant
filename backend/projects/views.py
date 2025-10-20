@@ -56,12 +56,21 @@ class ProjectRolePermission(permissions.BasePermission):
         description="Получить информацию о конкретном типе проекта",
         tags=["Справочники"]
     ),
+    create=extend_schema(
+        summary="Создать тип проекта",
+        description="Создать новый тип проекта",
+        tags=["Справочники"]
+    ),
 )
-class ProjectTypeViewSet(viewsets.ReadOnlyModelViewSet):
-    """ViewSet для типов проектов (только чтение)"""
+class ProjectTypeViewSet(viewsets.ModelViewSet):
+    """ViewSet для типов проектов"""
     queryset = ProjectType.objects.filter(is_active=True)
     serializer_class = ProjectTypeSerializer
     permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        """Возвращаем только активные типы проектов"""
+        return ProjectType.objects.filter(is_active=True)
 
 
 @extend_schema_view(
@@ -75,12 +84,21 @@ class ProjectTypeViewSet(viewsets.ReadOnlyModelViewSet):
         description="Получить информацию о конкретном жанре",
         tags=["Справочники"]
     ),
+    create=extend_schema(
+        summary="Создать жанр",
+        description="Создать новый жанр",
+        tags=["Справочники"]
+    ),
 )
-class GenreViewSet(viewsets.ReadOnlyModelViewSet):
-    """ViewSet для жанров (только чтение)"""
+class GenreViewSet(viewsets.ModelViewSet):
+    """ViewSet для жанров"""
     queryset = Genre.objects.filter(is_active=True)
     serializer_class = GenreSerializer
     permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        """Возвращаем только активные жанры"""
+        return Genre.objects.filter(is_active=True)
 
 
 @extend_schema_view(
