@@ -199,9 +199,28 @@ class PersonMatchingService:
         # Получаем порог схожести для типа персоны
         threshold = self.thresholds.get(person_type, self.thresholds.get('directors', 0.6))
         
+        # УЛУЧШЕНИЕ: Сначала применяем базовый фильтр по имени в БД
+        # Разбиваем поисковый запрос на слова
+        name_parts = name.strip().split()
+        
+        if name_parts:
+            # Создаем Q объект для поиска по любому из слов в любом поле имени
+            name_filter = Q()
+            for part in name_parts:
+                name_filter |= Q(first_name__icontains=part)
+                name_filter |= Q(last_name__icontains=part)
+                name_filter |= Q(middle_name__icontains=part)
+            
+            # Применяем фильтр
+            queryset = queryset.filter(name_filter)
+        
         # Ограничиваем количество кандидатов для анализа
         max_candidates = self.config['search']['limits']['max_candidates']
         candidates = list(queryset[:max_candidates])
+        
+        # Если после фильтрации ничего не найдено, возвращаем пустой список
+        if not candidates:
+            return []
         
         # Подготавливаем данные для fuzzy matching
         person_data = []

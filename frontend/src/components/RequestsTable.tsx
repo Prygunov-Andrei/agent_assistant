@@ -1178,14 +1178,17 @@ const RequestsTable: React.FC = () => {
                       </div>
                       {showCastingDirectorDropdown && castingDirectorSearch.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                          {castingDirectorSearch.map((person, index) => (
-                            <div key={index} onClick={() => selectPerson(person, 'casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < castingDirectorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
-                              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{person.phone} • {person.email}</div>
-                              <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>
-                            </div>
-                          ))}
+                          {castingDirectorSearch.map((person, index) => {
+                            const contacts = [person.phone, person.email].filter(Boolean).join(' • ');
+                            return (
+                              <div key={index} onClick={() => selectPerson(person, 'casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < castingDirectorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                                {contacts && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{contacts}</div>}
+                                {person.telegram && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>}
+                              </div>
+                            );
+                          })}
                           <div onClick={() => createNewPerson('casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>+ Добавить нового кастинг-директора</div>
                         </div>
@@ -1203,14 +1206,17 @@ const RequestsTable: React.FC = () => {
                       </div>
                       {showDirectorDropdown && directorSearch.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                          {directorSearch.map((person, index) => (
-                            <div key={index} onClick={() => selectPerson(person, 'director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < directorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
-                              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{person.phone} • {person.email}</div>
-                              <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>
-                            </div>
-                          ))}
+                          {directorSearch.map((person, index) => {
+                            const contacts = [person.phone, person.email].filter(Boolean).join(' • ');
+                            return (
+                              <div key={index} onClick={() => selectPerson(person, 'director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < directorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                                {contacts && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{contacts}</div>}
+                                {person.telegram && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>}
+                              </div>
+                            );
+                          })}
                           <div onClick={() => createNewPerson('director')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>+ Добавить нового режиссера</div>
                         </div>
@@ -1228,14 +1234,17 @@ const RequestsTable: React.FC = () => {
                       </div>
                       {showProducerDropdown && producerSearch.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
-                          {producerSearch.map((person, index) => (
-                            <div key={index} onClick={() => selectPerson(person, 'producer')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < producerSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
-                              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{person.phone} • {person.email}</div>
-                              <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>
-                            </div>
-                          ))}
+                          {producerSearch.map((person, index) => {
+                            const contacts = [person.phone, person.email].filter(Boolean).join(' • ');
+                            return (
+                              <div key={index} onClick={() => selectPerson(person, 'producer')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < producerSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                                {contacts && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{contacts}</div>}
+                                {person.telegram && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>}
+                              </div>
+                            );
+                          })}
                           <div onClick={() => createNewPerson('producer')} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#eff6ff', borderTop: '1px solid #dbeafe', color: '#1d4ed8', fontWeight: 'bold', fontSize: '14px' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}>+ Добавить нового продюсера</div>
                         </div>
