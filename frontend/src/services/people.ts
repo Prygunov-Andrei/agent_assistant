@@ -210,6 +210,36 @@ class PeopleService {
     });
     return response.data;
   }
+
+  /**
+   * Поиск персон по контактной информации
+   * 
+   * @param params - Параметры поиска: contact_type, contact_value, person_type
+   */
+  async searchByContact(params: {
+    contact_type: 'phone' | 'email' | 'telegram';
+    contact_value: string;
+    person_type?: string;
+  }): Promise<Person[]> {
+    const searchParams: any = {
+      [params.contact_type]: params.contact_value
+    };
+    
+    if (params.person_type) {
+      searchParams.person_type = params.person_type;
+    }
+    
+    console.log('🌐 Отправляем запрос на /people/search/ с параметрами:', searchParams);
+    
+    const response = await apiClient.get(`${this.baseUrl}search/`, {
+      params: searchParams
+    });
+    
+    console.log('📥 Получен ответ от /people/search/:', response.data);
+    
+    // API возвращает пагинированный ответ
+    return response.data.results || response.data;
+  }
 }
 
 export const peopleService = new PeopleService();

@@ -616,11 +616,149 @@ const RequestsTable: React.FC = () => {
         setCompanySearch(results);
         setShowCompanyDropdown(true);
       } else {
-        // Поиск персон через улучшенный API поиска (с фильтром по имени в БД)
-        console.log('Searching persons with query:', query, 'type:', type);
+        // Получаем данные от LLM для этого типа
+        let llmData: any = null;
+        if (type === 'casting_director') llmData = llmContactsData.casting_director;
+        else if (type === 'director') llmData = llmContactsData.director;
+        else if (type === 'producer') llmData = llmContactsData.producer;
+        
+        // ПРИОРИТЕТ 1: Поиск по контактам от LLM (если есть)
+        let contactResults: any[] = [];
+        if (llmData) {
+          console.log('🔍 Поиск по контактам LLM:', llmData);
+          
+          // Поиск по телефону
+          if (llmData.phone) {
+            try {
+              const phoneResults = await peopleService.searchByContact({
+                contact_type: 'phone',
+                contact_value: llmData.phone,
+                person_type: type
+              });
+              
+              const mappedPhoneResults = phoneResults.map((p: any) => ({
+                id: p.id,
+                name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+                full_name: p.full_name,
+                first_name: p.first_name,
+                last_name: p.last_name,
+                middle_name: p.middle_name,
+                phones: p.phones,
+                emails: p.emails,
+                telegram_usernames: p.telegram_usernames,
+                primary_phone: p.primary_phone,
+                primary_email: p.primary_email,
+                primary_telegram: p.primary_telegram,
+                phone: p.phone,
+                email: p.email,
+                telegram: p.telegram_username,
+                telegram_username: p.telegram_username,
+                match_reason: 'phone',
+                matched_value: llmData.phone,
+                match: 1.0
+              }));
+              
+              contactResults = [...contactResults, ...mappedPhoneResults];
+            } catch (err) {
+              console.log('Поиск по телефону не дал результатов');
+            }
+          }
+          
+          // Поиск по email
+          if (llmData.email) {
+            try {
+              const emailResults = await peopleService.searchByContact({
+                contact_type: 'email',
+                contact_value: llmData.email,
+                person_type: type
+              });
+              
+              const mappedEmailResults = emailResults.map((p: any) => ({
+                id: p.id,
+                name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+                full_name: p.full_name,
+                first_name: p.first_name,
+                last_name: p.last_name,
+                middle_name: p.middle_name,
+                phones: p.phones,
+                emails: p.emails,
+                telegram_usernames: p.telegram_usernames,
+                primary_phone: p.primary_phone,
+                primary_email: p.primary_email,
+                primary_telegram: p.primary_telegram,
+                phone: p.phone,
+                email: p.email,
+                telegram: p.telegram_username,
+                telegram_username: p.telegram_username,
+                match_reason: 'email',
+                matched_value: llmData.email,
+                match: 1.0
+              }));
+              
+              contactResults = [...contactResults, ...mappedEmailResults];
+            } catch (err) {
+              console.log('Поиск по email не дал результатов');
+            }
+          }
+          
+          // Поиск по telegram
+          if (llmData.telegram) {
+            try {
+              console.log('🔍 Ищем по ТГ:', llmData.telegram);
+              const tgResults = await peopleService.searchByContact({
+                contact_type: 'telegram',
+                contact_value: llmData.telegram,
+                person_type: type
+              });
+              console.log('📱 Результаты поиска по ТГ:', tgResults);
+              
+              // Мапим результаты в правильный формат
+              const mappedTgResults = tgResults.map((p: any) => ({
+                id: p.id,
+                name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+                full_name: p.full_name,
+                first_name: p.first_name,
+                last_name: p.last_name,
+                middle_name: p.middle_name,
+                phones: p.phones,
+                emails: p.emails,
+                telegram_usernames: p.telegram_usernames,
+                primary_phone: p.primary_phone,
+                primary_email: p.primary_email,
+                primary_telegram: p.primary_telegram,
+                phone: p.phone,
+                email: p.email,
+                telegram: p.telegram_username,
+                telegram_username: p.telegram_username,
+                match_reason: 'telegram',
+                matched_value: llmData.telegram,
+                match: 1.0
+              }));
+              
+              console.log('✅ Замапили результаты по ТГ:', mappedTgResults);
+              contactResults = [...contactResults, ...mappedTgResults];
+            } catch (err) {
+              console.log('❌ Поиск по telegram не дал результатов:', err);
+            }
+          }
+          
+          // Убираем дубликаты по ID
+          const uniqueContactResults = contactResults.reduce((acc: any[], curr: any) => {
+            if (!acc.find(p => p.id === curr.id)) {
+              acc.push(curr);
+            }
+            return acc;
+          }, []);
+          
+          console.log('✅ Найдено по контактам:', uniqueContactResults.length);
+          contactResults = uniqueContactResults;
+        }
+        
+        // ПРИОРИТЕТ 2: Поиск по имени
+        console.log('🔍 Поиск по имени:', query, 'type:', type);
         const people = await peopleService.searchPersonsByName({ name: query, person_type: type, limit: 10 });
         
-        results = people.map((person: any) => ({
+        const nameResults = people.map((person: any) => ({
           // Базовые поля
           id: person.id,
           name: person.full_name || `${person.first_name} ${person.last_name}`,
@@ -641,10 +779,24 @@ const RequestsTable: React.FC = () => {
           email: person.email,
           telegram: person.telegram_username,
           telegram_username: person.telegram_username,
-          match: person.score || 0.7 // Используем score из API
+          match: person.score || 0.5, // Ниже чем у контактов
+          match_reason: 'name'
         }));
         
-        console.log('Found persons:', results);
+        // Объединяем результаты: сначала по контактам (match=1.0), потом по имени (match=0.5-0.7)
+        // Убираем дубликаты
+        const allResults = [...contactResults];
+        nameResults.forEach((nameResult: any) => {
+          if (!allResults.find(r => r.id === nameResult.id)) {
+            allResults.push(nameResult);
+          }
+        });
+        
+        // Сортируем по match (сначала лучшие совпадения)
+        results = allResults.sort((a, b) => (b.match || 0) - (a.match || 0));
+        
+        console.log('✅ Итого найдено персон:', results.length, 'из них по контактам:', contactResults.length);
+        console.log('📋 Финальный список для отображения:', results.map(r => ({ id: r.id, name: r.name, match: r.match, match_reason: r.match_reason })));
         
         if (type === 'casting_director') { setCastingDirectorSearch(results); setShowCastingDirectorDropdown(true); }
         else if (type === 'director') { setDirectorSearch(results); setShowDirectorDropdown(true); }
@@ -695,8 +847,13 @@ const RequestsTable: React.FC = () => {
         console.log('❌ Email different:', person.primary_email, '!=', newContacts.email);
         differentContacts.push('email');
       }
-      if (newContacts.telegram && person.primary_telegram !== newContacts.telegram) {
-        console.log('❌ Telegram different:', person.primary_telegram, '!=', newContacts.telegram);
+      
+      // Для telegram нормализуем - убираем @ с обеих сторон перед сравнением
+      const normalizedPersonTelegram = person.primary_telegram?.trim().replace(/^@/, '') || '';
+      const normalizedNewTelegram = newContacts.telegram?.trim().replace(/^@/, '') || '';
+      
+      if (newContacts.telegram && normalizedPersonTelegram !== normalizedNewTelegram) {
+        console.log('❌ Telegram different:', person.primary_telegram, '!=', newContacts.telegram, '(normalized:', normalizedPersonTelegram, '!=', normalizedNewTelegram, ')');
         differentContacts.push('telegram');
       }
       
@@ -1691,10 +1848,16 @@ const RequestsTable: React.FC = () => {
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
                           {castingDirectorSearch.map((person, index) => {
                             const contacts = [person.phone, person.email].filter(Boolean).join(' • ');
+                            const hasMatch = person.match_reason && person.matched_value;
                             return (
-                              <div key={index} onClick={() => selectPerson(person, 'casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < castingDirectorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                              <div key={index} onClick={() => selectPerson(person, 'casting_director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < castingDirectorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: hasMatch ? '#f0fdf4' : '#f9fafb' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hasMatch ? '#dcfce7' : '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = hasMatch ? '#f0fdf4' : '#f9fafb'}>
                                 <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                                {hasMatch && (
+                                  <div style={{ fontSize: '12px', color: '#059669', marginTop: '2px', fontWeight: '600' }}>
+                                    ✓ Совпадение: {person.matched_value}
+                                  </div>
+                                )}
                                 {contacts && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{contacts}</div>}
                                 {person.telegram && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>}
                               </div>
@@ -1751,10 +1914,16 @@ const RequestsTable: React.FC = () => {
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
                           {directorSearch.map((person, index) => {
                             const contacts = [person.phone, person.email].filter(Boolean).join(' • ');
+                            const hasMatch = person.match_reason && person.matched_value;
                             return (
-                              <div key={index} onClick={() => selectPerson(person, 'director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < directorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                              <div key={index} onClick={() => selectPerson(person, 'director')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < directorSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: hasMatch ? '#f0fdf4' : '#f9fafb' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hasMatch ? '#dcfce7' : '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = hasMatch ? '#f0fdf4' : '#f9fafb'}>
                                 <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                                {hasMatch && (
+                                  <div style={{ fontSize: '12px', color: '#059669', marginTop: '2px', fontWeight: '600' }}>
+                                    ✓ Совпадение: {person.matched_value}
+                                  </div>
+                                )}
                                 {contacts && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{contacts}</div>}
                                 {person.telegram && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>}
                               </div>
@@ -1811,10 +1980,16 @@ const RequestsTable: React.FC = () => {
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
                           {producerSearch.map((person, index) => {
                             const contacts = [person.phone, person.email].filter(Boolean).join(' • ');
+                            const hasMatch = person.match_reason && person.matched_value;
                             return (
-                              <div key={index} onClick={() => selectPerson(person, 'producer')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < producerSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: '#f9fafb' }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}>
+                              <div key={index} onClick={() => selectPerson(person, 'producer')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: index < producerSearch.length - 1 ? '1px solid #f3f4f6' : 'none', backgroundColor: hasMatch ? '#f0fdf4' : '#f9fafb' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hasMatch ? '#dcfce7' : '#f3f4f6'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = hasMatch ? '#f0fdf4' : '#f9fafb'}>
                                 <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1f2937' }}>{person.name}</div>
+                                {hasMatch && (
+                                  <div style={{ fontSize: '12px', color: '#059669', marginTop: '2px', fontWeight: '600' }}>
+                                    ✓ Совпадение: {person.matched_value}
+                                  </div>
+                                )}
                                 {contacts && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{contacts}</div>}
                                 {person.telegram && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{person.telegram}</div>}
                               </div>

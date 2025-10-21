@@ -197,24 +197,28 @@ class PersonViewSet(viewsets.ModelViewSet):
             has_search = True
         
         if phone:
-            # Поиск в массиве телефонов (JSONField)
-            search_filters |= Q(phones__icontains=phone)
+            # Поиск в массиве телефонов (JSONField) - используем contains с массивом
+            search_filters |= Q(phones__contains=[phone])
             # Также поиск в старом поле для обратной совместимости
             search_filters |= Q(phone__icontains=phone)
             has_search = True
         
         if email:
-            # Поиск в массиве email (JSONField)
-            search_filters |= Q(emails__icontains=email)
+            # Поиск в массиве email (JSONField) - используем contains с массивом
+            search_filters |= Q(emails__contains=[email])
             # Также поиск в старом поле для обратной совместимости
             search_filters |= Q(email__icontains=email)
             has_search = True
         
         if telegram:
-            # Поиск в массиве Telegram (JSONField)
-            search_filters |= Q(telegram_usernames__icontains=telegram)
+            # Убираем @ если есть для унификации
+            telegram_clean = telegram.lstrip('@')
+            
+            # Поиск в массиве Telegram (JSONField) - используем contains с массивом БЕЗ @
+            # В БД telegram хранятся без @, поэтому ищем только без @
+            search_filters |= Q(telegram_usernames__contains=[telegram_clean])
             # Также поиск в старом поле для обратной совместимости
-            search_filters |= Q(telegram_username__icontains=telegram)
+            search_filters |= Q(telegram_username__icontains=telegram_clean)
             has_search = True
         
         if project:
