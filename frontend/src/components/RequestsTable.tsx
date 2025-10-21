@@ -1144,9 +1144,10 @@ const RequestsTable: React.FC = () => {
         await projectsService.createProjectRole(rolePayload);
       }
       
-      // Обновляем статус запроса
+      // Обновляем статус запроса на "Обработан"
       if (selectedRequest) {
         await requestsService.updateRequest(selectedRequest.id, {
+          status: 'completed',
           analysis_status: 'processed'
         });
       }
@@ -1229,12 +1230,16 @@ const RequestsTable: React.FC = () => {
   };
 
   // Компонент для рендеринга строки запроса
-  const renderRequestRow = (request: RequestListItem, _index: number) => (
-    <tr 
-      key={request.id} 
-      className="requests-table-row hover:bg-blue-50 cursor-pointer transition-colors duration-200"
-      onClick={() => handleRowClick(request)}
-    >
+  const renderRequestRow = (request: RequestListItem, _index: number) => {
+    const isCompleted = request.status === 'completed';
+    
+    return (
+      <tr 
+        key={request.id} 
+        className={`requests-table-row ${!isCompleted ? 'hover:bg-blue-50 cursor-pointer' : 'opacity-60 cursor-not-allowed'} transition-colors duration-200`}
+        onClick={() => !isCompleted && handleRowClick(request)}
+        style={{ backgroundColor: isCompleted ? '#f9fafb' : 'transparent' }}
+      >
       <td className="requests-table-cell">
         <div className="request-date">
           <div className="request-date-date">
@@ -1327,30 +1332,33 @@ const RequestsTable: React.FC = () => {
           }}>
             {getStatusText(request.status)}
           </div>
-          <button
-            onClick={(e) => handleDeleteClick(e, request.id)}
-            style={{
-              padding: '4px 10px',
-              fontSize: '12px',
-              fontWeight: '500',
-              backgroundColor: '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              whiteSpace: 'nowrap'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-            title="Удалить запрос"
-          >
-            Удалить
-          </button>
+          {!isCompleted && (
+            <button
+              onClick={(e) => handleDeleteClick(e, request.id)}
+              style={{
+                padding: '4px 10px',
+                fontSize: '12px',
+                fontWeight: '500',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                whiteSpace: 'nowrap'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+              title="Удалить запрос"
+            >
+              Удалить
+            </button>
+          )}
         </div>
       </td>
     </tr>
-  );
+    );
+  };
 
   if (loading) {
     return (
