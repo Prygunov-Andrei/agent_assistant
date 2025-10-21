@@ -8,7 +8,7 @@
   "properties": {
     "project_analysis": {
       "type": "object",
-      "required": ["project_title", "project_type", "project_type_raw", "genre", "description", "premiere_date", "roles", "confidence"],
+      "required": ["project_title", "project_type", "project_type_raw", "genre", "description", "premiere_date", "usage_rights_parsed", "roles", "confidence"],
       "additionalProperties": false,
       "properties": {
         "project_title": {
@@ -34,6 +34,38 @@
         "premiere_date": {
           "type": ["string", "null"],
           "description": "Дата премьеры в формате YYYY-MM-DD или null если не указана"
+        },
+        "usage_rights_parsed": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "raw_text": {
+                  "type": "string",
+                  "description": "Исходный текст о правах из запроса (точная цитата)"
+                },
+                "types": {
+                  "type": "array",
+                  "items": {"type": "string"},
+                  "description": "Типы прав: ТВ-ролик, ОЛВ-ролик, OOH, DOOH, Радио, Интернет, Печать, и т.д."
+                },
+                "duration": {
+                  "type": ["string", "null"],
+                  "description": "Срок действия прав: '2 года', '3 месяца', 'бессрочно' или null если не указан"
+                },
+                "territory": {
+                  "type": ["string", "null"],
+                  "description": "Территория действия: 'РФ', 'СНГ', 'Весь мир', 'Европа' или null если не указана"
+                }
+              },
+              "required": ["raw_text", "types", "duration", "territory"]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Распарсенные права использования материала (только для рекламы). Если проект не реклама или права не указаны - null"
         },
         "roles": {
           "type": "array",

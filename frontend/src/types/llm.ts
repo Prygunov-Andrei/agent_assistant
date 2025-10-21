@@ -14,6 +14,12 @@ export interface ProjectAnalysis {
   genre: string;
   description: string;
   premiere_date: string;
+  usage_rights_parsed?: {
+    raw_text: string;
+    types: string[];
+    duration?: string | null;
+    territory?: string | null;
+  } | null;
   roles: ProjectRole[];
   contacts: ProjectContacts;
   confidence: number;

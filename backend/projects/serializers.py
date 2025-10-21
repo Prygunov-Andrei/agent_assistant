@@ -366,6 +366,7 @@ class ProjectSerializer(BaseModelSerializer):
             'request_files',
             'request_id',
             'project_type_raw',
+            'usage_rights_parsed',
             'roles'
         ]
         extra_kwargs = {
@@ -381,7 +382,12 @@ class ProjectSerializer(BaseModelSerializer):
             'producers': {'help_text': 'Список ID продюсеров проекта'},
             'production_company': {'help_text': 'ID кинокомпании проекта'},
             'request': {'help_text': 'ID исходного запроса (только для чтения)'},
-            'project_type_raw': {'help_text': 'Сырой тип проекта от LLM'}
+            'project_type_raw': {'help_text': 'Сырой тип проекта от LLM'},
+            'usage_rights_parsed': {
+                'help_text': 'Права использования (для рекламы): {raw_text, types, duration, territory}',
+                'required': False,
+                'allow_null': True
+            }
         }
 
 

@@ -187,6 +187,15 @@ class Project(BaseModel):
         help_text="Тип проекта, извлеченный LLM из текста запроса"
     )
     
+    # Права использования (для рекламы)
+    usage_rights_parsed = models.JSONField(
+        blank=True,
+        null=True,
+        default=None,
+        verbose_name="Права использования",
+        help_text="Структурированная информация о правах для рекламы: {raw_text, types, duration, territory}"
+    )
+    
     class Meta(BaseModel.Meta):
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"

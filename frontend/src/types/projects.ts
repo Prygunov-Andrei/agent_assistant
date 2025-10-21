@@ -2,6 +2,14 @@
 
 // import type { Artist } from './index';
 
+// Права использования (для рекламы)
+export interface UsageRightsParsed {
+  raw_text: string;
+  types: string[];
+  duration?: string | null;
+  territory?: string | null;
+}
+
 // Расширенный тип проекта с LLM полями
 export interface ProjectWithLLM {
   id: number;
@@ -17,6 +25,7 @@ export interface ProjectWithLLM {
   director?: number; // ID персоны
   production_company?: number; // ID компании
   request?: number; // ID исходного запроса
+  usage_rights_parsed?: UsageRightsParsed | null;
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -184,6 +193,7 @@ export interface ProjectExpanded {
   description?: string;
   premiere_date?: string;
   status?: string;
+  usage_rights_parsed?: UsageRightsParsed | null;
   casting_director?: {
     id: number;
     name: string;

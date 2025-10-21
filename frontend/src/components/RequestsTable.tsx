@@ -61,6 +61,9 @@ const RequestsTable: React.FC = () => {
     production_company: null
   });
   
+  // Права использования (для рекламы)
+  const [usageRightsParsed, setUsageRightsParsed] = useState<any>(null);
+  
   // Состояния для поиска персон
   const [castingDirectorSearch, setCastingDirectorSearch] = useState<any[]>([]);
   const [directorSearch, setDirectorSearch] = useState<any[]>([]);
@@ -287,6 +290,12 @@ const RequestsTable: React.FC = () => {
       
       console.log('Analysis Data Full:', JSON.stringify(analysisResult, null, 2));
       
+      // Извлекаем права использования для рекламы
+      if (analysisResult.project_analysis.usage_rights_parsed) {
+        console.log('📜 Права из LLM:', analysisResult.project_analysis.usage_rights_parsed);
+        setUsageRightsParsed(analysisResult.project_analysis.usage_rights_parsed);
+      }
+      
       // Предзаполняем форму данными из анализа
       if (analysisResult.project_analysis) {
         const pa = analysisResult.project_analysis;
@@ -481,6 +490,13 @@ const RequestsTable: React.FC = () => {
     setProductionCompany(null);
     setProjectType(null);
     setGenre(null);
+    setUsageRightsParsed(null);
+    setLlmContactsData({
+      casting_director: null,
+      director: null,
+      producer: null,
+      production_company: null
+    });
   };
 
   const handleFormChange = (field: string, value: any) => {
@@ -1248,7 +1264,9 @@ const RequestsTable: React.FC = () => {
         casting_director: castingDirector?.id === -1 ? null : (castingDirector?.id || null),
         director: director?.id === -1 ? null : (director?.id || null),
         producers: producer?.id === -1 ? [] : (producer?.id ? [producer.id] : []), // ManyToMany - передаем массив или пустой массив
-        production_company: productionCompany?.id === -1 ? null : (productionCompany?.id || null)
+        production_company: productionCompany?.id === -1 ? null : (productionCompany?.id || null),
+        // Права использования - только для рекламы
+        usage_rights_parsed: projectType?.name === 'Реклама' ? usageRightsParsed : null
       };
       
       console.log('Создание проекта:', projectPayload);
@@ -2190,6 +2208,58 @@ const RequestsTable: React.FC = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Права использования - показываем только для рекламы */}
+                  {projectType?.name === 'Реклама' && (
+                    <div style={{ backgroundColor: '#fefce8', padding: '16px', borderRadius: '8px', marginTop: '16px', border: '2px solid #fde047' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#854d0e', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        📜 Права использования
+                      </h3>
+                      
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>
+                          Текст прав
+                        </label>
+                        <textarea 
+                          value={usageRightsParsed?.raw_text || ''}
+                          onChange={(e) => { 
+                            setUsageRightsParsed({
+                              ...usageRightsParsed,
+                              raw_text: e.target.value
+                            }); 
+                            setHasUnsavedChanges(true); 
+                          }}
+                          rows={3}
+                          style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', resize: 'vertical' }}
+                          placeholder="ТВ-ролик, интернет на 2 года, территория РФ"
+                        />
+                      </div>
+                      
+                      {/* Распарсенные компоненты (read-only для проверки) */}
+                      {usageRightsParsed && (usageRightsParsed.types?.length > 0 || usageRightsParsed.duration || usageRightsParsed.territory) && (
+                        <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '6px', fontSize: '13px', border: '1px solid #fde047' }}>
+                          <div style={{ fontWeight: 'bold', color: '#854d0e', marginBottom: '8px' }}>
+                            Распарсенные данные:
+                          </div>
+                          {usageRightsParsed.types?.length > 0 && (
+                            <div style={{ marginBottom: '4px', color: '#78350f' }}>
+                              <strong>Типы:</strong> {usageRightsParsed.types.join(', ')}
+                            </div>
+                          )}
+                          {usageRightsParsed.duration && (
+                            <div style={{ marginBottom: '4px', color: '#78350f' }}>
+                              <strong>Срок:</strong> {usageRightsParsed.duration}
+                            </div>
+                          )}
+                          {usageRightsParsed.territory && (
+                            <div style={{ color: '#78350f' }}>
+                              <strong>Территория:</strong> {usageRightsParsed.territory}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                     {/* Дата премьеры */}
