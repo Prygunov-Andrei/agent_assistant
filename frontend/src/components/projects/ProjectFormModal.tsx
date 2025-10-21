@@ -7,6 +7,7 @@ import { projectsService } from '../../services/projects';
 import { artistsService } from '../../services/artists';
 import { LLMService } from '../../services/llm';
 import { ErrorHandler } from '../../utils/errorHandler';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ProjectFormModalProps {
   mode: 'create' | 'edit' | 'view';
@@ -44,8 +45,12 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
+  
+  // Получаем текущего пользователя
+  const { user } = useAuth();
   
   // Команда проекта
   const [castingDirector, setCastingDirector] = useState<any>(null);
@@ -300,40 +305,46 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     });
     
     // Мапим тип проекта и жанр в формат {id, name}
-    const mappedProjectType = typeof projectData.project_type === 'object' ? projectData.project_type : {
-      id: projectData.project_type,
-      name: projectData.project_type_name || 'Загрузка...'
-    };
+    // Если null - это "Не определено" (id: -1)
+    const mappedProjectType = projectData.project_type 
+      ? (typeof projectData.project_type === 'object' ? projectData.project_type : {
+          id: projectData.project_type,
+          name: projectData.project_type_name || 'Загрузка...'
+        })
+      : { id: -1, name: 'Не определено' };
     
-    const mappedGenre = typeof projectData.genre === 'object' ? projectData.genre : {
-      id: projectData.genre,
-      name: projectData.genre_name || 'Загрузка...'
-    };
+    const mappedGenre = projectData.genre 
+      ? (typeof projectData.genre === 'object' ? projectData.genre : {
+          id: projectData.genre,
+          name: projectData.genre_name || 'Загрузка...'
+        })
+      : { id: -1, name: 'Не определено' };
     
     // Мапим данные команды с бэкенда на формат фронтенда
+    // Если null - это "Не определено" (id: -1)
     const mappedCastingDirector = projectData.casting_director ? {
       id: projectData.casting_director,
       name: projectData.casting_director_name || 'Загрузка...',
       match: 1
-    } : null;
+    } : { id: -1, name: 'Не определено', match: 1 };
     
     const mappedDirector = projectData.director ? {
       id: projectData.director,
       name: projectData.director_name || 'Загрузка...',
       match: 1
-    } : null;
+    } : { id: -1, name: 'Не определено', match: 1 };
     
     const mappedProducer = projectData.producers && projectData.producers.length > 0 ? {
       id: projectData.producers[0],
       name: projectData.producers_names?.[0] || 'Загрузка...',
       match: 1
-    } : null;
+    } : { id: -1, name: 'Не определено', match: 1 };
     
     const mappedCompany = projectData.production_company ? {
       id: projectData.production_company,
       name: projectData.production_company_name || 'Загрузка...',
       match: 1
-    } : null;
+    } : { id: -1, name: 'Не определено', match: 1 };
     
     console.log('Маппинг:', { 
       mappedProjectType, 
@@ -379,6 +390,15 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     
     console.log('Роли после маппинга:', mappedRoles);
   };
+
+  // Сворачиваем все роли при загрузке проекта для просмотра/редактирования
+  useEffect(() => {
+    if ((mode === 'view' || mode === 'edit') && roles.length > 0) {
+      // Создаем Set со всеми индексами ролей (все свернуты)
+      const allRolesCollapsed = new Set(roles.map((_, index) => index));
+      setCollapsedRoles(allRolesCollapsed);
+    }
+  }, [roles.length, mode]); // Срабатывает когда изменяется количество ролей или режим
 
   // Поиск персон с отображением dropdown
   const searchPerson = async (name: string, type: 'casting_director' | 'director' | 'producer') => {
@@ -662,6 +682,30 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     setShowUnsavedWarning(false);
     setHasUnsavedChanges(false);
     onClose();
+  };
+
+  // Обработчик удаления проекта
+  const handleDeleteClick = () => {
+    setShowDeleteWarning(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!projectData?.id) return;
+    
+    try {
+      await projectsService.deleteProject(projectData.id);
+      setShowDeleteWarning(false);
+      onClose();
+      // Обновляем список проектов (если есть callback)
+      window.location.reload(); // Временное решение
+    } catch (err) {
+      ErrorHandler.logError(err, 'ProjectFormModal.handleConfirmDelete');
+      alert('Ошибка при удалении проекта');
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteWarning(false);
   };
 
   // Обработка кликов вне dropdown
@@ -1605,16 +1649,28 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                 
                 <div style={{ display: 'flex', justifyContent: isReadOnly ? 'space-between' : 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
                   {isReadOnly && (
-                    <button 
-                      type="button" 
-                      onClick={() => {
-                        // TODO: переключить в режим редактирования
-                        alert('Редактирование проекта будет реализовано в следующем шаге');
-                      }} 
-                      style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#3b82f6', color: 'white' }}
-                    >
-                      Редактировать
-                    </button>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          // TODO: переключить в режим редактирования
+                          alert('Редактирование проекта будет реализовано в следующем шаге');
+                        }} 
+                        style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#3b82f6', color: 'white' }}
+                      >
+                        Редактировать
+                      </button>
+                      {/* Кнопка удаления - видна только создателю проекта */}
+                      {user && projectData && user.id === projectData.created_by_id && (
+                        <button 
+                          type="button" 
+                          onClick={handleDeleteClick} 
+                          style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#dc2626', color: 'white' }}
+                        >
+                          Удалить
+                        </button>
+                      )}
+                    </div>
                   )}
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button type="button" onClick={handleModalClose} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>
@@ -1642,6 +1698,22 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button onClick={() => setShowUnsavedWarning(false)} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>Отмена</button>
               <button onClick={handleConfirmClose} style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#dc2626', color: 'white' }}>Закрыть без сохранения</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteWarning && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1000000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', maxWidth: '400px', width: '90%' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: 'black' }}>Подтверждение удаления</h3>
+            <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+              Вы уверены, что хотите удалить проект "<strong>{projectData?.title}</strong>"? Это действие нельзя отменить.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button onClick={handleCancelDelete} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>Отмена</button>
+              <button onClick={handleConfirmDelete} style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#dc2626', color: 'white' }}>Удалить проект</button>
             </div>
           </div>
         </div>

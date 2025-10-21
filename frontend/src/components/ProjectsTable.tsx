@@ -102,7 +102,7 @@ const ProjectsTable: React.FC = () => {
       <td className="requests-table-cell">
         {project.roles && project.roles.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {project.roles.map((role, index) => (
+            {project.roles.map((role) => (
               <div 
                 key={role.id} 
                 style={{ 
@@ -116,7 +116,7 @@ const ProjectsTable: React.FC = () => {
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                {index + 1}. {role.name}
+                {role.name}
               </div>
             ))}
           </div>

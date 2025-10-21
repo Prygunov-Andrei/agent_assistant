@@ -229,6 +229,11 @@ class ProjectSerializer(BaseModelSerializer):
         help_text="Полное имя режиссера"
     )
     
+    created_by_id = serializers.ReadOnlyField(
+        source='created_by.id',
+        help_text="ID пользователя, создавшего проект"
+    )
+    
     production_company_name = serializers.ReadOnlyField(
         source='production_company.name',
         help_text="Название продюсерской компании"
@@ -313,7 +318,7 @@ class ProjectSerializer(BaseModelSerializer):
     
     def get_roles(self, obj):
         """Возвращает полные данные ролей через ProjectRoleSerializer"""
-        roles = obj.roles.filter(is_active=True)
+        roles = obj.roles.filter(is_active=True).order_by('id')
         return ProjectRoleSerializer(roles, many=True).data
     
     def update(self, instance, validated_data):
@@ -352,6 +357,7 @@ class ProjectSerializer(BaseModelSerializer):
             'producers_names',
             'production_company',
             'production_company_name',
+            'created_by_id',
             'request',
             'request_text',
             'request_author',
@@ -384,66 +390,103 @@ class ProjectListSerializer(BaseListSerializer):
     Упрощенный сериализатор для списка проектов.
     
     Наследует от BaseListSerializer и добавляет специфичные поля для проектов.
+    Возвращает expanded объекты для удобного отображения на frontend.
     """
     
-    casting_director_name = serializers.ReadOnlyField(
-        source='casting_director.full_name',
-        help_text="Полное имя кастинг-директора"
+    # Expanded поля - возвращаем объекты вместо ID
+    project_type = serializers.SerializerMethodField(
+        help_text="Тип проекта (expanded объект)"
     )
     
-    director_name = serializers.ReadOnlyField(
-        source='director.full_name',
-        help_text="Полное имя режиссера"
+    genre = serializers.SerializerMethodField(
+        help_text="Жанр (expanded объект)"
     )
     
-    production_company_name = serializers.ReadOnlyField(
-        source='production_company.name',
-        help_text="Название продюсерской компании"
+    casting_director = serializers.SerializerMethodField(
+        help_text="Кастинг-директор (expanded объект)"
     )
     
-    project_type_name = serializers.ReadOnlyField(
-        source='project_type.name',
-        help_text="Название типа проекта"
+    director = serializers.SerializerMethodField(
+        help_text="Режиссер (expanded объект)"
     )
     
-    genre_name = serializers.ReadOnlyField(
-        source='genre.name',
-        help_text="Название жанра"
+    production_company = serializers.SerializerMethodField(
+        help_text="Кинокомпания (expanded объект)"
     )
     
-    roles_count = serializers.SerializerMethodField(
-        help_text="Количество ролей в проекте"
+    roles = serializers.SerializerMethodField(
+        help_text="Роли проекта (expanded объекты)"
     )
+    
+    def get_project_type(self, obj):
+        """Возвращает expanded объект типа проекта"""
+        if obj.project_type:
+            return {
+                'id': obj.project_type.id,
+                'name': obj.project_type.name
+            }
+        return None
+    
+    def get_genre(self, obj):
+        """Возвращает expanded объект жанра"""
+        if obj.genre:
+            return {
+                'id': obj.genre.id,
+                'name': obj.genre.name
+            }
+        return None
+    
+    def get_casting_director(self, obj):
+        """Возвращает expanded объект кастинг-директора"""
+        if obj.casting_director:
+            return {
+                'id': obj.casting_director.id,
+                'name': obj.casting_director.full_name
+            }
+        return None
+    
+    def get_director(self, obj):
+        """Возвращает expanded объект режиссера"""
+        if obj.director:
+            return {
+                'id': obj.director.id,
+                'name': obj.director.full_name
+            }
+        return None
+    
+    def get_production_company(self, obj):
+        """Возвращает expanded объект кинокомпании"""
+        if obj.production_company:
+            return {
+                'id': obj.production_company.id,
+                'name': obj.production_company.name
+            }
+        return None
+    
+    def get_roles(self, obj):
+        """Возвращает список expanded объектов ролей"""
+        roles = obj.roles.filter(is_active=True).order_by('id')
+        return [
+            {
+                'id': role.id,
+                'name': role.name,
+                'description': role.description
+            }
+            for role in roles
+        ]
     
     class Meta(BaseListSerializer.Meta):
         model = Project
         fields = BaseListSerializer.Meta.fields + [
             'title',
             'project_type',
-            'project_type_name',
             'status',
             'genre',
-            'genre_name',
             'casting_director',
-            'casting_director_name',
             'director',
-            'director_name',
             'production_company',
-            'production_company_name',
-            'roles_count'
+            'roles'
         ]
-    
-    def get_roles_count(self, obj):
-        """
-        Возвращает количество активных ролей в проекте.
-        
-        Args:
-            obj: объект проекта
-            
-        Returns:
-            int: количество активных ролей
-        """
-        return obj.roles.filter(is_active=True).count()
 
 
 class ProjectMatchSerializer(serializers.Serializer):

@@ -28,31 +28,31 @@ echo ""
 
 # 3. Пересборка Docker образа
 echo "3️⃣  Пересборка Docker образа..."
-docker-compose -f docker/docker-compose.yml build --no-cache frontend
+docker-compose -f docker/docker-compose.yml --env-file .env build --no-cache frontend
 echo "✅ Образ пересобран"
 echo ""
 
 # 4. Остановка старого контейнера
 echo "4️⃣  Остановка frontend контейнера..."
-docker-compose -f docker/docker-compose.yml stop frontend
+docker-compose -f docker/docker-compose.yml --env-file .env stop frontend
 echo "✅ Контейнер остановлен"
 echo ""
 
 # 5. Удаление старого контейнера
 echo "5️⃣  Удаление старого контейнера..."
-docker-compose -f docker/docker-compose.yml rm -f frontend
+docker-compose -f docker/docker-compose.yml --env-file .env rm -f frontend
 echo "✅ Контейнер удалён"
 echo ""
 
 # 6. Создание и запуск ТОЛЬКО frontend (без --recreate зависимостей)
 echo "6️⃣  Запуск нового frontend контейнера..."
-docker-compose -f docker/docker-compose.yml up -d --no-deps frontend
+docker-compose -f docker/docker-compose.yml --env-file .env up -d --no-deps frontend
 echo "✅ Frontend контейнер запущен"
 echo ""
 
 # 7. Проверка статуса
 echo "7️⃣  Проверка статуса frontend..."
-docker-compose -f docker/docker-compose.yml ps frontend
+docker-compose -f docker/docker-compose.yml --env-file .env ps frontend
 echo ""
 
 echo "✅ Frontend успешно пересобран и обновлён!"
