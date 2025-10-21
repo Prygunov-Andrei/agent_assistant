@@ -46,11 +46,19 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
+  const [showDeleteRoleWarning, setShowDeleteRoleWarning] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<number | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
   
+  // Внутреннее управление режимом (для переключения view <-> edit)
+  const [currentMode, setCurrentMode] = useState<'create' | 'edit' | 'view'>(mode);
+  
   // Получаем текущего пользователя
   const { user } = useAuth();
+  
+  // isReadOnly зависит от текущего режима
+  const isReadOnly = currentMode === 'view';
   
   // Команда проекта
   const [castingDirector, setCastingDirector] = useState<any>(null);
@@ -628,18 +636,16 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Валидация
-    if (!formData.title.trim()) { alert('Пожалуйста, введите название проекта'); return; }
-    if (!projectType?.id) { alert('Пожалуйста, выберите тип проекта из справочника'); return; }
-    if (!genre?.id) { alert('Пожалуйста, выберите жанр из справочника'); return; }
-    if (!castingDirector?.id) { alert('Пожалуйста, выберите кастинг-директора'); return; }
-    if (!director?.id) { alert('Пожалуйста, выберите режиссера'); return; }
-    if (!producer?.id) { alert('Пожалуйста, выберите продюсера'); return; }
-    if (!productionCompany?.id) { alert('Пожалуйста, выберите кинокомпанию'); return; }
-    if (roles.length === 0) { alert('Пожалуйста, добавьте хотя бы одну роль'); return; }
+    // Если режим редактирования - вызываем отдельный обработчик
+    if (currentMode === 'edit') {
+      await handleProjectUpdate();
+      return;
+    }
     
-    const incompleteRoles = roles.filter(role => !role.name?.trim() || !role.description?.trim());
-    if (incompleteRoles.length > 0) { alert('Пожалуйста, заполните название и описание для всех ролей'); return; }
+    // Валидация для создания (более строгая)
+    if (!formData.title.trim()) { alert('Пожалуйста, введите название проекта'); return; }
+    
+    // Для создания проекта остальные поля не обязательны
     
     try {
       const projectPayload = {
@@ -662,7 +668,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       
       setHasUnsavedChanges(false);
       onClose();
-      alert(mode === 'create' ? 'Проект успешно создан!' : 'Изменения сохранены!');
+      alert('Проект успешно создан!');
     } catch (err) {
       ErrorHandler.logError(err, 'ProjectFormModal.handleSubmit');
       alert('Ошибка при сохранении проекта');
@@ -681,7 +687,13 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const handleConfirmClose = () => {
     setShowUnsavedWarning(false);
     setHasUnsavedChanges(false);
-    onClose();
+    
+    // Если были в режиме редактирования - вернуться в просмотр
+    if (currentMode === 'edit') {
+      handleConfirmCancelEdit();
+    } else {
+      onClose();
+    }
   };
 
   // Обработчик удаления проекта
@@ -706,6 +718,127 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 
   const handleCancelDelete = () => {
     setShowDeleteWarning(false);
+  };
+
+  // Обработчик переключения в режим редактирования
+  const handleEditClick = () => {
+    setCurrentMode('edit');
+  };
+
+  // Обработчик отмены редактирования
+  const handleCancelEdit = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedWarning(true);
+    } else {
+      setCurrentMode('view');
+    }
+  };
+
+  // Подтверждение отмены редактирования
+  const handleConfirmCancelEdit = () => {
+    setShowUnsavedWarning(false);
+    setHasUnsavedChanges(false);
+    setCurrentMode('view');
+    // Перезагружаем данные проекта
+    if (projectData) {
+      prefillProjectData();
+    }
+  };
+
+  // Обработчик удаления роли
+  const handleDeleteRoleClick = (index: number) => {
+    setRoleToDelete(index);
+    setShowDeleteRoleWarning(true);
+  };
+
+  const handleConfirmDeleteRole = () => {
+    if (roleToDelete !== null) {
+      removeRole(roleToDelete);
+      setRoleToDelete(null);
+      setShowDeleteRoleWarning(false);
+    }
+  };
+
+  const handleCancelDeleteRole = () => {
+    setRoleToDelete(null);
+    setShowDeleteRoleWarning(false);
+  };
+
+  // Обработчик сохранения при редактировании
+  const handleProjectUpdate = async () => {
+    if (!projectData?.id) return;
+    
+    try {
+      // Обновляем основные данные проекта
+      const projectUpdateData = {
+        title: formData.title,
+        description: formData.description,
+        project_type: projectType?.id === -1 ? null : (projectType?.id || null),
+        genre: genre?.id === -1 ? null : (genre?.id || null),
+        premiere_date: formData.premiere_date || null,
+        status: formData.status,
+        casting_director: castingDirector?.id === -1 ? null : (castingDirector?.id || null),
+        director: director?.id === -1 ? null : (director?.id || null),
+        producers: producer?.id === -1 ? [] : (producer?.id ? [producer.id] : []),
+        production_company: productionCompany?.id === -1 ? null : (productionCompany?.id || null)
+      };
+      
+      await projectsService.updateProject(projectData.id, projectUpdateData);
+      
+      // Обновляем роли
+      for (const role of roles) {
+        const rolePayload = {
+          project: projectData.id,
+          name: role.name,
+          description: role.description,
+          role_type: role.role_type?.id || null,
+          gender: role.gender || null,
+          age_min: role.age_min !== '' && role.age_min !== null && role.age_min !== undefined ? role.age_min : null,
+          age_max: role.age_max !== '' && role.age_max !== null && role.age_max !== undefined ? role.age_max : null,
+          media_presence: role.media_presence && role.media_presence !== '' ? role.media_presence : null,
+          height: role.height && role.height !== '' ? role.height : null,
+          body_type: role.body_type && role.body_type !== '' ? role.body_type : null,
+          hair_color: role.hair_color && role.hair_color !== '' ? role.hair_color : null,
+          eye_color: role.eye_color && role.eye_color !== '' ? role.eye_color : null,
+          hairstyle: role.hairstyle && role.hairstyle !== '' ? role.hairstyle : null,
+          clothing_size: role.clothing_size && role.clothing_size !== '' ? role.clothing_size : null,
+          shoe_size: role.shoe_size?.id || null,
+          nationality: role.nationality?.id || null,
+          rate_per_shift: role.rate_per_shift && role.rate_per_shift !== '' ? role.rate_per_shift : null,
+          shooting_dates: role.shooting_dates && role.shooting_dates !== '' ? role.shooting_dates : null,
+          shooting_location: role.shooting_location && role.shooting_location !== '' ? role.shooting_location : null,
+          rate_conditions: role.rate_conditions && role.rate_conditions !== '' ? role.rate_conditions : null,
+          reference_text: role.reference_text && role.reference_text !== '' ? role.reference_text : null,
+          special_conditions: role.special_conditions && role.special_conditions !== '' ? role.special_conditions : null,
+          audition_requirements: role.audition_requirements && role.audition_requirements !== '' ? role.audition_requirements : null,
+          audition_text: role.audition_text && role.audition_text !== '' ? role.audition_text : null,
+          notes: role.notes && role.notes !== '' ? role.notes : null,
+          skills_required: role.skills_required || null
+        };
+        
+        if (role.id) {
+          // Обновляем существующую роль
+          await projectsService.updateProjectRole(role.id, rolePayload);
+        } else {
+          // Создаем новую роль
+          await projectsService.createProjectRole(rolePayload);
+        }
+      }
+      
+      setHasUnsavedChanges(false);
+      setCurrentMode('view');
+      alert('Проект успешно обновлен!');
+      window.location.reload(); // Временное решение - обновляем страницу
+    } catch (err: any) {
+      ErrorHandler.logError(err, 'ProjectFormModal.handleProjectUpdate');
+      console.error('Ошибка при обновлении проекта:', err);
+      
+      const errorMessage = err.response?.data 
+        ? Object.entries(err.response.data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('\n')
+        : err.message;
+      
+      alert(`Ошибка при обновлении проекта:\n\n${errorMessage}`);
+    }
   };
 
   // Обработка кликов вне dropdown
@@ -739,8 +872,6 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   }, [isOpen]);
 
   if (!isOpen) return null;
-
-  const isReadOnly = mode === 'view';
 
   return (
     <>
@@ -849,7 +980,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
             )}
             
             {/* LEFT PANEL - Project context (для режима edit/view из проекта) */}
-            {(mode === 'edit' || mode === 'view') && projectData?.request && (
+            {(currentMode === 'edit' || currentMode === 'view') && projectData?.request && (
               <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'auto', padding: '20px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>Контекст запроса</h3>
                 {projectData.request_author && (
@@ -1216,7 +1347,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                                   Свернуть
                                 </button>
                               )}
-                              <button type="button" onClick={() => removeRole(index)} style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                              <button type="button" onClick={() => handleDeleteRoleClick(index)} style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
                                 Удалить
                               </button>
                             </div>
@@ -1652,10 +1783,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <button 
                         type="button" 
-                        onClick={() => {
-                          // TODO: переключить в режим редактирования
-                          alert('Редактирование проекта будет реализовано в следующем шаге');
-                        }} 
+                        onClick={handleEditClick} 
                         style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#3b82f6', color: 'white' }}
                       >
                         Редактировать
@@ -1673,12 +1801,16 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button type="button" onClick={handleModalClose} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>
+                    <button 
+                      type="button" 
+                      onClick={currentMode === 'edit' ? handleCancelEdit : handleModalClose} 
+                      style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}
+                    >
                       {isReadOnly ? 'Закрыть' : 'Отмена'}
                     </button>
                     {!isReadOnly && (
                       <button type="submit" style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#2563eb', color: 'white' }}>
-                        {mode === 'create' ? 'Создать проект' : 'Сохранить изменения'}
+                        {currentMode === 'create' ? 'Создать проект' : 'Сохранить изменения'}
                       </button>
                     )}
                   </div>
@@ -1703,7 +1835,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Project Confirmation Dialog */}
       {showDeleteWarning && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1000000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', maxWidth: '400px', width: '90%' }}>
@@ -1714,6 +1846,22 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button onClick={handleCancelDelete} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>Отмена</button>
               <button onClick={handleConfirmDelete} style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#dc2626', color: 'white' }}>Удалить проект</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Role Confirmation Dialog */}
+      {showDeleteRoleWarning && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 1000000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px', maxWidth: '400px', width: '90%' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: 'black' }}>Подтверждение удаления роли</h3>
+            <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+              Вы уверены, что хотите удалить роль "<strong>{roleToDelete !== null ? roles[roleToDelete]?.name : ''}</strong>"?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button onClick={handleCancelDeleteRole} style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', backgroundColor: 'white', color: '#374151' }}>Отмена</button>
+              <button onClick={handleConfirmDeleteRole} style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#dc2626', color: 'white' }}>Удалить роль</button>
             </div>
           </div>
         </div>

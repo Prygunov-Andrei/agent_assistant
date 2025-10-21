@@ -48,6 +48,19 @@ const RequestsTable: React.FC = () => {
   const [producer, setProducer] = useState<any>(null);
   const [productionCompany, setProductionCompany] = useState<any>(null);
   
+  // Данные от LLM для отображения в UI (что нашел LLM в запросе)
+  const [llmContactsData, setLlmContactsData] = useState<{
+    casting_director: any;
+    director: any;
+    producer: any;
+    production_company: any;
+  }>({
+    casting_director: null,
+    director: null,
+    producer: null,
+    production_company: null
+  });
+  
   // Состояния для поиска персон
   const [castingDirectorSearch, setCastingDirectorSearch] = useState<any[]>([]);
   const [directorSearch, setDirectorSearch] = useState<any[]>([]);
@@ -379,6 +392,15 @@ const RequestsTable: React.FC = () => {
       // Предзаполняем контакты (сохраняем полные данные от LLM для проверки позже)
       if ((analysisResult as any).contacts) {
         const contacts = (analysisResult as any).contacts;
+        
+        // Сохраняем полные данные от LLM для отображения в UI
+        setLlmContactsData({
+          casting_director: contacts.casting_director || null,
+          director: contacts.director || null,
+          producer: contacts.producers?.[0] || null,
+          production_company: contacts.production_company || null
+        });
+        
         if (contacts.casting_director && contacts.casting_director.name && contacts.casting_director.name !== 'Не определен') {
           setCastingDirector({ 
             id: null, 
@@ -1087,13 +1109,18 @@ const RequestsTable: React.FC = () => {
       // Обновляем проект - добавляем связь с запросом через PATCH
       if (selectedRequest?.id) {
         try {
-          // Сначала отвязываем запрос от любого старого проекта (если был)
-          // Затем привязываем к новому проекту
-          await projectsService.updateProject(createdProject.id, {
+          console.log('🔗 Устанавливаем связь проекта', createdProject.id, 'с запросом', selectedRequest.id);
+          
+          const updateResponse = await projectsService.updateProject(createdProject.id, {
             request: selectedRequest.id
           });
-          console.log('Связь с запросом установлена');
+          
+          console.log('✅ Связь с запросом установлена');
+          console.log('Ответ от API:', updateResponse);
         } catch (patchErr: any) {
+          console.error('❌ Ошибка установки связи с запросом:', patchErr);
+          console.error('Ответ сервера:', patchErr?.response?.data);
+          
           // Если ошибка "уже существует" - игнорируем, иначе логируем
           if (patchErr?.response?.data?.request) {
             console.warn('Запрос уже связан с другим проектом. Создаем проект без связи.');
@@ -1102,6 +1129,8 @@ const RequestsTable: React.FC = () => {
           }
           // Продолжаем создание проекта даже если связь не установилась
         }
+      } else {
+        console.log('⚠️ selectedRequest.id отсутствует, связь не устанавливается');
       }
       
       // Создаем роли проекта
@@ -1628,6 +1657,36 @@ const RequestsTable: React.FC = () => {
                           style={{ flex: 1, padding: '8px 12px', border: castingDirector?.id && castingDirector.id > 0 ? '1px solid #10b981' : castingDirector?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя кастинг-директора" />
                         {castingDirector?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: castingDirector.match > 0.8 ? '#dcfce7' : '#fef3c7', color: castingDirector.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(castingDirector.match * 100)}%</span>}
                       </div>
+                      
+                      {/* Данные от LLM */}
+                      {llmContactsData.casting_director && (llmContactsData.casting_director.name || llmContactsData.casting_director.phone || llmContactsData.casting_director.email || llmContactsData.casting_director.telegram) && (
+                        <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '12px', border: '1px solid #fde68a' }}>
+                          <div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📊 Данные из запроса:
+                          </div>
+                          {llmContactsData.casting_director.name && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Имя:</strong> {llmContactsData.casting_director.name}
+                            </div>
+                          )}
+                          {llmContactsData.casting_director.phone && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Телефон:</strong> {llmContactsData.casting_director.phone}
+                            </div>
+                          )}
+                          {llmContactsData.casting_director.email && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Email:</strong> {llmContactsData.casting_director.email}
+                            </div>
+                          )}
+                          {llmContactsData.casting_director.telegram && (
+                            <div style={{ color: '#78350f' }}>
+                              <strong>ТГ:</strong> {llmContactsData.casting_director.telegram}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       {showCastingDirectorDropdown && castingDirectorSearch.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
                           {castingDirectorSearch.map((person, index) => {
@@ -1658,6 +1717,36 @@ const RequestsTable: React.FC = () => {
                           style={{ flex: 1, padding: '8px 12px', border: director?.id && director.id > 0 ? '1px solid #10b981' : director?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя режиссера" />
                         {director?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: director.match > 0.8 ? '#dcfce7' : '#fef3c7', color: director.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(director.match * 100)}%</span>}
                       </div>
+                      
+                      {/* Данные от LLM */}
+                      {llmContactsData.director && (llmContactsData.director.name || llmContactsData.director.phone || llmContactsData.director.email || llmContactsData.director.telegram) && (
+                        <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '12px', border: '1px solid #fde68a' }}>
+                          <div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📊 Данные из запроса:
+                          </div>
+                          {llmContactsData.director.name && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Имя:</strong> {llmContactsData.director.name}
+                            </div>
+                          )}
+                          {llmContactsData.director.phone && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Телефон:</strong> {llmContactsData.director.phone}
+                            </div>
+                          )}
+                          {llmContactsData.director.email && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Email:</strong> {llmContactsData.director.email}
+                            </div>
+                          )}
+                          {llmContactsData.director.telegram && (
+                            <div style={{ color: '#78350f' }}>
+                              <strong>ТГ:</strong> {llmContactsData.director.telegram}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       {showDirectorDropdown && directorSearch.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
                           {directorSearch.map((person, index) => {
@@ -1688,6 +1777,36 @@ const RequestsTable: React.FC = () => {
                           style={{ flex: 1, padding: '8px 12px', border: producer?.id && producer.id > 0 ? '1px solid #10b981' : producer?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите имя продюсера" />
                         {producer?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: producer.match > 0.8 ? '#dcfce7' : '#fef3c7', color: producer.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(producer.match * 100)}%</span>}
                       </div>
+                      
+                      {/* Данные от LLM */}
+                      {llmContactsData.producer && (llmContactsData.producer.name || llmContactsData.producer.phone || llmContactsData.producer.email || llmContactsData.producer.telegram) && (
+                        <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '12px', border: '1px solid #fde68a' }}>
+                          <div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📊 Данные из запроса:
+                          </div>
+                          {llmContactsData.producer.name && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Имя:</strong> {llmContactsData.producer.name}
+                            </div>
+                          )}
+                          {llmContactsData.producer.phone && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Телефон:</strong> {llmContactsData.producer.phone}
+                            </div>
+                          )}
+                          {llmContactsData.producer.email && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Email:</strong> {llmContactsData.producer.email}
+                            </div>
+                          )}
+                          {llmContactsData.producer.telegram && (
+                            <div style={{ color: '#78350f' }}>
+                              <strong>ТГ:</strong> {llmContactsData.producer.telegram}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       {showProducerDropdown && producerSearch.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
                           {producerSearch.map((person, index) => {
@@ -1726,6 +1845,36 @@ const RequestsTable: React.FC = () => {
                           style={{ flex: 1, padding: '8px 12px', border: productionCompany?.id && productionCompany.id > 0 ? '1px solid #10b981' : productionCompany?.id === -1 ? '1px solid #f59e0b' : '1px solid #ef4444', borderRadius: '4px', fontSize: '14px' }} placeholder="Введите название кинокомпании" />
                         {productionCompany?.match > 0 && <span style={{ padding: '2px 6px', fontSize: '12px', borderRadius: '4px', backgroundColor: productionCompany.match > 0.8 ? '#dcfce7' : '#fef3c7', color: productionCompany.match > 0.8 ? '#166534' : '#92400e' }}>{Math.round(productionCompany.match * 100)}%</span>}
                       </div>
+                      
+                      {/* Данные от LLM */}
+                      {llmContactsData.production_company && (llmContactsData.production_company.name || llmContactsData.production_company.phone || llmContactsData.production_company.email || llmContactsData.production_company.website) && (
+                        <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#fef3c7', borderRadius: '6px', fontSize: '12px', border: '1px solid #fde68a' }}>
+                          <div style={{ fontWeight: 'bold', color: '#92400e', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📊 Данные из запроса:
+                          </div>
+                          {llmContactsData.production_company.name && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Название:</strong> {llmContactsData.production_company.name}
+                            </div>
+                          )}
+                          {llmContactsData.production_company.phone && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Телефон:</strong> {llmContactsData.production_company.phone}
+                            </div>
+                          )}
+                          {llmContactsData.production_company.email && (
+                            <div style={{ color: '#78350f', marginBottom: '3px' }}>
+                              <strong>Email:</strong> {llmContactsData.production_company.email}
+                            </div>
+                          )}
+                          {llmContactsData.production_company.website && (
+                            <div style={{ color: '#78350f' }}>
+                              <strong>Сайт:</strong> {llmContactsData.production_company.website}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       {showCompanyDropdown && companySearch.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
                           {companySearch.map((company, index) => {

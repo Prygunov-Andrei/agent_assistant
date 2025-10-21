@@ -10,7 +10,7 @@ echo "================================================"
 echo ""
 
 # 1. Остановка локального бота
-echo "💻 Шаг 1/2: Остановка локального бота..."
+echo "💻 Шаг 1/3: Остановка локального бота..."
 
 if docker ps | grep -q "agent_assistant_telegram_bot_local"; then
     echo "Останавливаем локального бота..."
@@ -23,10 +23,16 @@ fi
 
 echo ""
 
-# 2. Запуск удаленного бота
-echo "📡 Шаг 2/2: Запуск бота на удаленном сервере..."
+# Ждем освобождения токена Telegram
+echo "⏳ Шаг 2/3: Ожидание освобождения токена Telegram (15 сек)..."
+sleep 15
+echo "✅ Токен свободен"
+echo ""
 
-ssh -i $SSH_KEY $REMOTE_SERVER "cd /opt/agent_assistant && docker-compose -f docker-compose.prod.yml up -d telegram-bot --build"
+# 3. Запуск удаленного бота
+echo "📡 Шаг 3/3: Запуск бота на удаленном сервере..."
+
+ssh -i $SSH_KEY $REMOTE_SERVER "cd /opt/agent_assistant && docker-compose -f docker/docker-compose.prod.yml up -d --build telegram-bot"
 
 if [ $? -eq 0 ]; then
     sleep 3
@@ -47,7 +53,7 @@ if [ $? -eq 0 ]; then
         echo "📋 Для просмотра логов удаленного бота:"
         echo "  ssh -i ~/.ssh/id_rsa_server root@217.151.231.96"
         echo "  cd /opt/agent_assistant"
-        echo "  docker-compose -f docker-compose.prod.yml logs -f telegram-bot"
+        echo "  docker-compose -f docker/docker-compose.prod.yml logs -f telegram-bot"
         echo ""
         echo "🔄 Для переключения обратно на локальный:"
         echo "  ./bot_switch_to_local.sh"

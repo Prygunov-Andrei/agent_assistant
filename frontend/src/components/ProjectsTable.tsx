@@ -44,6 +44,10 @@ const ProjectsTable: React.FC = () => {
       // Загружаем ПОЛНЫЕ данные проекта с API (включая все роли с деталями)
       const fullProject = await projectsService.getProject(project.id) as unknown as ProjectExpanded;
       console.log('Полный проект:', fullProject);
+      console.log('request:', fullProject.request);
+      console.log('request_text:', (fullProject as any).request_text);
+      console.log('request_images:', (fullProject as any).request_images);
+      console.log('request_files:', (fullProject as any).request_files);
       setSelectedProject(fullProject);
       setShowViewModal(true);
     } catch (err) {

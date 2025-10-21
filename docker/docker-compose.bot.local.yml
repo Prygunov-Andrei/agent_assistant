@@ -13,7 +13,7 @@ services:
     env_file:
       - ../.env
     networks:
-      - agent_assistant_agent_network
+      - docker_agent_network
     # Логи
     logging:
       driver: "json-file"
@@ -29,6 +29,6 @@ services:
       start_period: 10s
 
 networks:
-  agent_assistant_agent_network:
+  docker_agent_network:
     external: true
 
