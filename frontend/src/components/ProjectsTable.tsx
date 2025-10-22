@@ -52,7 +52,7 @@ const ProjectsTable: React.FC = () => {
       setShowViewModal(true);
     } catch (err) {
       ErrorHandler.logError(err, 'ProjectsTable.handleRowClick');
-      alert('Ошибка при загрузке проекта');
+      // alert('Ошибка при загрузке проекта'); // Убрано
     }
   };
 

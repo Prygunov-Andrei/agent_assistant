@@ -91,11 +91,11 @@ const ProjectCreationPage: React.FC = () => {
           }
         }
       }
-      alert('Проект успешно создан!');
+      // alert('Проект успешно создан!'); // Убрано
       window.close();
     } catch (error) {
       ErrorHandler.logError(error, 'ProjectCreationPage.createProject');
-      alert('Ошибка при создании проекта. Попробуйте снова.');
+      // alert('Ошибка при создании проекта. Попробуйте снова.'); // Убрано
     }
   };
 

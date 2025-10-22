@@ -156,7 +156,7 @@ export const PersonTable: React.FC<PersonTableProps> = ({ personType }) => {
       setShowProjectModal(true);
     } catch (err) {
       ErrorHandler.logError(err, 'PersonTable.handleProjectClick');
-      alert('Ошибка загрузки проекта');
+      // alert('Ошибка загрузки проекта'); // Убрано
     }
   };
   

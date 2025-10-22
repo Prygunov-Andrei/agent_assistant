@@ -46,13 +46,13 @@ export const ContactsManager: React.FC<ContactsManagerProps> = ({
 
     // Проверка на дубликат
     if (contacts.includes(trimmedContact)) {
-      alert('Этот контакт уже добавлен');
+      // alert('Этот контакт уже добавлен'); // Убрано
       return;
     }
 
     // Проверка на максимальное количество
     if (contacts.length >= maxContacts) {
-      alert(`Максимум ${maxContacts} контактов`);
+      // alert(`Максимум ${maxContacts} контактов`); // Убрано
       return;
     }
 

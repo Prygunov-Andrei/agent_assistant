@@ -97,7 +97,7 @@ export class ErrorHandler {
     
     // Здесь можно интегрировать с системой уведомлений
     // Например, toast notifications
-    alert(errorMessage);
+    // alert(errorMessage); // Убрано - системные уведомления не нужны
   }
 }
 

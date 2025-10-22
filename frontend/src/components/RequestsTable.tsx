@@ -447,7 +447,7 @@ const RequestsTable: React.FC = () => {
       
       // Показываем понятное сообщение об ошибке
       const errorMessage = error instanceof Error ? error.message : 'Ошибка при анализе запроса';
-      alert(`Ошибка анализа: ${errorMessage}\n\nПопробуйте еще раз или заполните форму вручную.`);
+      // alert(`Ошибка анализа: ${errorMessage}\n\nПопробуйте еще раз или заполните форму вручную.`); // Убрано
     } finally {
       // Очищаем интервал
       clearInterval(progressInterval);
@@ -943,7 +943,7 @@ const RequestsTable: React.FC = () => {
     } catch (error) {
       console.error('Ошибка при обновлении контактов:', error);
       ErrorHandler.logError(error, 'RequestsTable.handleContactsMerge');
-      alert('Ошибка при обновлении контактов. Попробуйте еще раз.');
+      // alert('Ошибка при обновлении контактов. Попробуйте еще раз.'); // Убрано
     }
   };
   
@@ -1035,7 +1035,7 @@ const RequestsTable: React.FC = () => {
       if (type === 'project_type') {
         // Создание типа проекта
         if (!formData.name.trim()) {
-          alert('Укажите название типа проекта');
+          // alert('Укажите название типа проекта'); // Убрано
           return;
         }
 
@@ -1056,7 +1056,7 @@ const RequestsTable: React.FC = () => {
       } else if (type === 'genre') {
         // Создание жанра
         if (!formData.name.trim()) {
-          alert('Укажите название жанра');
+          // alert('Укажите название жанра'); // Убрано
           return;
         }
 
@@ -1077,7 +1077,7 @@ const RequestsTable: React.FC = () => {
       } else if (type === 'company') {
         // Создание кинокомпании
         if (!formData.name.trim()) {
-          alert('Укажите название кинокомпании');
+          // alert('Укажите название кинокомпании'); // Убрано
           return;
         }
 
@@ -1098,7 +1098,7 @@ const RequestsTable: React.FC = () => {
       } else {
         // Создание персоны
         if (!formData.last_name.trim()) {
-          alert('Укажите фамилию');
+          // alert('Укажите фамилию'); // Убрано
           return;
         }
 
@@ -1152,7 +1152,7 @@ const RequestsTable: React.FC = () => {
     } catch (error) {
       console.error('Ошибка при создании:', error);
       ErrorHandler.logError(error, 'RequestsTable.handleCreateEntity');
-      alert(`Ошибка при создании записи: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      // alert(`Ошибка при создании записи: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`); // Убрано
     }
   };
 
@@ -1237,7 +1237,7 @@ const RequestsTable: React.FC = () => {
     
     // Требуется только название проекта
     if (!formData.title.trim()) { 
-      alert('Пожалуйста, введите название проекта'); 
+      // alert('Пожалуйста, введите название проекта'); // Убрано 
       return; 
     }
     
@@ -1245,7 +1245,7 @@ const RequestsTable: React.FC = () => {
     if (roles.length > 0) {
       const incompleteRoles = roles.filter(role => !role.name?.trim() || !role.description?.trim());
       if (incompleteRoles.length > 0) { 
-        alert('Пожалуйста, заполните название и описание для всех добавленных ролей'); 
+        // alert('Пожалуйста, заполните название и описание для всех добавленных ролей'); // Убрано 
         return; 
       }
     }
@@ -1358,7 +1358,7 @@ const RequestsTable: React.FC = () => {
       
       setShowProjectModal(false);
       setSelectedRequest(null);
-      alert('Проект успешно создан!');
+      // alert('Проект успешно создан!'); // Убрано
       await fetchRequests();
     } catch (err: any) {
       ErrorHandler.logError(err, 'RequestsTable.handleProjectSubmit');
@@ -1371,7 +1371,7 @@ const RequestsTable: React.FC = () => {
         ? Object.entries(err.response.data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('\n')
         : err.message;
       
-      alert(`Ошибка при создании проекта:\n\n${errorMessage}`);
+      // alert(`Ошибка при создании проекта:\n\n${errorMessage}`); // Убрано
     }
   };
 
@@ -1399,7 +1399,7 @@ const RequestsTable: React.FC = () => {
       setRequestToDelete(null);
     } catch (err) {
       ErrorHandler.logError(err, 'RequestsTable.handleConfirmDelete');
-      alert('Ошибка при удалении запроса');
+      // alert('Ошибка при удалении запроса'); // Убрано
     }
   };
 
@@ -2452,7 +2452,7 @@ const RequestsTable: React.FC = () => {
                                                     📋 Показать все варианты ({skillsList.length})
                                                   </div>
                                                 )}
-                                                <div onClick={(e) => { e.stopPropagation(); alert('Создание нового навыка в справочнике'); handleRoleChange(index, `showSkillDropdown_${skillIndex}`, false); }} 
+                                                <div onClick={(e) => { e.stopPropagation(); /* alert('Создание нового навыка в справочнике'); */ handleRoleChange(index, `showSkillDropdown_${skillIndex}`, false); }} 
                                                   style={{ padding: '6px 10px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}
                                                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} 
                                                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>

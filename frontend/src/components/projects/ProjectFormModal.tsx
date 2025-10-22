@@ -278,7 +278,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       
     } catch (err) {
       ErrorHandler.logError(err, 'ProjectFormModal.handleAutoAnalysis');
-      alert('Ошибка при анализе запроса');
+      // alert('Ошибка при анализе запроса'); // Убрано
     } finally {
       setIsAnalyzing(false);
     }
@@ -514,11 +514,11 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   };
 
   const createNewPerson = (type: string) => {
-    alert(`Создание нового ${type === 'casting_director' ? 'кастинг-директора' : type === 'director' ? 'режиссера' : 'продюсера'} в справочнике`);
+    // alert(`Создание нового ${type === 'casting_director' ? 'кастинг-директора' : type === 'director' ? 'режиссера' : 'продюсера'} в справочнике`); // Убрано
   };
 
   const createNewCompany = () => {
-    alert('Создание новой кинокомпании в справочнике');
+    // alert('Создание новой кинокомпании в справочнике'); // Убрано
   };
 
   // Обработчики изменений
@@ -652,7 +652,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     }
     
     // Валидация для создания (более строгая)
-    if (!formData.title.trim()) { alert('Пожалуйста, введите название проекта'); return; }
+    if (!formData.title.trim()) { return; }
     
     // Для создания проекта остальные поля не обязательны
     
@@ -677,10 +677,10 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       
       setHasUnsavedChanges(false);
       onClose();
-      alert('Проект успешно создан!');
+      // alert('Проект успешно создан!'); // Убрано - системные уведомления не нужны
     } catch (err) {
       ErrorHandler.logError(err, 'ProjectFormModal.handleSubmit');
-      alert('Ошибка при сохранении проекта');
+      // alert('Ошибка при сохранении проекта'); // Убрано - системные уведомления не нужны
     }
   };
 
@@ -721,7 +721,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       window.location.reload(); // Временное решение
     } catch (err) {
       ErrorHandler.logError(err, 'ProjectFormModal.handleConfirmDelete');
-      alert('Ошибка при удалении проекта');
+      // alert('Ошибка при удалении проекта'); // Убрано
     }
   };
 
@@ -837,7 +837,6 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       
       setHasUnsavedChanges(false);
       setCurrentMode('view');
-      alert('Проект успешно обновлен!');
       window.location.reload(); // Временное решение - обновляем страницу
     } catch (err: any) {
       ErrorHandler.logError(err, 'ProjectFormModal.handleProjectUpdate');
@@ -847,7 +846,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         ? Object.entries(err.response.data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('\n')
         : err.message;
       
-      alert(`Ошибка при обновлении проекта:\n\n${errorMessage}`);
+      // alert(`Ошибка при обновлении проекта:\n\n${errorMessage}`); // Убрано
     }
   };
 
@@ -1276,7 +1275,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                             📋 Показать все варианты ({projectTypesList.length})
                           </div>
                         )}
-                        <div onClick={(e) => { e.stopPropagation(); alert('Создание нового типа проекта'); setShowProjectTypeDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                        <div onClick={(e) => { e.stopPropagation(); /* alert('Создание нового типа проекта'); */ setShowProjectTypeDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
                           + Создать новый тип проекта
                         </div>
@@ -1311,7 +1310,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                             📋 Показать все варианты ({genresList.length})
                           </div>
                         )}
-                        <div onClick={(e) => { e.stopPropagation(); alert('Создание нового жанра'); setShowGenreDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
+                        <div onClick={(e) => { e.stopPropagation(); /* alert('Создание нового жанра'); */ setShowGenreDropdown(false); }} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>
                           + Создать новый жанр
                         </div>
@@ -1784,7 +1783,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                                                   📋 Показать все варианты ({skillsList.length})
                                                 </div>
                                               )}
-                                              <div onClick={(e) => { e.stopPropagation(); alert('Создание нового навыка в справочнике'); handleRoleChange(index, `showSkillDropdown_${skillIndex}`, false); }} 
+                                              <div onClick={(e) => { e.stopPropagation(); /* alert('Создание нового навыка в справочнике'); */ handleRoleChange(index, `showSkillDropdown_${skillIndex}`, false); }} 
                                                 style={{ padding: '6px 10px', cursor: 'pointer', backgroundColor: '#f0fdf4', borderTop: '1px solid #bbf7d0', color: '#15803d', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}
                                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'} 
                                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}>

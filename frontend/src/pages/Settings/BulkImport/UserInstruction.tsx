@@ -15,7 +15,7 @@ const UserInstruction: React.FC<UserInstructionProps> = ({ onStart }) => {
       await bulkImportService.downloadTemplateToFile();
     } catch (error) {
       console.error('Ошибка при скачивании шаблона:', error);
-      alert('Не удалось скачать шаблон. Попробуйте еще раз.');
+      // alert('Не удалось скачать шаблон. Попробуйте еще раз.'); // Убрано
     }
   };
 

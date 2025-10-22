@@ -44,6 +44,12 @@ export const projectsService = {
     return response.data;
   },
 
+  // Обновить роль в проекте
+  async updateProjectRole(id: number, roleData: Partial<ProjectRole>): Promise<ProjectRole> {
+    const response = await apiClient.patch(`/project-roles/${id}/`, roleData);
+    return response.data;
+  },
+
   // Получить список типов проектов
   async getProjectTypes(): Promise<ProjectType[]> {
     const response = await apiClient.get('/project-types/');

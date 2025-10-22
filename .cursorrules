@@ -16,3 +16,11 @@
 При команде "Запусти проект" - выполнить: ./scripts/deploy/start_all.sh (запускает ВСЕ сервисы: DB, Backend, Frontend, Nginx, Telegram бот)
 При команде "Останови проект" - выполнить: ./scripts/deploy/stop_all.sh (останавливает все сервисы)
 При команде "Запусти тесты" - выполнить: ./scripts/test/test_all.sh (запускает все backend и frontend тесты)
+
+ВАЖНО! Правильный запуск бэкенда:
+- ПРАВИЛЬНО: ./scripts/deploy/start_all.sh (полный запуск всех сервисов)
+- ПРАВИЛЬНО: docker-compose -f docker/docker-compose.yml --env-file .env up -d (с флагом --env-file .env)
+- НЕПРАВИЛЬНО: docker-compose restart backend (без --env-file .env)
+- НЕПРАВИЛЬНО: docker-compose up -d backend (без --env-file .env)
+
+Без флага --env-file .env бэкенд падает с ошибкой "SECRET_KEY setting must not be empty"!

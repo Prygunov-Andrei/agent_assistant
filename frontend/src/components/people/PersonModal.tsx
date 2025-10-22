@@ -143,7 +143,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({
             ErrorHandler.logError(err, 'PersonModal.linkPendingProjects');
             // Показываем детальную ошибку
             const errorDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-            alert(`Не удалось привязать проекты:\n${errorDetail}\n\nВы можете добавить их позже через редактирование.`);
+            // alert(`Не удалось привязать проекты:\n${errorDetail}\n\nВы можете добавить их позже через редактирование.`); // Убрано
           }
         }
         
@@ -231,7 +231,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({
       setShowProjectModal(true);
     } catch (err) {
       ErrorHandler.logError(err, 'PersonModal.handleProjectClick');
-      alert('Ошибка загрузки проекта');
+      // alert('Ошибка загрузки проекта'); // Убрано
     }
   };
   
