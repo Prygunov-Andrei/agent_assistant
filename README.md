@@ -4,26 +4,43 @@
 
 ## ⚡ Быстрый старт
 
+**👉 Начните здесь:** [docs/deployment/QUICK_START.md](docs/deployment/QUICK_START.md) - 3 команды для запуска! ⭐
+
+### 🔥 Локальная разработка (HOT RELOAD)
+
+```bash
+# Запустить проект в режиме разработки с hot reload
+./scripts/deploy/start_dev.sh
+
+# Теперь просто редактируйте код - изменения применятся автоматически!
+# Backend: Django runserver (автоперезагрузка ~1 сек)
+# Frontend: Vite HMR (мгновенные обновления без перезагрузки)
+
+# Остановить проект
+./scripts/deploy/stop_all.sh
+```
+
+**📖 Полная документация:** 
+- [QUICK_START.md](docs/deployment/QUICK_START.md) - Быстрый старт ⭐
+- [LOCAL_DEVELOPMENT.md](docs/deployment/LOCAL_DEVELOPMENT.md) - Полный гайд по разработке
+- [TELEGRAM_BOT_GUIDE.md](docs/deployment/TELEGRAM_BOT_GUIDE.md) - Управление ботом
+
 ### Управление проектом
 
 ```bash
-# Запустить весь проект (рекомендуется)
-./scripts/deploy/start_all.sh
-
-# Остановить весь проект
-./scripts/deploy/stop_all.sh
-
-# Пересобрать frontend после изменений (ПРАВИЛЬНЫЙ способ!)
-./scripts/deploy/rebuild_frontend.sh
-
-# Пересобрать backend после изменений (ПРАВИЛЬНЫЙ способ!)
-./scripts/deploy/rebuild_backend.sh
-
 # Запустить все тесты
 ./scripts/test/test_all.sh
-```
 
-**📖 Важно:** При изменениях кода используй `rebuild_*.sh` скрипты! Подробности: [docs/deployment/REBUILD_GUIDE.md](docs/deployment/REBUILD_GUIDE.md)
+# Telegram бот (опционально)
+./scripts/bot/bot_dev_toggle.sh        # Вкл/Выкл бота в DEV
+./scripts/bot/bot_check_duplicates.sh  # Проверка дубликатов
+
+# Пересобрать frontend (если нужно для production)
+./scripts/deploy/rebuild_frontend.sh
+
+# Пересобрать backend (если нужно для production)
+./scripts/deploy/rebuild_backend.sh
+```
 
 ### ⚠️ Критически важно
 

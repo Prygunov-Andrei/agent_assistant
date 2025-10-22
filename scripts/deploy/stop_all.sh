@@ -14,9 +14,12 @@ docker-compose -f docker/docker-compose.bot.yml --env-file .env down --remove-or
 echo "✅ Telegram бот остановлен"
 echo ""
 
-# Останавливаем основные сервисы
+# Останавливаем основные сервисы (включая dev режим и бота)
 echo "2️⃣  Остановка основных сервисов..."
-docker-compose -f docker/docker-compose.yml --env-file .env down --remove-orphans 2>/dev/null
+docker-compose -f docker/docker-compose.yml \
+  -f docker/docker-compose.dev.yml \
+  -f docker/docker-compose.bot.dev.yml \
+  --env-file .env down --remove-orphans 2>/dev/null
 echo "✅ Основные сервисы остановлены"
 echo ""
 

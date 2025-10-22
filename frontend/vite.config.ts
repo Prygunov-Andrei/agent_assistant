@@ -6,7 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    watch: {
+      usePolling: true,  // Для работы в Docker на macOS/Windows
+      interval: 100
+    }
   },
   build: {
     // Генерировать source maps для production

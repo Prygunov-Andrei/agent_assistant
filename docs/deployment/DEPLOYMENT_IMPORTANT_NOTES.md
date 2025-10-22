@@ -1,6 +1,11 @@
 # Important Deployment Notes
 
-## ⚠️ Критически важная информация перед деплоем и работой с проектом
+> ⚠️ **Примечание:** Этот документ описывает правила для **PRODUCTION режима**.  
+> Для локальной разработки используйте [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) и [QUICK_START.md](QUICK_START.md)
+
+---
+
+## ⚠️ Критически важная информация для PRODUCTION
 
 ## 🔴 Критически важные правила
 
@@ -40,11 +45,13 @@ docker-compose -f docker/docker-compose.yml restart backend
 ./scripts/deploy/rebuild_frontend.sh
 ```
 
-### 3. После изменений frontend ОБЯЗАТЕЛЬНО пересобирать
+### 3. После изменений frontend ОБЯЗАТЕЛЬНО пересобирать (только Production)
 
-Frontend работает в production mode - статические файлы компилируются при сборке Docker образа.
+> 💡 **Примечание:** В локальной разработке с hot reload (см. [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md)) пересборка НЕ НУЖНА - изменения применяются автоматически!
 
-**После любых изменений в `frontend/src/`:**
+В production frontend работает в production mode - статические файлы компилируются при сборке Docker образа.
+
+**После любых изменений в `frontend/src/` на production:**
 
 ```bash
 ./scripts/deploy/rebuild_frontend.sh
@@ -52,8 +59,8 @@ Frontend работает в production mode - статические файлы
 
 Или вручную:
 ```bash
-docker-compose -f docker/docker-compose.yml --env-file .env build --no-cache frontend
-docker-compose -f docker/docker-compose.yml --env-file .env restart frontend nginx
+docker-compose -f docker/docker-compose.prod.yml --env-file .env build --no-cache frontend
+docker-compose -f docker/docker-compose.prod.yml --env-file .env restart frontend nginx
 ```
 
 ### 4. Очистка кэша браузера после деплоя

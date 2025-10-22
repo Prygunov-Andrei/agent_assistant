@@ -1,0 +1,34 @@
+# Docker Compose override для Telegram бота в режиме разработки
+# Использование вместе с docker-compose.yml и docker-compose.dev.yml
+
+services:
+  telegram-bot:
+    build:
+      context: ../backend
+      dockerfile: telegram_requests/bot/Dockerfile
+    container_name: agent_assistant_telegram_bot_dev
+    restart: "no"  # В dev режиме НЕ перезапускать автоматически
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - API_BASE_URL=http://backend:8000/api
+      - WEBHOOK_URL=
+    env_file:
+      - ../.env
+    networks:
+      - agent_network  # Та же сеть что и backend/frontend в dev режиме
+    depends_on:
+      - backend
+    # Логи
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "bot.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+

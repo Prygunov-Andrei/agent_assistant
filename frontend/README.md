@@ -12,12 +12,16 @@
 
 ## Установка и запуск
 
+> ⚠️ **Рекомендуется запускать через Docker** - см. [docs/deployment/QUICK_START.md](../docs/deployment/QUICK_START.md)
+
+### Локальная разработка (вне Docker)
+
 1. Установите зависимости:
 ```bash
 npm install
 ```
 
-2. Создайте файл `.env.local` в корне папки frontend:
+2. Создайте файл `.env.local`:
 ```
 VITE_API_URL=http://localhost:8000/api
 ```
@@ -28,6 +32,15 @@ npm run dev
 ```
 
 Приложение будет доступно по адресу http://localhost:5173
+
+### Через Docker (рекомендуется)
+
+```bash
+# Из корня проекта
+./scripts/deploy/start_dev.sh
+```
+
+Frontend доступен на http://localhost:3000 с автоматическим hot reload!
 
 ## Структура проекта
 
