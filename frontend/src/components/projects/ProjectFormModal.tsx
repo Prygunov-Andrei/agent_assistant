@@ -941,14 +941,14 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: '0' }}>
             {/* LEFT PANEL - Context (только для режима create из запроса) */}
             {mode === 'create' && requestData && (
-              <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'auto', padding: '20px' }}>
+              <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'visible', padding: '20px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>Контекст запроса</h3>
                 <div style={{ marginBottom: '12px' }}><strong>Автор:</strong> {requestData.author_username || 'Не указан'}</div>
                 {requestData.author_username && (
                   <div style={{ marginBottom: '12px' }}><strong>Telegram:</strong> {requestData.author_username}</div>
                 )}
                 <div style={{ marginBottom: '12px' }}><strong>Текст:</strong></div>
-                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>{requestData.text}</div>
+                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', lineHeight: '1.4' }}>{requestData.text}</div>
                 
                 {/* Media Section */}
                 {((requestData.images && requestData.images.length > 0) || (requestData.files && requestData.files.length > 0)) && (
@@ -991,7 +991,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
             
             {/* LEFT PANEL - Project context (для режима edit/view из проекта) */}
             {(currentMode === 'edit' || currentMode === 'view') && projectData?.request && (
-              <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'auto', padding: '20px' }}>
+              <div style={{ width: '35%', minWidth: '300px', borderRight: '1px solid #e5e7eb', backgroundColor: '#f9fafb', overflow: 'visible', padding: '20px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>Контекст запроса</h3>
                 {projectData.request_author && (
                   <div style={{ marginBottom: '12px' }}><strong>Автор:</strong> {projectData.request_author}</div>
@@ -1000,7 +1000,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                   <div style={{ marginBottom: '12px' }}><strong>Дата:</strong> {new Date(projectData.request_created_at).toLocaleString('ru-RU')}</div>
                 )}
                 <div style={{ marginBottom: '12px' }}><strong>Текст:</strong></div>
-                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', maxHeight: '200px', overflow: 'auto', fontSize: '14px', lineHeight: '1.4' }}>
+                <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '4px', border: '1px solid #d1d5db', fontSize: '14px', lineHeight: '1.4' }}>
                   {projectData.request_text || `Запрос #${projectData.request} (текст не загружен)`}
                 </div>
                 
