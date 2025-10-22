@@ -336,7 +336,6 @@ class ProjectSerializer(BaseModelSerializer):
                 old_project.request = None
                 old_project.save(update_fields=['request'])
         
-        return super().update(instance, validated_data)
     
     class Meta(BaseModelSerializer.Meta):
         model = Project

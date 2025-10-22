@@ -182,14 +182,16 @@ export interface ProjectSearchResult {
 export interface ProjectExpanded {
   id: number;
   title: string;
-  project_type: {
+  project_type: number | {
     id: number;
     name: string;
   };
-  genre: {
+  project_type_name?: string;
+  genre: number | {
     id: number;
     name: string;
   };
+  genre_name?: string;
   description?: string;
   premiere_date?: string;
   status?: string;

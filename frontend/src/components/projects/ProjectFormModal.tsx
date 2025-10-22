@@ -96,6 +96,7 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   // Показать все варианты
   const [showAllProjectTypes, setShowAllProjectTypes] = useState(false);
   const [showAllGenres, setShowAllGenres] = useState(false);
+  const [usageRightsParsed, setUsageRightsParsed] = useState<any>(null);
 
   // Ref для отслеживания кликов вне dropdown
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -294,8 +295,10 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     
     console.log('prefillProjectData - Входные данные:', projectData);
     console.log('projectData.project_type:', projectData.project_type);
+    console.log('projectData.project_type_name:', projectData.project_type_name);
     console.log('projectData.genre:', projectData.genre);
     console.log('projectData.roles:', projectData.roles);
+    console.log('Все поля projectData:', Object.keys(projectData));
     console.log('Справочники для маппинга:', {
       roleTypes: roleTypesToUse.length,
       shoeSizes: shoeSizesToUse.length,
@@ -363,6 +366,9 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       mappedCompany 
     });
     
+    console.log('DEBUG mappedProjectType:', mappedProjectType);
+    console.log('DEBUG projectData.project_type_name:', projectData.project_type_name);
+    
     setProjectType(mappedProjectType);
     setGenre(mappedGenre);
     setCastingDirector(mappedCastingDirector);
@@ -395,6 +401,9 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     });
     
     setRoles(mappedRoles);
+    
+    // Инициализируем права использования
+    setUsageRightsParsed(projectData.usage_rights_parsed || null);
     
     console.log('Роли после маппинга:', mappedRoles);
   };
@@ -780,7 +789,8 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         casting_director: castingDirector?.id === -1 ? null : (castingDirector?.id || null),
         director: director?.id === -1 ? null : (director?.id || null),
         producers: producer?.id === -1 ? [] : (producer?.id ? [producer.id] : []),
-        production_company: productionCompany?.id === -1 ? null : (productionCompany?.id || null)
+        production_company: productionCompany?.id === -1 ? null : (productionCompany?.id || null),
+        usage_rights_parsed: projectType?.name === 'Реклама' ? usageRightsParsed : null
       };
       
       await projectsService.updateProject(projectData.id, projectUpdateData);
@@ -1309,6 +1319,96 @@ const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                     )}
                   </div>
                 </div>
+
+                {/* Блок прав использования для рекламных проектов */}
+                {projectType?.name === 'Реклама' && (
+                  <div style={{ 
+                    backgroundColor: '#fef3c7', 
+                    border: '1px solid #f59e0b', 
+                    borderRadius: '8px', 
+                    padding: '16px', 
+                    marginBottom: '16px' 
+                  }}>
+                    <h3 style={{ 
+                      fontSize: '16px', 
+                      fontWeight: 'bold', 
+                      color: '#92400e', 
+                      margin: '0 0 12px 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      📜 Права использования
+                    </h3>
+                    
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ 
+                        display: 'block', 
+                        fontSize: '14px', 
+                        fontWeight: 'bold', 
+                        marginBottom: '4px', 
+                        color: '#92400e' 
+                      }}>
+                        Текст прав
+                      </label>
+                      <textarea
+                        value={usageRightsParsed?.raw_text || ''}
+                        onChange={(e) => {
+                          setUsageRightsParsed({ 
+                            ...usageRightsParsed, 
+                            raw_text: e.target.value 
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        rows={3}
+                        disabled={isReadOnly}
+                        style={{ 
+                          width: '100%', 
+                          padding: '8px 12px', 
+                          border: '1px solid #f59e0b', 
+                          borderRadius: '4px', 
+                          fontSize: '14px', 
+                          backgroundColor: isReadOnly ? '#f9fafb' : 'white',
+                          resize: 'vertical'
+                        }}
+                        placeholder="ТВ-ролик, интернет на 2 года, территория РФ"
+                      />
+                    </div>
+                    
+                    {usageRightsParsed && (usageRightsParsed.types?.length > 0 || usageRightsParsed.duration || usageRightsParsed.territory) && (
+                      <div style={{ 
+                        backgroundColor: 'white', 
+                        padding: '12px', 
+                        borderRadius: '4px', 
+                        border: '1px solid #d1d5db' 
+                      }}>
+                        <div style={{ 
+                          fontSize: '14px', 
+                          fontWeight: 'bold', 
+                          color: '#374151', 
+                          marginBottom: '8px' 
+                        }}>
+                          Распарсенные данные:
+                        </div>
+                        {usageRightsParsed.types?.length > 0 && (
+                          <div style={{ marginBottom: '4px' }}>
+                            <strong>Типы:</strong> {usageRightsParsed.types.join(', ')}
+                          </div>
+                        )}
+                        {usageRightsParsed.duration && (
+                          <div style={{ marginBottom: '4px' }}>
+                            <strong>Срок:</strong> {usageRightsParsed.duration}
+                          </div>
+                        )}
+                        {usageRightsParsed.territory && (
+                          <div style={{ marginBottom: '4px' }}>
+                            <strong>Территория:</strong> {usageRightsParsed.territory}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '4px', color: '#374151' }}>Дата премьеры</label>
