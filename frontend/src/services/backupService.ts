@@ -3,12 +3,9 @@
  */
 
 import apiClient from './api';
-import { 
+import type { 
   BackupRecord, 
-  BackupStatistics, 
-  BackupCreateRequest, 
-  BackupDeleteResponse,
-  BackupError 
+  BackupStatistics
 } from '../types/backup';
 
 const BASE_URL = '/core/backups';
@@ -34,7 +31,7 @@ export const backupService = {
   /**
    * Создать новый бэкап
    */
-  async createBackup(data: BackupCreateRequest = {}): Promise<BackupRecord> {
+  async createBackup(data: any = {}): Promise<BackupRecord> {
     const response = await apiClient.post(`${BASE_URL}/create_backup/`, data);
     return response.data;
   },
@@ -50,7 +47,7 @@ export const backupService = {
   /**
    * Удалить бэкап
    */
-  async deleteBackup(id: string): Promise<BackupDeleteResponse> {
+  async deleteBackup(id: string): Promise<any> {
     const response = await apiClient.delete(`${BASE_URL}/${id}/delete_backup/`);
     return response.data;
   },

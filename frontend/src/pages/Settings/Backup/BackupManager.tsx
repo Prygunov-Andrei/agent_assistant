@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BackupRecord, BackupStatistics } from '../../../types/backup';
+import type { BackupRecord, BackupStatistics } from '../../../types/backup';
 import { backupService } from '../../../services/backupService';
 import { useAuth } from '../../../contexts/AuthContext';
 import './BackupManager.css';
