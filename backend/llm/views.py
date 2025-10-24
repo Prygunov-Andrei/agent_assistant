@@ -125,7 +125,7 @@ def analyze_request(request, request_id):
                     'email': casting_director.get('email'),  # Сохраняем извлеченный email
                     'phone': casting_director.get('phone'),  # Сохраняем извлеченный телефон
                     'telegram': casting_director.get('telegram'),  # Сохраняем извлеченный telegram
-                    'confidence': max(0.7, casting_director.get('confidence', 0))  # Минимум 0.7 для fallback
+                    'confidence': max(0.7, casting_director.get('confidence') or 0)  # Минимум 0.7 для fallback
                 }
                 
                 logger.info(f"📧 Сохранены извлеченные контакты: email={casting_director.get('email')}, phone={casting_director.get('phone')}, telegram={casting_director.get('telegram')}")
