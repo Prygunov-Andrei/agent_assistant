@@ -167,9 +167,9 @@ class CastingAgencyBot:
                 "message": {
                     "from": {
                         "id": telegram_user_id,
-                        "username": user.username,
+                        "username": author_info.get('username'),  # Только username автора, не пересылающего
                         "first_name": author_name,  # Используем найденного автора
-                        "last_name": None
+                        "last_name": author_info.get('last_name')
                     },
                     "message_id": message.message_id,
                     "text": message_text,
@@ -203,6 +203,7 @@ class CastingAgencyBot:
             logger.info(f"📤 Отправка webhook_data в API:")
             logger.info(f"   from.first_name: {webhook_data['message']['from']['first_name']}")
             logger.info(f"   from.last_name: {webhook_data['message']['from']['last_name']}")
+            logger.info(f"   from.username: {webhook_data['message']['from']['username']}")
             
             response = requests.post(
                 f"{self.api_base}/webhook/telegram/webhook/",
@@ -395,29 +396,51 @@ class CastingAgencyBot:
                 chat_name = original_chat.title or f"Chat_{original_chat.id}"
                 
                 # Пытаемся получить оригинального автора через MTProto
-                original_author = await self._get_original_author_via_mtproto(message)
+                original_author_info = await self._get_original_author_via_mtproto(message)
                 
                 # Если MTProto не дал результата, попробуем получить информацию о канале
-                if not original_author:
+                if not original_author_info:
                     channel_info = await self._get_channel_info_via_mtproto(message.forward_from_chat.id)
                     if channel_info:
-                        original_author = f"Админ канала {chat_name}"
+                        original_author_info = {
+                            'name': f"Админ канала {chat_name}",
+                            'username': None,
+                            'first_name': None,
+                            'last_name': None,
+                            'telegram_id': None,
+                            'type': 'channel_admin'
+                        }
                         logger.info(f"📢 Получена информация о канале: {channel_info}")
                 
                 # Используем найденного автора или название канала как fallback
-                final_author = original_author if original_author else chat_name
-                logger.info(f"🎯 Финальный автор: {final_author}")
-                
-                return {
-                    'telegram_id': user.id,  # ID того, кто переслал
-                    'name': final_author,
-                    'username': None,
-                    'first_name': None,
-                    'last_name': None,
-                    'is_forwarded': True,
-                    'original_chat_name': chat_name,
-                    'extracted_author': original_author
-                }
+                if original_author_info:
+                    final_author = original_author_info['name']
+                    logger.info(f"🎯 Финальный автор: {final_author}")
+                    
+                    return {
+                        'telegram_id': user.id,  # ID того, кто переслал
+                        'name': final_author,
+                        'username': original_author_info.get('username'),
+                        'first_name': original_author_info.get('first_name'),
+                        'last_name': original_author_info.get('last_name'),
+                        'is_forwarded': True,
+                        'original_chat_name': chat_name,
+                        'extracted_author': original_author_info['name'],
+                        'author_telegram_id': original_author_info.get('telegram_id')
+                    }
+                else:
+                    logger.info(f"🎯 Финальный автор: {chat_name} (fallback)")
+                    return {
+                        'telegram_id': user.id,  # ID того, кто переслал
+                        'name': chat_name,
+                        'username': None,
+                        'first_name': None,
+                        'last_name': None,
+                        'is_forwarded': True,
+                        'original_chat_name': chat_name,
+                        'extracted_author': None,
+                        'author_telegram_id': None
+                    }
             elif message.forward_sender_name:
                 # Анонимный админ канала
                 logger.info(f"👤 Анонимный админ канала: {message.forward_sender_name}")
@@ -482,23 +505,53 @@ class CastingAgencyBot:
                 logger.info(f"🔍 Обработка найденного автора: {author}")
                 
                 if author.get('type') == 'user':
-                    # Формируем имя пользователя
-                    first_name = author.get('first_name', '')
-                    last_name = author.get('last_name', '')
-                    username = author.get('username', '')
-                    
-                    if first_name or last_name:
-                        return f"{first_name} {last_name}".strip()
-                    elif username:
-                        return username
-                    else:
-                        return f"User_{author.get('id')}"
+                    # Возвращаем полную информацию о пользователе
+                    return {
+                        'name': f"{author.get('first_name', '')} {author.get('last_name', '')}".strip() or author.get('username', '') or f"User_{author.get('id')}",
+                        'username': author.get('username'),
+                        'first_name': author.get('first_name'),
+                        'last_name': author.get('last_name'),
+                        'telegram_id': author.get('id'),
+                        'type': 'user'
+                    }
                 elif author.get('type') == 'post_author':
-                    # Автор поста в канале
-                    return author.get('name', 'Неизвестный автор')
+                    # Автор поста в канале - попробуем получить дополнительную информацию
+                    author_name = author.get('name', 'Неизвестный автор')
+                    
+                    # Если у нас есть ID автора из message_info, попробуем получить его username
+                    author_id = message_info.get('author_id')
+                    if author_id:
+                        logger.info(f"🔍 Попытка получить username для автора поста: {author_id}")
+                        user_info = await mtproto_client.get_user_info_by_id(author_id)
+                        if user_info:
+                            logger.info(f"✅ Получена дополнительная информация об авторе: {user_info}")
+                            return {
+                                'name': author_name,
+                                'username': user_info.get('username'),
+                                'first_name': user_info.get('first_name'),
+                                'last_name': user_info.get('last_name'),
+                                'telegram_id': author_id,
+                                'type': 'post_author'
+                            }
+                    
+                    return {
+                        'name': author_name,
+                        'username': None,
+                        'first_name': None,
+                        'last_name': None,
+                        'telegram_id': None,
+                        'type': 'post_author'
+                    }
                 else:
                     # Другой тип автора
-                    return author.get('name', 'Неизвестный автор')
+                    return {
+                        'name': author.get('name', 'Неизвестный автор'),
+                        'username': None,
+                        'first_name': None,
+                        'last_name': None,
+                        'telegram_id': None,
+                        'type': 'unknown'
+                    }
                         
         except Exception as e:
             logger.error(f"Ошибка получения оригинального автора через MTProto: {e}")

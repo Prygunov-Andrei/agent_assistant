@@ -122,6 +122,8 @@ class TelegramMTProtoClient:
         logger.info(f"   message.from_id: {message.from_id}")
         logger.info(f"   message.post_author: {message.post_author}")
         logger.info(f"   message.views: {message.views}")
+        logger.info(f"   message.peer_id: {message.peer_id}")
+        logger.info(f"   message.reply_to: {message.reply_to}")
         
         # Пытаемся получить автора сообщения
         if message.from_id:
@@ -200,6 +202,69 @@ class TelegramMTProtoClient:
             
         return None
     
+    async def get_user_info_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Получает информацию о пользователе по ID"""
+        if not self.client:
+            return None
+            
+        try:
+            logger.info(f"🔍 Получение информации о пользователе: user_id={user_id}")
+            
+            # Сначала пробуем получить entity
+            try:
+                user = await self.client.get_entity(user_id)
+                
+                if isinstance(user, User):
+                    user_info = {
+                        'id': user.id,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'username': user.username,
+                        'phone': user.phone,
+                        'type': 'user'
+                    }
+                    logger.info(f"✅ Информация о пользователе получена через get_entity: {user_info}")
+                    return user_info
+                else:
+                    logger.warning(f"❌ Entity {user_id} не является пользователем: {type(user)}")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ get_entity не сработал для {user_id}: {e}")
+                
+                # Пробуем альтернативный способ - поиск по username или другим методам
+                try:
+                    # Попробуем найти пользователя через поиск
+                    logger.info(f"🔍 Попытка найти пользователя {user_id} через альтернативные методы...")
+                    
+                    # Если у нас есть access_hash, попробуем GetFullUser
+                    from telethon.tl.functions.users import GetFullUser
+                    from telethon.tl.types import InputUser
+                    
+                    # Пробуем с нулевым access_hash (может сработать для некоторых случаев)
+                    try:
+                        full_user = await self.client(GetFullUser(user=InputUser(user_id=user_id, access_hash=0)))
+                        if full_user and full_user.user:
+                            user_info = {
+                                'id': full_user.user.id,
+                                'first_name': full_user.user.first_name,
+                                'last_name': full_user.user.last_name,
+                                'username': full_user.user.username,
+                                'phone': full_user.user.phone,
+                                'type': 'user'
+                            }
+                            logger.info(f"✅ Информация о пользователе получена через GetFullUser: {user_info}")
+                            return user_info
+                    except Exception as e2:
+                        logger.warning(f"⚠️ GetFullUser не сработал для {user_id}: {e2}")
+                    
+                except Exception as e3:
+                    logger.warning(f"⚠️ Альтернативные методы не сработали для {user_id}: {e3}")
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка получения информации о пользователе {user_id}: {e}")
+            
+        return None
+
     async def get_chat_info(self, chat_id: int) -> Optional[Dict[str, Any]]:
         """Получает информацию о чате"""
         if not self.client:

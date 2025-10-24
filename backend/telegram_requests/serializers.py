@@ -217,6 +217,9 @@ class TelegramWebhookDataSerializer(serializers.Serializer):
             from_user = message.get('from', {})
             extracted_author = from_user.get('first_name', '')
             author_name = extracted_author if extracted_author else chat_name
+            
+            # Также получаем username извлеченного автора
+            author_username = from_user.get('username', '') if extracted_author else ''
         else:
             # Обычное сообщение
             author_id = from_user.get('id')
