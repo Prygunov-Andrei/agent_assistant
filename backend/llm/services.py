@@ -399,7 +399,7 @@ class LLMEmulatorService:
         # Извлекаем контакты из текста запроса
         contacts = {
             'casting_director': {
-                'name': author_name,
+                'name': author_name,  # По умолчанию используем автора запроса
                 'phone': 'Не определен',
                 'email': 'Не определен',
                 'telegram': 'Не определен',
@@ -422,7 +422,7 @@ class LLMEmulatorService:
             }
         }
         
-        # Извлекаем кастинг-директора
+        # Извлекаем кастинг-директора из текста (если явно указан)
         casting_match = re.search(r'Кастинг-директор:\s*([^(]+)\s*\(([^)]+)\)', text, re.IGNORECASE)
         if casting_match:
             contacts['casting_director'] = {
@@ -432,6 +432,20 @@ class LLMEmulatorService:
                 'telegram': 'Не определен',
                 'confidence': 0.9
             }
+        # Если не найден в тексте, остается автор запроса (fallback)
+        # Но сохраняем извлеченные контакты из текста
+        
+        # Дополнительный поиск email в тексте
+        email_match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', text)
+        if email_match and (not contacts['casting_director'].get('email') or contacts['casting_director'].get('email') == 'Не определен'):
+            contacts['casting_director']['email'] = email_match.group(1)
+            contacts['casting_director']['confidence'] = max(contacts['casting_director'].get('confidence', 0.5), 0.8)
+        
+        # Дополнительный поиск телефона в тексте
+        phone_match = re.search(r'(\+?[1-9]\d{1,14}|\d{10,11})', text)
+        if phone_match and (not contacts['casting_director'].get('phone') or contacts['casting_director'].get('phone') == 'Не определен'):
+            contacts['casting_director']['phone'] = phone_match.group(1)
+            contacts['casting_director']['confidence'] = max(contacts['casting_director'].get('confidence', 0.5), 0.8)
         
         # Извлекаем режиссера
         director_match = re.search(r'Режиссер:\s*([^(]+)\s*\(([^)]+)\)', text, re.IGNORECASE)

@@ -108,10 +108,32 @@ def analyze_request(request, request_id):
             
             processing_time = time.time() - start_time
             
+            # Применяем fallback логику для кастинг-директора
+            contacts = analysis_result.get('contacts', {})
+            casting_director = contacts.get('casting_director', {})
+            
+            # Если LLM не определил имя кастинг-директора или confidence низкий, используем автора запроса
+            if (not casting_director.get('name') or 
+                casting_director.get('name') == 'Не определен' or 
+                casting_director.get('confidence', 0) < 0.5):
+                
+                logger.info(f"🔄 Fallback: используем автора запроса '{telegram_request.author_name}' как кастинг-директора")
+                
+                # Сохраняем извлеченные LLM данные, но подставляем имя автора
+                contacts['casting_director'] = {
+                    'name': telegram_request.author_name,  # Fallback имя
+                    'email': casting_director.get('email'),  # Сохраняем извлеченный email
+                    'phone': casting_director.get('phone'),  # Сохраняем извлеченный телефон
+                    'telegram': casting_director.get('telegram'),  # Сохраняем извлеченный telegram
+                    'confidence': max(0.7, casting_director.get('confidence', 0))  # Минимум 0.7 для fallback
+                }
+                
+                logger.info(f"📧 Сохранены извлеченные контакты: email={casting_director.get('email')}, phone={casting_director.get('phone')}, telegram={casting_director.get('telegram')}")
+            
             # Формируем ответ (LLM эмулятор уже возвращает правильную структуру)
             response_data = {
                 'project_analysis': analysis_result['project_analysis'],
-                'contacts': analysis_result.get('contacts', {}),
+                'contacts': contacts,
                 'confidence': analysis_result['project_analysis'].get('confidence', 0.85),
                 'processing_time': processing_time,
                 'used_emulator': analysis_result.get('used_emulator', False),
