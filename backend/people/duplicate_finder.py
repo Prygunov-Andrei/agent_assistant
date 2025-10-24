@@ -42,7 +42,7 @@ class PersonDuplicateFinder:
         exact_matches = self._find_by_exact_name(last_name, first_name)
         for person in exact_matches:
             match_info = self._calculate_match_score(person, person_data)
-            if match_info['total_score'] >= self.MIN_MATCH_THRESHOLD:
+            if match_info['match_score'] >= self.MIN_MATCH_THRESHOLD:
                 candidates.append(match_info)
         
         # 2. Поиск по fuzzy совпадению ФИО
@@ -51,7 +51,7 @@ class PersonDuplicateFinder:
             # Проверяем, что не добавляем дубликат
             if not any(c['person_id'] == person.id for c in candidates):
                 match_info = self._calculate_match_score(person, person_data)
-                if match_info['total_score'] >= self.MIN_MATCH_THRESHOLD:
+                if match_info['match_score'] >= self.MIN_MATCH_THRESHOLD:
                     candidates.append(match_info)
         
         # 3. Поиск по контактам
@@ -60,11 +60,11 @@ class PersonDuplicateFinder:
             # Проверяем, что не добавляем дубликат
             if not any(c['person_id'] == person.id for c in candidates):
                 match_info = self._calculate_match_score(person, person_data)
-                if match_info['total_score'] >= self.MIN_MATCH_THRESHOLD:
+                if match_info['match_score'] >= self.MIN_MATCH_THRESHOLD:
                     candidates.append(match_info)
         
         # Сортируем по score (убывание)
-        candidates.sort(key=lambda x: x['total_score'], reverse=True)
+        candidates.sort(key=lambda x: x['match_score'], reverse=True)
         
         return candidates[:limit]
     
