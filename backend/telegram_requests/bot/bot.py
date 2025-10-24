@@ -111,9 +111,14 @@ class CastingAgencyBot:
             # но будем добавлять фотографии к существующему запросу
         
         # Получаем информацию об авторе
-        author_info = self._get_author_info(message, user)
+        author_info = await self._get_author_info(message, user)
         author_name = author_info['name']
         telegram_user_id = author_info['telegram_id']
+        
+        logger.info(f"🔍 Финальная информация об авторе:")
+        logger.info(f"   author_info: {author_info}")
+        logger.info(f"   author_name: {author_name}")
+        logger.info(f"   telegram_user_id: {telegram_user_id}")
             
         # Определяем текст сообщения и наличие медиафайлов
         message_text = ""
@@ -163,8 +168,8 @@ class CastingAgencyBot:
                     "from": {
                         "id": telegram_user_id,
                         "username": user.username,
-                        "first_name": user.first_name,
-                        "last_name": user.last_name
+                        "first_name": author_name,  # Используем найденного автора
+                        "last_name": None
                     },
                     "message_id": message.message_id,
                     "text": message_text,
@@ -194,6 +199,10 @@ class CastingAgencyBot:
             # Если это не первое сообщение медиагруппы, добавляем флаг
             if is_media_group and not is_first_media_group_message:
                 webhook_data["is_additional_media"] = True
+            
+            logger.info(f"📤 Отправка webhook_data в API:")
+            logger.info(f"   from.first_name: {webhook_data['message']['from']['first_name']}")
+            logger.info(f"   from.last_name: {webhook_data['message']['from']['last_name']}")
             
             response = requests.post(
                 f"{self.api_base}/webhook/telegram/webhook/",
@@ -356,10 +365,15 @@ class CastingAgencyBot:
             logger.error(f"Неожиданная ошибка при отправке реакции: {str(e)}")
         return False
     
-    def _get_author_info(self, message, user):
-        """Извлекает информацию об авторе сообщения"""
+    async def _get_author_info(self, message, user):
+        """Извлекает информацию об авторе сообщения с использованием MTProto"""
+        logger.info(f"🔍 Анализ сообщения на предмет пересылки...")
+        logger.info(f"   forward_from: {message.forward_from}")
+        logger.info(f"   forward_from_chat: {message.forward_from_chat}")
+        logger.info(f"   forward_sender_name: {message.forward_sender_name}")
+        
         # Проверяем, является ли сообщение пересланным
-        if message.forward_from or message.forward_from_chat:
+        if message.forward_from or message.forward_from_chat or message.forward_sender_name:
             if message.forward_from:
                 # Переслано от пользователя
                 original_user = message.forward_from
@@ -374,17 +388,48 @@ class CastingAgencyBot:
                     'last_name': original_user.last_name,
                     'is_forwarded': True
                 }
-            else:
-                # Переслано из чата/канала
+            elif message.forward_from_chat:
+                # Переслано из чата/канала - используем MTProto для получения оригинального автора
+                logger.info(f"📢 Переслано из канала/чата: {message.forward_from_chat.title}")
                 original_chat = message.forward_from_chat
                 chat_name = original_chat.title or f"Chat_{original_chat.id}"
+                
+                # Пытаемся получить оригинального автора через MTProto
+                original_author = await self._get_original_author_via_mtproto(message)
+                
+                # Если MTProto не дал результата, попробуем получить информацию о канале
+                if not original_author:
+                    channel_info = await self._get_channel_info_via_mtproto(message.forward_from_chat.id)
+                    if channel_info:
+                        original_author = f"Админ канала {chat_name}"
+                        logger.info(f"📢 Получена информация о канале: {channel_info}")
+                
+                # Используем найденного автора или название канала как fallback
+                final_author = original_author if original_author else chat_name
+                logger.info(f"🎯 Финальный автор: {final_author}")
+                
                 return {
                     'telegram_id': user.id,  # ID того, кто переслал
-                    'name': chat_name,
+                    'name': final_author,
                     'username': None,
                     'first_name': None,
                     'last_name': None,
-                    'is_forwarded': True
+                    'is_forwarded': True,
+                    'original_chat_name': chat_name,
+                    'extracted_author': original_author
+                }
+            elif message.forward_sender_name:
+                # Анонимный админ канала
+                logger.info(f"👤 Анонимный админ канала: {message.forward_sender_name}")
+                return {
+                    'telegram_id': user.id,  # ID того, кто переслал
+                    'name': message.forward_sender_name,
+                    'username': None,
+                    'first_name': None,
+                    'last_name': None,
+                    'is_forwarded': True,
+                    'original_chat_name': None,
+                    'extracted_author': message.forward_sender_name
                 }
         else:
             # Обычное сообщение
@@ -400,6 +445,93 @@ class CastingAgencyBot:
                 'is_forwarded': False
             }
     
+    async def _get_original_author_via_mtproto(self, message):
+        """Получает оригинального автора через MTProto API"""
+        try:
+            from mtproto_client import mtproto_client
+            
+            # Проверяем, подключен ли клиент
+            if not mtproto_client.client or not mtproto_client.client.is_connected():
+                logger.info("Инициализация MTProto клиента...")
+                mtproto_started = await mtproto_client.start()
+                if not mtproto_started:
+                    logger.warning("Не удалось инициализировать MTProto клиент")
+                    return None
+            
+            # Если сообщение переслано из канала, используем ID канала
+            if message.forward_from_chat:
+                original_chat_id = message.forward_from_chat.id
+                # Используем forward_from_message_id если доступен, иначе message_id
+                original_message_id = getattr(message, 'forward_from_message_id', None) or message.message_id
+                logger.info(f"🔍 Получение сообщения из оригинального канала: {original_chat_id}, message_id: {original_message_id}")
+                
+                # Получаем информацию о сообщении через MTProto из оригинального канала
+                message_info = await mtproto_client.get_message_info(
+                    original_chat_id, 
+                    original_message_id
+                )
+            else:
+                # Получаем информацию о сообщении через MTProto из текущего чата
+                message_info = await mtproto_client.get_message_info(
+                    message.chat_id, 
+                    message.message_id
+                )
+            
+            if message_info and message_info.get('original_author'):
+                author = message_info['original_author']
+                logger.info(f"🔍 Обработка найденного автора: {author}")
+                
+                if author.get('type') == 'user':
+                    # Формируем имя пользователя
+                    first_name = author.get('first_name', '')
+                    last_name = author.get('last_name', '')
+                    username = author.get('username', '')
+                    
+                    if first_name or last_name:
+                        return f"{first_name} {last_name}".strip()
+                    elif username:
+                        return username
+                    else:
+                        return f"User_{author.get('id')}"
+                elif author.get('type') == 'post_author':
+                    # Автор поста в канале
+                    return author.get('name', 'Неизвестный автор')
+                else:
+                    # Другой тип автора
+                    return author.get('name', 'Неизвестный автор')
+                        
+        except Exception as e:
+            logger.error(f"Ошибка получения оригинального автора через MTProto: {e}")
+            
+        return None
+    
+    async def _get_channel_info_via_mtproto(self, channel_id):
+        """Получает информацию о канале через MTProto API"""
+        try:
+            from mtproto_client import mtproto_client
+            
+            # Проверяем, подключен ли клиент
+            if not mtproto_client.client or not mtproto_client.client.is_connected():
+                logger.info("Инициализация MTProto клиента для получения информации о канале...")
+                mtproto_started = await mtproto_client.start()
+                if not mtproto_started:
+                    logger.warning("Не удалось инициализировать MTProto клиент")
+                    return None
+            
+            # Получаем информацию о канале
+            entity = await mtproto_client.client.get_entity(channel_id)
+            logger.info(f"📢 Информация о канале: {entity.title} (@{entity.username})")
+            
+            return {
+                'id': entity.id,
+                'title': entity.title,
+                'username': entity.username,
+                'type': type(entity).__name__
+            }
+            
+        except Exception as e:
+            logger.error(f"Ошибка получения информации о канале через MTProto: {e}")
+            return None
 
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик ошибок"""
