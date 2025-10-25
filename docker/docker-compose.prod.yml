@@ -94,7 +94,7 @@ services:
   frontend:
     build:
       context: ../frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
       args:
         - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     container_name: agent_assistant_frontend
@@ -104,7 +104,7 @@ services:
     environment:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3000:80"
     networks:
       - agent_network
     depends_on:
