@@ -5,7 +5,6 @@ import Artists from './pages/Artists';
 import Requests from './pages/Requests';
 import Projects from './pages/Projects';
 import Login from './pages/Login';
-import TestPersonMatching from './pages/TestPersonMatching';
 import ProjectCreationPage from './pages/ProjectCreationPage';
 import CastingDirectors from './pages/CastingDirectors';
 import Producers from './pages/Producers';
@@ -159,17 +158,6 @@ const App: React.FC = () => {
                 }
               />
 
-               {/* Тестовая страница для поиска персон */}
-               <Route
-                 path="/test-person-matching"
-                 element={
-                   <ProtectedRoute>
-                     <Layout>
-                       <TestPersonMatching />
-                     </Layout>
-                   </ProtectedRoute>
-                 }
-               />
 
                {/* Страница создания проекта в новом окне */}
                <Route
