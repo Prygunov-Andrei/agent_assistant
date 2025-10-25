@@ -35,7 +35,8 @@ docker system prune -f --volumes || true
 
 # Пересобираем и запускаем контейнеры
 echo "[$(date)] Building and starting containers..."
-docker-compose -f docker/docker-compose.prod.yml --env-file .env up -d --build --no-cache
+docker-compose -f docker/docker-compose.prod.yml --env-file .env build --no-cache
+docker-compose -f docker/docker-compose.prod.yml --env-file .env up -d
 
 # Ждем запуска
 echo "[$(date)] Waiting for services to start..."
