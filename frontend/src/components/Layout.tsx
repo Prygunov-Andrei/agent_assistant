@@ -106,14 +106,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   Настройки
                 </Link>
                 
-                {/* Тестовая ссылка для разработки */}
-                <Link
-                  to="/test-person-matching"
-                  className={`nav-link ${location.pathname === '/test-person-matching' ? 'active' : ''}`}
-                  title="Тестирование поиска персон"
-                >
-                  Тест
-                </Link>
                 
                 <UserProfile user={user} onLogout={logout} />
               </>
