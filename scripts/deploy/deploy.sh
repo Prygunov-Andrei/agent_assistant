@@ -17,7 +17,8 @@ git clean -fd
 
 # Получаем последние изменения из GitHub
 echo "[$(date)] Pulling latest changes from GitHub..."
-git pull origin main
+git fetch origin
+git reset --hard origin/main
 
 # Создаем необходимые папки
 echo "[$(date)] Creating required directories..."
