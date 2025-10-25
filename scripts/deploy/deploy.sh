@@ -28,9 +28,13 @@ chmod 777 backend/logs backend/staticfiles
 echo "[$(date)] Stopping and removing old containers..."
 docker-compose -f docker/docker-compose.prod.yml --env-file .env down
 
+# Очищаем Docker кэш для принудительной пересборки
+echo "[$(date)] Cleaning Docker cache..."
+docker system prune -f --volumes || true
+
 # Пересобираем и запускаем контейнеры
 echo "[$(date)] Building and starting containers..."
-docker-compose -f docker/docker-compose.prod.yml --env-file .env up -d --build
+docker-compose -f docker/docker-compose.prod.yml --env-file .env up -d --build --no-cache
 
 # Ждем запуска
 echo "[$(date)] Waiting for services to start..."
