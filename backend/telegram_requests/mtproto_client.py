@@ -21,8 +21,14 @@ class TelegramMTProtoClient:
         self.phone = os.getenv('TELEGRAM_PHONE')
         self.session_name = 'agent_assistant_session'
         
-        if not all([self.api_id, self.api_hash, self.phone]):
-            logger.error("Не установлены переменные TELEGRAM_API_ID, TELEGRAM_API_HASH или TELEGRAM_PHONE")
+        # Отключаем MTProto если номер телефона не указан (для безопасности)
+        if not self.phone:
+            logger.warning("⚠️  TELEGRAM_PHONE не установлен. MTProto клиент отключен.")
+            self.client = None
+            return
+        
+        if not all([self.api_id, self.api_hash]):
+            logger.error("Не установлены переменные TELEGRAM_API_ID или TELEGRAM_API_HASH")
             self.client = None
             return
             
