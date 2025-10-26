@@ -419,7 +419,7 @@ class TelegramWebhookViewSet(viewsets.ViewSet):
         
         try:
             logger.info(f"Обрабатываем {len(photo_data)} изображений для запроса {request_obj.id}")
-            logger.info(f"BOT_TOKEN в окружении: {os.getenv('BOT_TOKEN', 'НЕ НАЙДЕН')}")
+            # BOT_TOKEN удален из логов из соображений безопасности
             
             # Инициализируем сервис для работы с Telegram
             telegram_service = TelegramFileService()

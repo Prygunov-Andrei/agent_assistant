@@ -14,7 +14,7 @@ class TelegramFileService:
     def __init__(self, bot_token: str = None):
         # Пробуем получить BOT_TOKEN из разных источников
         self.bot_token = bot_token or os.getenv('BOT_TOKEN') or os.environ.get('BOT_TOKEN')
-        logger.info(f"TelegramFileService initialized with BOT_TOKEN: {self.bot_token[:10]}..." if self.bot_token else "BOT_TOKEN not found")
+        # BOT_TOKEN удален из логов из соображений безопасности
         if not self.bot_token:
             raise ValueError("BOT_TOKEN не установлен")
         
