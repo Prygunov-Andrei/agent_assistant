@@ -64,3 +64,14 @@ Thumbs.db
 
 # Cursor rules
 .cursorrules
+
+# Telegram session files
+*.session
+
+# Secrets and credentials
+*.key
+*.pem
+*.p12
+*.crt
+**/credentials/**/*.json
+**/secrets/**
